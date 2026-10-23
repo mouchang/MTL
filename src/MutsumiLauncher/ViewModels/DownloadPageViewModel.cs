@@ -11,6 +11,9 @@ public sealed class VersionEntry
     public required string Caption { get; init; }
 
     public required string Icon { get; init; }
+
+    /// <summary>该版本的 JSON 地址（安装时使用）。</summary>
+    public string? Url { get; init; }
 }
 
 public sealed class VersionSection
@@ -105,6 +108,7 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
                 Name = release.Id,
                 Caption = $"最新正式版，发布于 {Format(release.ReleaseTime)}",
                 Icon = ReleaseIcon,
+                Url = release.Url,
             };
         }
 
@@ -116,6 +120,7 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
                 Name = snapshot.Id,
                 Caption = $"最新预览版，发布于 {Format(snapshot.ReleaseTime)}",
                 Icon = SnapshotIcon,
+                Url = snapshot.Url,
             };
         }
 
@@ -151,6 +156,7 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
                     Name = v.Id,
                     Caption = Format(v.ReleaseTime),
                     Icon = icon,
+                    Url = v.Url,
                 })
                 .ToList(),
         };

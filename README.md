@@ -83,7 +83,10 @@ MutsumiLauncher/
 
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
-- **Java 探测**：启动器扫描 `JAVA_HOME`、`PATH`、注册表（JavaSoft）、常见安装目录（Adoptium / Microsoft / Zulu / Corretto 等）以及 `.minecraftuntime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java -version`；结果去重后按主版本倒序展示。设置页可查看与重新检测，版本设置里的 Java 下拉直接使用这份列表。
+- **Java 探测**：启动器扫描 `JAVA_HOME`、`PATH`、注册表（JavaSoft）、常见安装目录（Adoptium / Microsoft / Zulu / Corretto 等）以及 `.minecraft
+untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java -version`；结果去重后按主版本倒序展示。设置页可查看与重新检测，版本设置里的 Java 下拉直接使用这份列表。
+
+- **版本安装**：下载页每个版本行都有「安装」，确认后依次拉取版本 JSON、client jar、依赖库（含 Windows natives），逐文件做 SHA-1 校验，落盘到游戏目录；顶部有进度条。
 
 ## 素材替换
 
@@ -103,6 +106,8 @@ MutsumiLauncher/
 - [x] 三页界面与导航（启动 / 下载 / 设置）
 - [x] 版本清单拉取（Mojang piston-meta，带本地缓存与失败回退）
 - [x] Java 探测（JAVA_HOME / PATH / 注册表 / 安装目录 / Minecraft 运行时，解析版本号）
+- [x] 版本安装（版本 JSON、client jar、libraries，SHA-1 校验，进度条）
+- [ ] 资源文件（assets）下载与 natives 解压
 - [ ] JVM 参数与按版本自动选择 Java
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传
