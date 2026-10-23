@@ -1,0 +1,40 @@
+# 默认按文本处理，统一 LF 入库
+* text=auto eol=lf
+
+# Windows 脚本与 VS 工程文件保持 CRLF
+*.sln       text eol=crlf
+*.csproj    text eol=crlf
+*.vbproj    text eol=crlf
+*.fsproj    text eol=crlf
+*.vcxproj   text eol=crlf
+*.props     text eol=crlf
+*.targets   text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+*.manifest  text eol=crlf
+
+# 二进制文件
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.ico       binary
+*.icns      binary
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+*.zip       binary
+*.7z        binary
+*.gz        binary
+*.jar       binary
+*.dll       binary
+*.exe       binary
+*.pdb       binary
+*.so        binary
+*.dylib     binary
+
+# 语言统计时不计入
+docs/**    linguist-documentation

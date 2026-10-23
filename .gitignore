@@ -1,0 +1,74 @@
+# ---- 通用 ----
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 本地配置 / 密钥（严禁入库）----
+.env
+.env.*
+!.env.example
+*.local.json
+secrets.*
+appsettings.Local.json
+
+# ---- Visual Studio / .NET ----
+.vs/
+bin/
+obj/
+packages/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+*.dbmdl
+*.pdb
+*.cache
+TestResults/
+artifacts/
+BenchmarkDotNet.Artifacts/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# ---- JetBrains Rider ----
+.idea/
+*.sln.iml
+*.DotSettings.user
+
+# ---- VS Code ----
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---- Node / 前端工具链（若引入）----
+node_modules/
+dist/
+dist-electron/
+out/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- 构建产物 / 发布包 ----
+publish/
+release/
+*.exe
+*.dll
+*.nupkg
+*.msix
+*.appx
+!assets/**/*.dll
+
+# ---- 运行期数据（本地调试）----
+/runtime/
+/data/
+/logs/
+*.pid
