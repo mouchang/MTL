@@ -31,62 +31,77 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- 标题栏 -->
-                    <Grid x:Name="TitleBar" Grid.Row="0" Margin="26,12,26,0" Background="Transparent"
-                          MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <!-- 顶部导航层：收起时只剩两侧按钮，展开时浮出带三个页签的玻璃条 -->
+                    <Grid x:Name="TitleBar" Grid.Row="0" Margin="18,12,18,0" Height="68"
+                          Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-                        <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
-                                HorizontalAlignment="Left" VerticalAlignment="Top"
-                                Click="MenuButton_Click">
-                            <Grid Width="15" Height="15">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition />
-                                    <RowDefinition />
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition />
-                                    <ColumnDefinition />
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.Row="0" Grid.Column="0" Background="#FF35473C"
-                                        CornerRadius="1.5" Margin="0,0,3,3" />
-                                <Border Grid.Row="0" Grid.Column="1" Background="#FF35473C"
-                                        CornerRadius="1.5" Margin="3,0,0,3" />
-                                <Border Grid.Row="1" Grid.Column="0" Background="#FF35473C"
-                                        CornerRadius="1.5" Margin="0,3,3,0" />
-                                <Border Grid.Row="1" Grid.Column="1" Background="#FF35473C"
-                                        CornerRadius="1.5" Margin="3,3,0,0" />
-                            </Grid>
-                        </Button>
+                        <Border x:Name="NavBarSurface" CornerRadius="20"
+                                Background="#52FFFFFF" BorderBrush="#78FFFFFF" BorderThickness="1"
+                                Opacity="0" IsHitTestVisible="False">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270"
+                                                  Opacity="0.10" Color="#FF2E4A38" />
+                            </Border.Effect>
+                        </Border>
 
-                        <StackPanel x:Name="NavTabs" Orientation="Horizontal"
-                                    HorizontalAlignment="Center" VerticalAlignment="Top"
-                                    Visibility="Collapsed">
-                            <RadioButton x:Name="NavLaunch" Style="{StaticResource NavTab}"
-                                         GroupName="MainNav" Tag="launch" Checked="Nav_Checked">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
-                                    <TextBlock Text="启动" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </RadioButton>
-                            <RadioButton x:Name="NavDownload" Style="{StaticResource NavTab}"
-                                         GroupName="MainNav" Tag="download" Checked="Nav_Checked">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
-                                    <TextBlock Text="下载" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </RadioButton>
-                            <RadioButton x:Name="NavSettings" Style="{StaticResource NavTab}"
-                                         GroupName="MainNav" Tag="settings" Checked="Nav_Checked">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
-                                    <TextBlock Text="设置" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </RadioButton>
-                        </StackPanel>
+                        <Grid Margin="12,0">
+                            <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Click="MenuButton_Click" ToolTip="导航">
+                                <Grid Width="15" Height="15">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="0,0,3,3" />
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="3,0,0,3" />
+                                    <Border Grid.Row="1" Grid.Column="0" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="0,3,3,0" />
+                                    <Border Grid.Row="1" Grid.Column="1" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="3,3,0,0" />
+                                </Grid>
+                            </Button>
 
-                        <Button x:Name="CloseButton" Style="{StaticResource CloseButton}"
-                                HorizontalAlignment="Right" VerticalAlignment="Top"
-                                Content="&#xE8BB;" Click="CloseButton_Click" />
+                            <StackPanel x:Name="NavTabs" Orientation="Horizontal"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Opacity="0" IsHitTestVisible="False">
+                                <StackPanel.RenderTransform>
+                                    <TranslateTransform Y="-8" />
+                                </StackPanel.RenderTransform>
+
+                                <RadioButton x:Name="NavLaunch" Style="{StaticResource NavTab}"
+                                             GroupName="MainNav" Tag="launch" Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
+                                        <TextBlock Text="启动" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="NavDownload" Style="{StaticResource NavTab}"
+                                             GroupName="MainNav" Tag="download" Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
+                                        <TextBlock Text="下载" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton x:Name="NavSettings" Style="{StaticResource NavTab}"
+                                             GroupName="MainNav" Tag="settings" Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}" Margin="0,0,8,0" />
+                                        <TextBlock Text="设置" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </RadioButton>
+                            </StackPanel>
+
+                            <Button x:Name="CloseButton" Style="{StaticResource CloseButton}"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="关闭" />
+                        </Grid>
                     </Grid>
 
                     <!-- 页面宿主 -->
@@ -101,58 +116,5 @@
                 </Border>
             </Grid>
         </Border>
-
-        <!-- 汉堡菜单 -->
-        <Popup x:Name="MenuPopup" PlacementTarget="{Binding ElementName=MenuButton}"
-               Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
-               PopupAnimation="Fade" VerticalOffset="8">
-            <Border Background="#F7FFFFFF" CornerRadius="16" Padding="8" Width="228" Margin="12">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="26" ShadowDepth="6" Direction="270"
-                                      Opacity="0.18" Color="#FF1B2B22" />
-                </Border.Effect>
-                <StackPanel>
-                    <Button Style="{StaticResource MenuItemButton}" Tag="launch" Click="MenuNav_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="启动" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButton}" Tag="download" Click="MenuNav_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="下载" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButton}" Tag="settings" Click="MenuNav_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="设置" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <Border Height="1" Background="#22000000" Margin="8,6" />
-
-                    <Button Style="{StaticResource MenuItemButton}" Click="MenuAbout_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE946;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="关于 MTL" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButton}" Click="MenuMinimize_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE921;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="最小化" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MenuItemButton}" Click="MenuExit_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8BB;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
-                            <TextBlock Text="退出" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-        </Popup>
     </Grid>
 </Window>

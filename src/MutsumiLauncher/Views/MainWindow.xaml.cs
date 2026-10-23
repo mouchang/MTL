@@ -14,6 +14,8 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, UserControl> _pages = new(StringComparer.Ordinal);
     private readonly DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(2.4) };
     private bool _suppressNav;
+    private bool _navExpanded;
+    private string _currentPage = "launch";
 
     public MainWindow()
     {
@@ -46,6 +48,14 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) => UpdateShellClip();
     }
 
+    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+    {
+        base.OnPreviewMouseDown(e);
+
+        // 导航层像弹层一样：启动页上点外部自动收起（子页上保持常驻，同设计稿）
+        if (_navExpanded && _currentPage == "launch" && !TitleBar.IsMouseOver) SetNavExpanded(false);
+    }
+
     private void UpdateShellClip()
     {
         if (Shell.ActualWidth <= 0 || Shell.ActualHeight <= 0) return;
@@ -57,13 +67,16 @@ public partial class MainWindow : Window
     {
         if (!_pages.TryGetValue(key, out var page)) return;
 
+        _currentPage = key;
+
         _suppressNav = true;
         NavLaunch.IsChecked = key == "launch";
         NavDownload.IsChecked = key == "download";
         NavSettings.IsChecked = key == "settings";
         _suppressNav = false;
 
-        NavTabs.Visibility = key == "launch" ? Visibility.Collapsed : Visibility.Visible;
+        // 进子页时导航层自动展开，回启动页时收起
+        SetNavExpanded(key != "launch", animate);
 
         Backdrop.Effect = key == "launch"
             ? null
@@ -86,34 +99,41 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SetNavExpanded(bool expanded, bool animate = true)
+    {
+        _navExpanded = expanded;
+
+        var duration = TimeSpan.FromMilliseconds(200);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var translate = (TranslateTransform)NavTabs.RenderTransform;
+
+        if (!animate)
+        {
+            NavBarSurface.Opacity = expanded ? 1 : 0;
+            NavTabs.Opacity = expanded ? 1 : 0;
+            NavTabs.IsHitTestVisible = expanded;
+            translate.Y = expanded ? 0 : -8;
+            return;
+        }
+
+        NavBarSurface.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = ease });
+        NavTabs.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = ease });
+
+        translate.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(expanded ? 0 : -8, duration) { EasingFunction = ease });
+
+        NavTabs.IsHitTestVisible = expanded;
+    }
+
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
         if (_suppressNav || _pages.Count == 0) return;
         if (sender is RadioButton { Tag: string key }) ShowPage(key);
     }
 
-    private void MenuButton_Click(object sender, RoutedEventArgs e) => MenuPopup.IsOpen = !MenuPopup.IsOpen;
-
-    private void MenuNav_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: string key }) return;
-        MenuPopup.IsOpen = false;
-        ShowPage(key);
-    }
-
-    private void MenuAbout_Click(object sender, RoutedEventArgs e)
-    {
-        MenuPopup.IsOpen = false;
-        ShowToast("Mutsumi Launcher 0.1.0 · WPF / .NET 10");
-    }
-
-    private void MenuMinimize_Click(object sender, RoutedEventArgs e)
-    {
-        MenuPopup.IsOpen = false;
-        WindowState = WindowState.Minimized;
-    }
-
-    private void MenuExit_Click(object sender, RoutedEventArgs e) => Close();
+    private void MenuButton_Click(object sender, RoutedEventArgs e) => SetNavExpanded(!_navExpanded);
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
