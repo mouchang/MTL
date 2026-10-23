@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,0,4,0">
 
             <Border Style="{StaticResource GlassCard}" Padding="20">
@@ -80,7 +80,7 @@
                         <Button Style="{StaticResource SecondaryButton}" Content="补全文件"
                                 Width="150" Margin="0,0,10,10" />
                         <Button Style="{StaticResource DangerButton}" Content="删除版本"
-                                Width="150" Margin="0,0,10,10" />
+                                Width="150" Margin="0,0,10,10" Click="DeleteVersion_Click" />
                     </WrapPanel>
                 </StackPanel>
             </Border>

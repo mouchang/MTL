@@ -1,0 +1,26 @@
+<UserControl x:Class="MutsumiLauncher.Controls.MtlSearchBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <Border Background="#8CFFFFFF" BorderBrush="{StaticResource GlassStroke}" BorderThickness="1"
+            CornerRadius="10" Height="38">
+        <Grid>
+            <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                       Foreground="{StaticResource InkSoft}" VerticalAlignment="Center"
+                       HorizontalAlignment="Left" Margin="12,0,0,0" IsHitTestVisible="False" />
+
+            <TextBox x:Name="Inner" Style="{StaticResource BareTextBox}"
+                     Margin="34,0,34,0" VerticalContentAlignment="Center"
+                     FontSize="13" TextChanged="Inner_TextChanged" />
+
+            <TextBlock x:Name="PlaceholderText" Text="搜索" Margin="36,0,0,0"
+                       VerticalAlignment="Center" FontSize="13"
+                       Foreground="{StaticResource InkMute}" IsHitTestVisible="False" />
+
+            <Button x:Name="ClearButton" Style="{StaticResource LinkIconButton}" Content="&#xE711;"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
+                    Visibility="Collapsed" Click="Clear_Click" ToolTip="清空" />
+        </Grid>
+    </Border>
+</UserControl>

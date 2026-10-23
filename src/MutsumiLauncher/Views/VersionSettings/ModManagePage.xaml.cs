@@ -15,7 +15,7 @@ public partial class ModManagePage : UserControl
         Loaded += (_, _) => ApplyFilter();
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    private void SearchBox_TextChanged(object? sender, EventArgs e)
     {
         _query = SearchBox.Text.Trim();
         ApplyFilter();
