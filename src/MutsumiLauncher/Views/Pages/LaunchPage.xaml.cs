@@ -46,6 +46,8 @@ public partial class LaunchPage : UserControl
 
     private void VersionSettings_Click(object sender, RoutedEventArgs e)
     {
-        (Window.GetWindow(this) as MainWindow)?.ShowToast("版本设置：等实例管理做完后接到这里。");
+        var window = new VersionSettingsWindow();
+        if (Window.GetWindow(this) is { } owner) window.Owner = owner;
+        window.Show();
     }
 }

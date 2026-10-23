@@ -45,6 +45,11 @@ public partial class MainWindow : Window
             // 调试用：MTL_START_PAGE=download 可直接进下载页
             var start = Environment.GetEnvironmentVariable("MTL_START_PAGE");
             ShowPage(start is not null && _pages.ContainsKey(start) ? start : "launch", animate: false);
+
+            if (Environment.GetEnvironmentVariable("MTL_OPEN_SETTINGS") == "1")
+            {
+                new VersionSettingsWindow { Owner = this }.Show();
+            }
         };
         SizeChanged += (_, _) => UpdateShellClip();
     }

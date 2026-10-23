@@ -1,0 +1,95 @@
+<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.LaunchOptionsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,4,0">
+
+            <Border Background="#99DCEFE0" CornerRadius="12" Padding="16,11">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Background="{StaticResource AccentDeep}" CornerRadius="2" Margin="0,0,12,0" />
+                    <TextBlock Grid.Column="1" Text="这些设置只对该游戏版本生效，不影响其他版本。"
+                               FontSize="13" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Style="{StaticResource LinkIconButton}" Content="&#xE711;" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="启动选项" Style="{StaticResource H2}" />
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="版本隔离" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="开启" />
+                            <ComboBoxItem Content="关闭" />
+                            <ComboBoxItem Content="跟随全局设置" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="游戏窗口标题" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" />
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="自定义信息" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" />
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="自动选择" />
+                            <ComboBoxItem Content="Java 21 (21.0.5)" />
+                            <ComboBoxItem Content="Java 25 (25.0.1.0)" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Background="#99D9EEF7" CornerRadius="10" Padding="14,10" Margin="110,10,0,0">
+                        <TextBlock FontSize="12" Foreground="#FF3E5C6E" TextWrapping="Wrap"
+                                   Text="将会使用：Java 25 (25.0.1.0)  C:\Users\the box\AppData\Roaming\.minecraft\runtime\java-runtime-epsilon\bin\" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="内存分配" Style="{StaticResource H2}" />
+                    <StackPanel Margin="6,14,0,0">
+                        <RadioButton Style="{StaticResource MtlRadio}" Content="跟随全局设置" IsChecked="True" Margin="0,0,0,12" />
+                        <RadioButton Style="{StaticResource MtlRadio}" Content="自动配置" Margin="0,0,0,12" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Style="{StaticResource MtlRadio}" Content="自定义" VerticalAlignment="Center" />
+                            <TextBlock Text="4096 MB" FontSize="13" Foreground="{StaticResource InkSoft}"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

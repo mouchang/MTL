@@ -1,0 +1,107 @@
+<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.ExportPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,4,0">
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="整合包名称" Style="{StaticResource FieldLabel}" Margin="0,0,14,0" />
+                    <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" Text="猫饼镇 beta 1.21.1" />
+                    <TextBlock Grid.Column="2" Text="整合包版本" Style="{StaticResource FieldLabel}" Margin="22,0,14,0" />
+                    <TextBox Grid.Column="3" Style="{StaticResource MtlTextBox}" Text="1.0.0" Width="120" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="导出内容列表" Style="{StaticResource H2}" />
+
+                    <StackPanel Margin="2,16,0,0">
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" IsEnabled="False">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="游戏本体" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="正式版 1.21.1 · Fabric 0.19.5" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="游戏本体设置" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="键位、音量、视频设置等" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="游戏本体个人信息" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="命令历史、已保存的快捷栏" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="0,16,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Mod" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="模组" FontSize="12" Foreground="{StaticResource InkMute}"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="28,10,0,0"
+                                  Content="已禁用的 Mod" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="Mod 设置" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="已绘制的地图" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="地图类 Mod 为现有的存档、服务器记录的地图、路标点等" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="JEI 个人信息" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="物品收藏夹等" FontSize="12" Foreground="{StaticResource InkMute}"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="0,16,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="资源包" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="纹理包/材质包" FontSize="12" Foreground="{StaticResource InkMute}"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="CozyUI+_ysnEX_v1.0a.zip" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="FA+Player-v1.1.zip" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="FA+Player-vJE.zip" />
+                    </StackPanel>
+
+                    <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
+                            Margin="0,20,0,0" Content="开始导出" Width="132" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
