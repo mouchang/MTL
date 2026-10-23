@@ -79,6 +79,10 @@ MutsumiLauncher/
 
 ![导航层动画](docs/screenshots/nav-expand.gif)
 
+## 已接入真实数据
+
+- **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
+
 ## 素材替换
 
 界面用的是占位素材，可以直接替换同名文件：
@@ -95,7 +99,7 @@ MutsumiLauncher/
 
 - [x] 仓库初始化与工程骨架
 - [x] 三页界面与导航（启动 / 下载 / 设置）
-- [ ] 版本清单拉取（Mojang piston-meta）
+- [x] 版本清单拉取（Mojang piston-meta，带本地缓存与失败回退）
 - [ ] Java 探测与 JVM 参数
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传

@@ -7,11 +7,26 @@ namespace MutsumiLauncher.Views.Pages;
 public partial class DownloadPage : UserControl
 {
     private CommunitySearchView? _communityView;
+    private DownloadPageViewModel? _viewModel;
+    private bool _versionsRequested;
 
     public DownloadPage()
     {
         InitializeComponent();
-        DataContext = new DownloadPageViewModel();
+        DataContext = _viewModel = new DownloadPageViewModel();
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_versionsRequested) return;
+        _versionsRequested = true;
+        _ = _viewModel?.LoadAsync();
+    }
+
+    private void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        _ = _viewModel?.LoadAsync(forceRefresh: true);
     }
 
     private void CommunityToggle_Changed(object sender, RoutedEventArgs e)

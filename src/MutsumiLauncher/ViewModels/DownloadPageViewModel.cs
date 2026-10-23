@@ -1,3 +1,7 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using MutsumiLauncher.Services;
+
 namespace MutsumiLauncher.ViewModels;
 
 public sealed class VersionEntry
@@ -16,67 +20,182 @@ public sealed class VersionSection
     public required IReadOnlyList<VersionEntry> Versions { get; init; }
 }
 
-/// <summary>下载页的静态占位数据，接入版本清单 API 后替换。</summary>
-public sealed class DownloadPageViewModel
+/// <summary>下载页「原版资源」的数据：优先 Mojang 版本清单，失败时回退到内置示例。</summary>
+public sealed class DownloadPageViewModel : INotifyPropertyChanged
 {
-    public IReadOnlyList<VersionEntry> Latest { get; } =
-    [
-        new VersionEntry
-        {
-            Name = "26.3",
-            Caption = "最新正式版，发布于 2026/9/15 19:23",
-            Icon = "/Assets/grass.png",
-        },
-        new VersionEntry
-        {
-            Name = "26.4-snapshot-5",
-            Caption = "最新预览版，发布于 2026/10/20 20:15",
-            Icon = "/Assets/snapshot.png",
-        },
-    ];
+    private const string ReleaseIcon = "/Assets/grass.png";
+    private const string SnapshotIcon = "/Assets/snapshot.png";
 
-    public IReadOnlyList<VersionSection> Sections { get; } =
-    [
-        new VersionSection
+    private static readonly HashSet<string> AprilFools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "15w14a", "1.RV-Pre1", "3D Shareware v1.34", "20w14infinite",
+        "22w13oneBlockAtATime", "23w13a_or_b", "24w14potato", "25w14craftmine",
+    };
+
+    private readonly VersionManifestService _service = new();
+
+    private IReadOnlyList<VersionEntry> _latest;
+    private IReadOnlyList<VersionSection> _sections;
+    private string _status = "正在获取版本清单…";
+
+    public DownloadPageViewModel()
+    {
+        (_latest, _sections) = BuildFallback();
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public IReadOnlyList<VersionEntry> Latest
+    {
+        get => _latest;
+        private set => SetField(ref _latest, value);
+    }
+
+    public IReadOnlyList<VersionSection> Sections
+    {
+        get => _sections;
+        private set => SetField(ref _sections, value);
+    }
+
+    public string Status
+    {
+        get => _status;
+        private set => SetField(ref _status, value);
+    }
+
+    /// <summary>拉取真实版本清单；返回是否成功。</summary>
+    public async Task<bool> LoadAsync(bool forceRefresh = false)
+    {
+        Status = "正在获取版本清单…";
+
+        try
         {
-            Title = "正式版",
-            Versions =
-            [
-                new VersionEntry { Name = "26.3", Caption = "2026/9/15", Icon = "/Assets/grass.png" },
-                new VersionEntry { Name = "26.2", Caption = "2026/8/12", Icon = "/Assets/grass.png" },
-                new VersionEntry { Name = "26.1", Caption = "2026/6/24", Icon = "/Assets/grass.png" },
-                new VersionEntry { Name = "1.21.11", Caption = "2026/3/18", Icon = "/Assets/grass.png" },
-            ],
-        },
-        new VersionSection
+            var (manifest, fromNetwork) = await _service.GetAsync(forceRefresh);
+
+            if (manifest.Versions.Count == 0)
+            {
+                Status = "版本清单为空，当前显示内置示例";
+                return false;
+            }
+
+            Apply(manifest);
+            Status = fromNetwork
+                ? $"已从 Mojang 获取版本清单（{DateTime.Now:yyyy/M/d HH:mm}）"
+                : "已加载本地缓存的版本清单";
+            return true;
+        }
+        catch (Exception ex)
         {
-            Title = "预览版",
-            Versions =
-            [
-                new VersionEntry { Name = "26.4-snapshot-5", Caption = "2026/10/20", Icon = "/Assets/snapshot.png" },
-                new VersionEntry { Name = "26.4-snapshot-4", Caption = "2026/10/13", Icon = "/Assets/snapshot.png" },
-                new VersionEntry { Name = "26.4-snapshot-3", Caption = "2026/10/6", Icon = "/Assets/snapshot.png" },
-            ],
-        },
-        new VersionSection
+            AppLog.Error(ex, "load version manifest");
+            Status = "获取版本清单失败，当前显示内置示例";
+            return false;
+        }
+    }
+
+    private void Apply(VersionManifest manifest)
+    {
+        VersionEntry? latestRelease = null;
+        VersionEntry? latestSnapshot = null;
+
+        var release = manifest.Versions.FirstOrDefault(v => v.Id == manifest.Latest.Release);
+        if (release is not null)
         {
-            Title = "远古版",
-            Versions =
-            [
-                new VersionEntry { Name = "b1.7.3", Caption = "Beta · 2011", Icon = "/Assets/grass.png" },
-                new VersionEntry { Name = "a1.2.6", Caption = "Alpha · 2010", Icon = "/Assets/grass.png" },
-                new VersionEntry { Name = "inf-20100618", Caption = "Infdev · 2010", Icon = "/Assets/grass.png" },
-            ],
-        },
-        new VersionSection
+            latestRelease = new VersionEntry
+            {
+                Name = release.Id,
+                Caption = $"最新正式版，发布于 {Format(release.ReleaseTime)}",
+                Icon = ReleaseIcon,
+            };
+        }
+
+        var snapshot = manifest.Versions.FirstOrDefault(v => v.Id == manifest.Latest.Snapshot);
+        if (snapshot is not null)
         {
-            Title = "愚人节版本",
-            Versions =
-            [
-                new VersionEntry { Name = "25w14craftmine", Caption = "2025 愚人节", Icon = "/Assets/snapshot.png" },
-                new VersionEntry { Name = "24w14potato", Caption = "2024 愚人节", Icon = "/Assets/snapshot.png" },
-                new VersionEntry { Name = "23w13a_or_b", Caption = "2023 愚人节", Icon = "/Assets/snapshot.png" },
-            ],
-        },
-    ];
+            latestSnapshot = new VersionEntry
+            {
+                Name = snapshot.Id,
+                Caption = $"最新预览版，发布于 {Format(snapshot.ReleaseTime)}",
+                Icon = SnapshotIcon,
+            };
+        }
+
+        Latest = new[] { latestRelease, latestSnapshot }.Where(v => v is not null).Cast<VersionEntry>().ToList();
+
+        var releases = manifest.Versions.Where(v => v.Type == "release").Take(15);
+        var snapshots = manifest.Versions
+            .Where(v => v.Type == "snapshot" && !AprilFools.Contains(v.Id))
+            .Take(15);
+        var ancient = manifest.Versions
+            .Where(v => v.Type is "old_alpha" or "old_beta")
+            .Take(10);
+        var fools = manifest.Versions
+            .Where(v => v.Type == "snapshot" && AprilFools.Contains(v.Id))
+            .Take(10);
+
+        Sections =
+        [
+            Section("正式版", releases, ReleaseIcon),
+            Section("预览版", snapshots, SnapshotIcon),
+            Section("远古版", ancient, ReleaseIcon),
+            Section("愚人节版本", fools, SnapshotIcon),
+        ];
+    }
+
+    private static VersionSection Section(string title, IEnumerable<MinecraftVersion> versions, string icon)
+        => new()
+        {
+            Title = title,
+            Versions = versions
+                .Select(v => new VersionEntry
+                {
+                    Name = v.Id,
+                    Caption = Format(v.ReleaseTime),
+                    Icon = icon,
+                })
+                .ToList(),
+        };
+
+    private static string Format(DateTimeOffset time) => time.LocalDateTime.ToString("yyyy/M/d");
+
+    private static (IReadOnlyList<VersionEntry>, IReadOnlyList<VersionSection>) BuildFallback()
+    {
+        IReadOnlyList<VersionEntry> latest =
+        [
+            new VersionEntry { Name = "26.3", Caption = "最新正式版，发布于 2026/9/15", Icon = ReleaseIcon },
+            new VersionEntry { Name = "26.4-snapshot-5", Caption = "最新预览版，发布于 2026/10/20", Icon = SnapshotIcon },
+        ];
+
+        IReadOnlyList<VersionSection> sections =
+        [
+            new VersionSection
+            {
+                Title = "正式版",
+                Versions =
+                [
+                    new VersionEntry { Name = "26.3", Caption = "2026/9/15", Icon = ReleaseIcon },
+                    new VersionEntry { Name = "26.2", Caption = "2026/8/12", Icon = ReleaseIcon },
+                ],
+            },
+            new VersionSection
+            {
+                Title = "预览版",
+                Versions =
+                [
+                    new VersionEntry { Name = "26.4-snapshot-5", Caption = "2026/10/20", Icon = SnapshotIcon },
+                    new VersionEntry { Name = "26.4-snapshot-4", Caption = "2026/10/13", Icon = SnapshotIcon },
+                ],
+            },
+            new VersionSection { Title = "远古版", Versions = [] },
+            new VersionSection { Title = "愚人节版本", Versions = [] },
+        ];
+
+        return (latest, sections);
+    }
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }
