@@ -1,0 +1,62 @@
+<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <Grid Margin="24,4,24,24">
+        <StackPanel Width="640" HorizontalAlignment="Left">
+            <TextBlock Text="设置" Style="{StaticResource H1}" Margin="4,0,0,14" />
+            <TextBlock Text="这一页先用占位数据把结构立起来，等启动链路完成后接上真实配置。"
+                       Style="{StaticResource Caption}" Margin="4,0,0,16" />
+
+            <Border Style="{StaticResource GlassCard}" Padding="24,10">
+                <StackPanel>
+                    <Grid Height="58">
+                        <TextBlock Text="外观" VerticalAlignment="Center" FontSize="15"
+                                   Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="浅色 · 跟随系统" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" FontSize="13"
+                                   Foreground="{StaticResource InkSoft}" />
+                    </Grid>
+                    <Border Height="1" Background="#26FFFFFF" />
+
+                    <Grid Height="58">
+                        <TextBlock Text="下载源" VerticalAlignment="Center" FontSize="15"
+                                   Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="自动选择" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" FontSize="13"
+                                   Foreground="{StaticResource InkSoft}" />
+                    </Grid>
+                    <Border Height="1" Background="#26FFFFFF" />
+
+                    <Grid Height="58">
+                        <TextBlock Text="Java" VerticalAlignment="Center" FontSize="15"
+                                   Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="自动检测" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" FontSize="13"
+                                   Foreground="{StaticResource InkSoft}" />
+                    </Grid>
+                    <Border Height="1" Background="#26FFFFFF" />
+
+                    <Grid Height="58">
+                        <TextBlock Text="数据目录" VerticalAlignment="Center" FontSize="15"
+                                   Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="%LOCALAPPDATA%\Mutsumi Launcher" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="24,16" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="关于" Style="{StaticResource H2}" />
+                    <TextBlock Text="Mutsumi Launcher 0.1.0" Style="{StaticResource Body}"
+                               Margin="0,6,0,0" />
+                    <TextBlock Text="WPF · .NET 10 · 开源" Style="{StaticResource Caption}"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- 文字 -->
+    <SolidColorBrush x:Key="Ink" Color="#FF2E3E35" />
+    <SolidColorBrush x:Key="InkSoft" Color="#FF5C6F63" />
+    <SolidColorBrush x:Key="InkMute" Color="#FF86988C" />
+
+    <!-- 主色（薄荷绿） -->
+    <SolidColorBrush x:Key="Accent" Color="#FF8FD8A8" />
+    <SolidColorBrush x:Key="AccentDeep" Color="#FF4E9E72" />
+    <SolidColorBrush x:Key="AccentWash" Color="#B8E9C6" />
+
+    <!-- 玻璃质感 -->
+    <SolidColorBrush x:Key="Glass" Color="#66FFFFFF" />
+    <SolidColorBrush x:Key="GlassMedium" Color="#8CFFFFFF" />
+    <SolidColorBrush x:Key="GlassStrong" Color="#B8FFFFFF" />
+    <SolidColorBrush x:Key="GlassStroke" Color="#78FFFFFF" />
+    <SolidColorBrush x:Key="HoverWash" Color="#40FFFFFF" />
+
+    <!-- 窗口 -->
+    <SolidColorBrush x:Key="WindowBase" Color="#FFF7FBF4" />
+    <SolidColorBrush x:Key="Scrim" Color="#1FFFFFFF" />
+
+    <!-- 字体 -->
+    <FontFamily x:Key="UiFont">Microsoft YaHei UI, Segoe UI</FontFamily>
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+</ResourceDictionary>

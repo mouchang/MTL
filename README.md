@@ -1,55 +1,86 @@
 # Mutsumi Launcher
 
-**MTL** · 一个面向 Minecraft 的桌面启动器。
+**MTL** · 一个面向 Minecraft 的桌面启动器（WPF / .NET 10）。
 
-> 项目处于初始化阶段，技术选型与功能范围仍在确定中。
+> 当前进度：`0.1.0` 界面骨架。启动、下载、设置三个页面可交互，业务逻辑（版本清单、Java 探测、下载、启动）尚未接入。
 
-## 简介
+![启动页](docs/screenshots/launch.png)
 
-Mutsumi Launcher（简称 **MTL**）旨在提供一套干净、快速、可维护的 Minecraft 启动与实例管理方案：
-
-- **快**：冷启动与页面切换不拖沓，重活全部放到后台线程。
-- **稳**：安装、下载、启动各环节可中断、可恢复、有明确错误提示。
-- **清晰**：实例、版本、资源各归其位，不把文件散落一地。
-- **可扩展**：核心逻辑与 UI 解耦，方便后续接入新的下载源与登录方式。
-
-## 状态
-
-| 项 | 状态 |
-| --- | --- |
-| 仓库初始化 | ✅ |
-| 技术选型 | ⏳ 待定 |
-| 项目骨架 | ⏳ 待定 |
-| 首个可运行版本 | ⏳ 待定 |
+![下载页](docs/screenshots/download.png)
 
 ## 技术栈
 
-待定。候选方向会在 `docs/` 下以 ADR（架构决策记录）形式沉淀。
+| 项 | 选择 |
+| --- | --- |
+| 运行时 | .NET 10（`net10.0-windows`，LTS） |
+| UI | WPF，无边框圆角窗口 + 自绘标题栏 |
+| 第三方依赖 | **零**（后续按需引入，优先官方包） |
+| 架构 | 视图 + 轻量 ViewModel；页面级 UserControl 切换 |
 
-## 目录规划
+## 运行
+
+```powershell
+# 直接跑
+dotnet run --project src/MutsumiLauncher
+
+# 只编译
+dotnet build
+
+# 发布单文件（后续接入发布流程）
+dotnet publish src/MutsumiLauncher -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
+
+调试时可用环境变量直达某个页面：
+
+```powershell
+$env:MTL_START_PAGE = "download"   # launch / download / settings
+```
+
+## 目录
 
 ```text
 MutsumiLauncher/
-├─ docs/            # 设计文档、ADR、协议笔记
-├─ src/             # 源码（结构随技术栈确定）
-├─ assets/          # 图标、字体、主题资源
-├─ tests/           # 自动化测试
-└─ README.md
+├─ src/MutsumiLauncher/
+│  ├─ Themes/          # 调色板、控件样式（按钮/标签页/卡片/手风琴）
+│  ├─ Views/           # MainWindow + Pages（Launch / Download / Settings）
+│  ├─ ViewModels/      # 下载页的版本数据（占位）
+│  ├─ Services/        # 日志
+│  ├─ Assets/          # 背景、头像、图标
+│  └─ app.manifest     # PerMonitorV2 DPI
+├─ docs/screenshots/   # 界面截图
+└─ MutsumiLauncher.slnx
 ```
 
-> 当前仅初始化了仓库与基础配置，`src/` 等目录将在骨架确定后创建。
+## 界面
 
-## 开发约定
+- **窗口**：1120×820（自动适配工作区 92%），26px 圆角，阴影，拖动标题栏移动，支持高 DPI。
+- **启动页**：头像、正版标识、用户名（可复制）、版本胶囊、启动按钮；背景为整幅插画。
+- **下载页**：左侧来源列表（原版资源 / 社区资源及其子类），右侧「最新版本」卡片 + 四个可折叠版本分组，切换页面时背景自动高斯模糊。
+- **设置页**：外观、下载源、Java、数据目录占位项。
+- **汉堡菜单**：启动 / 下载 / 设置 / 关于 / 最小化 / 退出；页面切换带淡入动画；底部有轻提示（Toast）。
 
-- 主分支：`main`，功能开发走 `feat/<name>`、修复走 `fix/<name>`。
-- 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/)：`feat: ...`、`fix: ...`、`chore: ...`、`docs: ...`。
-- 二进制资源（图标、jar、dll）统一放 `assets/` 或 `third_party/`，避免污染源码目录。
-- 任何密钥、Token、私有 API Key 一律走环境变量或本地未跟踪配置，**不得入库**。
+## 素材替换
+
+界面用的是占位素材，可以直接替换同名文件：
+
+| 文件 | 用途 | 建议 |
+| --- | --- | --- |
+| `src/MutsumiLauncher/Assets/background.jpg` | 窗口背景 | 横图，≥ 1920×1280，浅色系 |
+| `src/MutsumiLauncher/Assets/avatar.png` | 玩家头像 | 8×8 像素图，会按最近邻放大 |
+| `src/MutsumiLauncher/Assets/app.ico` | 应用与任务栏图标 | 多尺寸 ico（16/32/48/256） |
+
+> 视觉效果以 `docs/screenshots/` 中的截图为准；占位背景只是临时氛围图。
+
+## 路线图
+
+- [x] 仓库初始化与工程骨架
+- [x] 三页界面与导航（启动 / 下载 / 设置）
+- [ ] 版本清单拉取（Mojang piston-meta）
+- [ ] Java 探测与 JVM 参数
+- [ ] 游戏启动与进程管理
+- [ ] 资源下载、校验与断点续传
+- [ ] 实例（版本隔离）管理
 
 ## 许可
 
-待定（尚未添加 `LICENSE`）。
-
-## 致谢
-
-设计过程中参考了社区中公开的启动器实现与文档；MTL 为独立项目，与任何现有启动器无隶属关系。
+待定（尚未添加 `LICENSE`）。MTL 为独立项目，与任何现有启动器无隶属关系。
