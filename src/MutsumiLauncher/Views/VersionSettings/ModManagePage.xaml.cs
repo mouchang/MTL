@@ -28,6 +28,8 @@ public partial class ModManagePage : UserControl
         ApplyFilter();
     }
 
+    private void ScrollTop_Click(object sender, RoutedEventArgs e) => ModScroll.ScrollToTop();
+
     private void ApplyFilter()
     {
         if (ModList is null) return;

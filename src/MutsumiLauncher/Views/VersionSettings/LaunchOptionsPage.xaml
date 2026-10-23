@@ -78,17 +78,127 @@
             <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                 <StackPanel>
                     <TextBlock Text="内存分配" Style="{StaticResource H2}" />
+
                     <StackPanel Margin="6,14,0,0">
-                        <RadioButton Style="{StaticResource MtlRadio}" Content="跟随全局设置" IsChecked="True" Margin="0,0,0,12" />
+                        <RadioButton Style="{StaticResource MtlRadio}" Content="跟随全局设置"
+                                     IsChecked="True" Margin="0,0,0,12" />
                         <RadioButton Style="{StaticResource MtlRadio}" Content="自动配置" Margin="0,0,0,12" />
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource MtlRadio}" Content="自定义" VerticalAlignment="Center" />
-                            <TextBlock Text="4096 MB" FontSize="13" Foreground="{StaticResource InkSoft}"
-                                       VerticalAlignment="Center" Margin="12,0,0,0" />
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <RadioButton Style="{StaticResource MtlRadio}" Content="自定义"
+                                         VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Style="{StaticResource MtlSlider}" Minimum="512"
+                                    Maximum="32768" Value="8192" Margin="16,0,0,0" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid Margin="6,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="启动游戏前进行内存优化" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="跟随全局设置" />
+                            <ComboBoxItem Content="开启" />
+                            <ComboBoxItem Content="关闭" />
+                        </ComboBox>
+                    </Grid>
+
+                    <StackPanel Margin="6,18,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="55*" />
+                                <ColumnDefinition Width="45*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="已使用内存" FontSize="12" Foreground="{StaticResource InkSoft}" />
+                            <TextBlock Grid.Column="1" Text="游戏分配" FontSize="12"
+                                       Foreground="{StaticResource InkSoft}" />
+                        </Grid>
+                        <Border Height="6" CornerRadius="3" Background="#33FFFFFF" Margin="0,6,0,0"
+                                ClipToBounds="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="55*" />
+                                    <ColumnDefinition Width="45*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{StaticResource AccentDeep}" CornerRadius="3" />
+                                <Border Grid.Column="1" Background="#59FFFFFF" CornerRadius="3" />
+                            </Grid>
+                        </Border>
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="55*" />
+                                <ColumnDefinition Width="45*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="8.7 GB / 15.8 GB" FontSize="13" Foreground="{StaticResource Ink}" />
+                            <TextBlock Grid.Column="1" Text="8.0 GB（可用 7.1 GB）" FontSize="13"
+                                       Foreground="{StaticResource Ink}" />
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="服务器" Style="{StaticResource H2}" />
+
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="登录方式" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                            <ComboBoxItem Content="正版登录或离线登录" />
+                            <ComboBoxItem Content="仅正版登录" />
+                            <ComboBoxItem Content="仅离线登录" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="自动进入服务器" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Expander Style="{StaticResource Accordion}" Header="高级选项" Margin="0,14,0,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="JVM 参数" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" />
+                    </Grid>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="环境变量" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Style="{StaticResource MtlTextBox}" />
+                    </Grid>
+                </StackPanel>
+            </Expander>
+
+            <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0,18,0,0"
+                    Height="46" Padding="26,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72A;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="全局设置" VerticalAlignment="Center" FontSize="15" />
+                </StackPanel>
+            </Button>
 
         </StackPanel>
     </ScrollViewer>

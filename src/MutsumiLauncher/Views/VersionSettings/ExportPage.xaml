@@ -95,12 +95,96 @@
                                   Content="FA+Player-v1.1.zip" />
                         <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
                                   Content="FA+Player-vJE.zip" />
-                    </StackPanel>
 
-                    <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
-                            Margin="0,20,0,0" Content="开始导出" Width="132" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="0,16,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="光影包" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="Shaders" FontSize="12" Foreground="{StaticResource InkMute}"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="光影包设置" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="已选光影包的自定义设置" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="ComplementaryReimagined_r5.9.3.zip" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="photon_v1.3b.zip" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="Solas Shader V3.7b.zip" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0"
+                                  Content="UShader_v2.2.zip" />
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="0,16,0,0" Content="截图" />
+                        <CheckBox Style="{StaticResource MtlCheckBox}" Margin="0,10,0,0"
+                                  Content="多人游戏服务器列表" />
+
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="0,16,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="PCL 启动器程序" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="打包正式版 PCL，以便没有启动器的玩家安装整合包" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="PCL 个性化内容" FontSize="14" Foreground="{StaticResource Ink}" />
+                                <TextBlock Text="功能隐藏设置、主页、背景音乐和图片等" FontSize="12"
+                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </CheckBox>
+                    </StackPanel>
                 </StackPanel>
             </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="高级选项" Style="{StaticResource H2}" />
+
+                    <CheckBox Style="{StaticResource MtlCheckBox}" Margin="2,14,0,0"
+                              Content="打包资源文件，以避免在导入时下载" />
+                    <CheckBox Style="{StaticResource MtlCheckBox}" Margin="2,10,0,0"
+                              Content="仅从 Modrinth 下载资源文件" />
+
+                    <Border Background="#99D9EEF7" CornerRadius="10" Padding="14,10" Margin="0,16,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontSize="12" Foreground="#FF3E5C6E" TextWrapping="Wrap"
+                                       Text="配置文件中含有更多高级选项，例如精准控制导出的文件、设置整合包存放位置等。要修改这些选项，请先点击“保存配置”，在编辑配置文件后再导入。" />
+                            <Button Grid.Column="1" Style="{StaticResource LinkIconButton}" Content="&#xE711;"
+                                    VerticalAlignment="Top" Margin="10,0,0,0" />
+                        </Grid>
+                    </Border>
+
+                    <WrapPanel Margin="0,16,0,0">
+                        <Button Style="{StaticResource SecondaryButton}" Content="读取配置" Width="130"
+                                Margin="0,0,10,0" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="保存配置" Width="130"
+                                Margin="0,0,10,0" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="整合包制作指南" Width="150" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0,18,0,0"
+                    Height="46" Padding="24,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="开始导出" VerticalAlignment="Center" FontSize="15" />
+                </StackPanel>
+            </Button>
 
         </StackPanel>
     </ScrollViewer>
