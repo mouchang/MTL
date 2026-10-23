@@ -33,31 +33,31 @@
                         </ToggleButton>
 
                         <StackPanel x:Name="CommunityItems" Margin="0,0,0,6">
-                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="CommunityKind" IsChecked="True">
+                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE7B8;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="mod" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="CommunityKind">
+                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8F1;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="整合包" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="CommunityKind">
+                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8A5;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="数据包" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="CommunityKind">
+                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE91B;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="资源包" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="CommunityKind">
+                            <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE706;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="光影包" VerticalAlignment="Center" />

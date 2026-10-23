@@ -35,7 +35,7 @@
                     <Grid x:Name="TitleBar" Grid.Row="0" Margin="18,12,18,0" Height="68"
                           Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-                        <Grid x:Name="NavInner" Margin="12,0">
+                        <Grid x:Name="NavInner">
                             <!-- 导航条本体：收起时就是左上按钮的形状，展开时向右生长成整条 -->
                             <Border x:Name="NavBarSurface" HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Width="40" Height="40" CornerRadius="16"

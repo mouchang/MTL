@@ -9,6 +9,18 @@ public partial class LaunchPage : UserControl
     public LaunchPage()
     {
         InitializeComponent();
+        Loaded += (_, _) => AlignAvatar();
+        NameCard.SizeChanged += (_, _) => AlignAvatar();
+    }
+
+    /// <summary>头像中心与用户名胶囊中心对齐。</summary>
+    private void AlignAvatar()
+    {
+        var width = NameCard.ActualWidth;
+        if (width <= 0) return;
+
+        var offset = Math.Max(0, (width - AvatarHost.Width) / 2);
+        AvatarHost.Margin = new Thickness(offset, 0, 0, 0);
     }
 
     private async void Launch_Click(object sender, RoutedEventArgs e)
@@ -27,17 +39,9 @@ public partial class LaunchPage : UserControl
         (Window.GetWindow(this) as MainWindow)?.ShowToast("启动流程还没接上，下一步接入版本扫描与 JVM 参数。");
     }
 
-    private void CopyName_Click(object sender, RoutedEventArgs e)
+    private void SwitchAccount_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            Clipboard.SetText("the_box_mc");
-            (Window.GetWindow(this) as MainWindow)?.ShowToast("已复制用户名");
-        }
-        catch
-        {
-            // 剪贴板偶尔会被其他程序占用，忽略即可
-        }
+        (Window.GetWindow(this) as MainWindow)?.ShowToast("账号切换还没接上，后面接微软 / 离线登录。");
     }
 
     private void VersionSettings_Click(object sender, RoutedEventArgs e)
