@@ -118,6 +118,12 @@
                             <TranslateTransform Y="0" />
                         </ContentControl.RenderTransform>
                     </ContentControl>
+
+                    <!-- 版本选择浮层 -->
+                    <ContentControl x:Name="VersionPickerHost" Grid.Row="0" Grid.RowSpan="2"
+                                    Panel.ZIndex="22" Visibility="Collapsed"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
                 </Grid>
 
                 <!-- 轻提示 -->

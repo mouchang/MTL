@@ -175,6 +175,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>在主窗口内从底部滑出版本设置。</summary>
+    public event Action? VersionSelectionChanged;
+
+    public void OpenVersionPicker()
+    {
+        var versions = GameLauncher.InstalledVersions();
+
+        var picker = new VersionPickerView();
+        picker.Configure(versions, AppConfig.Current.SelectedVersion);
+        picker.VersionChosen += _ => VersionSelectionChanged?.Invoke();
+        picker.Closed += () =>
+        {
+            VersionPickerHost.Visibility = Visibility.Collapsed;
+            VersionPickerHost.Content = null;
+        };
+
+        VersionPickerHost.Content = picker;
+        VersionPickerHost.Visibility = Visibility.Visible;
+    }
+
     public void OpenVersionSettings()
     {
         if (_settingsOpen) return;

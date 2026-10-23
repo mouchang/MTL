@@ -8,6 +8,7 @@ namespace MutsumiLauncher.Views.Pages;
 public partial class LaunchPage : UserControl
 {
     private IReadOnlyList<string> _versions = [];
+    private bool _subscribed;
 
     public LaunchPage()
     {
@@ -16,6 +17,12 @@ public partial class LaunchPage : UserControl
         {
             AlignAvatar();
             RefreshVersions();
+
+            if (!_subscribed && Window.GetWindow(this) is MainWindow main)
+            {
+                _subscribed = true;
+                main.VersionSelectionChanged += RefreshVersions;
+            }
         };
         NameCard.SizeChanged += (_, _) => AlignAvatar();
     }
@@ -34,7 +41,6 @@ public partial class LaunchPage : UserControl
     private void RefreshVersions()
     {
         _versions = GameLauncher.InstalledVersions();
-        VersionList.ItemsSource = _versions;
         VersionText.Text = SelectedVersion() ?? "未安装版本";
 
         var config = AppConfig.Current;
@@ -61,19 +67,7 @@ public partial class LaunchPage : UserControl
             return;
         }
 
-        VersionPopup.IsOpen = !VersionPopup.IsOpen;
-    }
-
-    private void VersionItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: string version }) return;
-
-        var config = AppConfig.Current;
-        config.SelectedVersion = version;
-        config.Save();
-
-        VersionText.Text = version;
-        VersionPopup.IsOpen = false;
+        (Window.GetWindow(this) as MainWindow)?.OpenVersionPicker();
     }
 
     private async void Launch_Click(object sender, RoutedEventArgs e)

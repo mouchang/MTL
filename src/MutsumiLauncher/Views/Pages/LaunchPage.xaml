@@ -69,27 +69,5 @@
                     HorizontalAlignment="Left" Margin="0,20,0,0" Click="Launch_Click" />
         </StackPanel>
     
-    <Popup x:Name="VersionPopup" PlacementTarget="{Binding ElementName=VersionPill}"
-           Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
-           PopupAnimation="Fade" VerticalOffset="6">
-        <Border Background="#F7FFFFFF" CornerRadius="14" Padding="6"
-                BorderBrush="#66FFFFFF" BorderThickness="1">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.18"
-                                  Color="#FF2E4A38" />
-            </Border.Effect>
-            <ItemsControl x:Name="VersionList">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Button Style="{StaticResource GhostButton}" Padding="14,8"
-                                HorizontalContentAlignment="Stretch" Tag="{Binding}"
-                                Click="VersionItem_Click">
-                            <TextBlock Text="{Binding}" FontSize="14" Foreground="{StaticResource Ink}" />
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Border>
-    </Popup>
 </Grid>
 </UserControl>
