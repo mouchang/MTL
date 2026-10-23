@@ -90,6 +90,9 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 
 - **启动游戏**：启动页「启动游戏」会挑选已安装版本启动——解压 natives、拼 classpath、按 `minecraftArguments` / `arguments.game` 替换占位符、用离线 UUID，并按版本要求自动选 Java（1.16 及更早 → 8、1.17 → 16、1.18–1.20.4 → 17、1.20.5+ → 21）；游戏输出写入 `游戏目录\logs\<版本>-<时间>.log`。实测可启动 Beta 1.8.1。
 
+- **资源文件**：安装与启动前都会检查 `assets/indexes/<id>.json`，按索引下载缺失的 objects（按哈希寻址、跳过已存在文件、12 并发），进度实时显示。
+- **配置持久化**：玩家名、所选版本、Java 路径、内存分配、版本隔离写入 `config.json`；启动页的版本胶囊可切换已安装版本并记住选择，版本设置里的 Java / 内存 / 隔离改动即时保存并参与启动。
+
 ## 素材替换
 
 界面用的是占位素材，可以直接替换同名文件：
@@ -110,8 +113,8 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - [x] Java 探测（JAVA_HOME / PATH / 注册表 / 安装目录 / Minecraft 运行时，解析版本号）
 - [x] 版本安装（版本 JSON、client jar、libraries，SHA-1 校验，进度条）
 - [x] 启动游戏（natives 解压、classpath、参数替换、按版本自动选 Java、进程与日志）
-- [ ] 资源文件（assets）下载
-- [ ] 实例/版本选择与启动参数持久化
+- [x] 资源文件（assets 索引 + objects，断点续传、并发下载）
+- [x] 启动页版本切换与配置持久化（`config.json`）
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传
 - [ ] 实例（版本隔离）管理

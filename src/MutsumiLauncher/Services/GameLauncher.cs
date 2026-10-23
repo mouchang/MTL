@@ -12,6 +12,8 @@ public sealed record LaunchProgress(double Percent, string Message);
 
 public sealed record LaunchResult(bool Started, string Message, string? LogPath);
 
+public sealed record LaunchOptions(string PlayerName, string JavaPath, int MemoryMb, bool VersionIsolation);
+
 /// <summary>准备并启动一个已安装版本：解压 natives、拼 classpath、替换参数、选 Java、拉资源索引。</summary>
 public sealed class GameLauncher
 {
@@ -37,7 +39,7 @@ public sealed class GameLauncher
             .ToList();
     }
 
-    public async Task<LaunchResult> LaunchAsync(string id, string playerName,
+    public async Task<LaunchResult> LaunchAsync(string id, LaunchOptions options,
         IProgress<LaunchProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var versionDir = Path.Combine(GamePaths.VersionsDir, id);
@@ -47,7 +49,17 @@ public sealed class GameLauncher
         var detail = JsonSerializer.Deserialize<VersionDetail>(await File.ReadAllTextAsync(jsonPath, cancellationToken))
                      ?? throw new InvalidOperationException("版本 JSON 解析失败");
 
-        progress?.Report(new LaunchProgress(5, "解压 natives…"));
+        if (detail.AssetIndex is { Url.Length: > 0 } assetIndex)
+        {
+            progress?.Report(new LaunchProgress(3, "检查资源文件…"));
+            IProgress<InstallProgress>? assetProgress = progress is null
+                ? null
+                : new Progress<InstallProgress>(p =>
+                    progress.Report(new LaunchProgress(3 + p.Percent * 0.1, p.Message)));
+            await AssetInstaller.EnsureAsync(assetIndex, assetProgress, cancellationToken);
+        }
+
+        progress?.Report(new LaunchProgress(15, "解压 natives…"));
         var nativesDir = Path.Combine(versionDir, "natives");
         Directory.CreateDirectory(nativesDir);
         foreach (var artifact in AllowedLibraries(detail).SelectMany(NativeClassifiers))
@@ -58,11 +70,15 @@ public sealed class GameLauncher
 
         var classpath = BuildClasspath(detail, versionDir, id);
 
-        progress?.Report(new LaunchProgress(15, "选择 Java…"));
-        var java = await PickJavaAsync(detail);
+        var gameDir = options.VersionIsolation ? versionDir : GamePaths.Root;
+        Directory.CreateDirectory(gameDir);
+
+        progress?.Report(new LaunchProgress(20, "选择 Java…"));
+        var java = await PickJavaAsync(detail, options.JavaPath);
         if (java is null) return new LaunchResult(false, "没有可用的 Java，请先安装或指定 Java 路径。", null);
 
-        var arguments = BuildArguments(detail, id, versionDir, nativesDir, classpath, playerName);
+        var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, options.PlayerName,
+            options.MemoryMb);
 
         var logDir = Path.Combine(GamePaths.Root, "logs");
         Directory.CreateDirectory(logDir);
@@ -107,15 +123,15 @@ public sealed class GameLauncher
         return string.Join(';', entries);
     }
 
-    private static List<string> BuildArguments(VersionDetail detail, string id, string versionDir,
-        string nativesDir, string classpath, string playerName)
+    private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,
+        string nativesDir, string classpath, string playerName, int memoryMb)
     {
         var uuid = OfflineUuid(playerName);
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["auth_player_name"] = playerName,
             ["version_name"] = id,
-            ["game_directory"] = GamePaths.Root,
+            ["game_directory"] = gameDir,
             ["assets_root"] = GamePaths.AssetsDir,
             ["game_assets"] = Path.Combine(GamePaths.AssetsDir, "virtual", "legacy"),
             ["assets_index_name"] = detail.AssetIndex?.Id ?? detail.Assets,
@@ -137,9 +153,12 @@ public sealed class GameLauncher
         {
             $"-Djava.library.path={nativesDir}",
             "-Dfile.encoding=UTF-8",
-            "-cp",
-            classpath,
         };
+
+        if (memoryMb > 0) arguments.Add($"-Xmx{memoryMb}M");
+
+        arguments.Add("-cp");
+        arguments.Add(classpath);
 
         if (!string.IsNullOrWhiteSpace(detail.MainClass)) arguments.Add(detail.MainClass);
 
@@ -187,7 +206,7 @@ public sealed class GameLauncher
         return value;
     }
 
-    private static async Task<JavaRuntime?> PickJavaAsync(VersionDetail detail)
+    private static async Task<JavaRuntime?> PickJavaAsync(VersionDetail detail, string preferredPath)
     {
         IReadOnlyList<JavaRuntime> runtimes;
         try
@@ -196,7 +215,26 @@ public sealed class GameLauncher
         }
         catch
         {
-            return null;
+            runtimes = [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(preferredPath))
+        {
+            var match = runtimes.FirstOrDefault(r =>
+                r.ExecutablePath.Equals(preferredPath, StringComparison.OrdinalIgnoreCase));
+            if (match is not null) return match;
+
+            if (File.Exists(preferredPath))
+            {
+                return new JavaRuntime
+                {
+                    ExecutablePath = preferredPath,
+                    Home = Path.GetDirectoryName(Path.GetDirectoryName(preferredPath)) ?? string.Empty,
+                    Version = "自定义",
+                    Major = 0,
+                    Source = "配置",
+                };
+            }
         }
 
         if (runtimes.Count == 0) return null;

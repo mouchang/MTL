@@ -141,6 +141,16 @@ public sealed class VersionInstaller
             await DownloadAsync(artifact.Url!, target, artifact.Sha1, cancellationToken);
         }
 
+        if (detail.AssetIndex is { Url.Length: > 0 } assetIndex)
+        {
+            var mapped = progress is null
+                ? null
+                : new Progress<InstallProgress>(p =>
+                    progress.Report(new InstallProgress(88 + p.Percent * 0.11, p.Message)));
+
+            await AssetInstaller.EnsureAsync(assetIndex, mapped, cancellationToken);
+        }
+
         progress?.Report(new InstallProgress(100, "安装完成"));
         AppLog.Info($"install {id}: done, {index} artifacts");
     }

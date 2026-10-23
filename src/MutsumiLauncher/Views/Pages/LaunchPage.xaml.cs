@@ -7,10 +7,16 @@ namespace MutsumiLauncher.Views.Pages;
 
 public partial class LaunchPage : UserControl
 {
+    private IReadOnlyList<string> _versions = [];
+
     public LaunchPage()
     {
         InitializeComponent();
-        Loaded += (_, _) => AlignAvatar();
+        Loaded += (_, _) =>
+        {
+            AlignAvatar();
+            RefreshVersions();
+        };
         NameCard.SizeChanged += (_, _) => AlignAvatar();
     }
 
@@ -24,16 +30,69 @@ public partial class LaunchPage : UserControl
         AvatarHost.Margin = new Thickness(offset, 0, 0, 0);
     }
 
+    /// <summary>读取已安装版本，恢复上次选择。</summary>
+    private void RefreshVersions()
+    {
+        _versions = GameLauncher.InstalledVersions();
+        VersionList.ItemsSource = _versions;
+        VersionText.Text = SelectedVersion() ?? "未安装版本";
+
+        var config = AppConfig.Current;
+        if (string.IsNullOrWhiteSpace(config.SelectedVersion) && _versions.Count > 0)
+        {
+            config.SelectedVersion = _versions[0];
+            config.Save();
+        }
+    }
+
+    private string? SelectedVersion()
+    {
+        if (_versions.Count == 0) return null;
+
+        var selected = AppConfig.Current.SelectedVersion;
+        return _versions.Contains(selected) ? selected : _versions[0];
+    }
+
+    private void VersionPill_Click(object sender, RoutedEventArgs e)
+    {
+        if (_versions.Count == 0)
+        {
+            (Window.GetWindow(this) as MainWindow)?.ShowToast("还没有安装任何版本，先去下载页装一个吧。");
+            return;
+        }
+
+        VersionPopup.IsOpen = !VersionPopup.IsOpen;
+    }
+
+    private void VersionItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string version }) return;
+
+        var config = AppConfig.Current;
+        config.SelectedVersion = version;
+        config.Save();
+
+        VersionText.Text = version;
+        VersionPopup.IsOpen = false;
+    }
+
     private async void Launch_Click(object sender, RoutedEventArgs e)
     {
         var button = (Button)sender;
         var owner = Window.GetWindow(this) as MainWindow;
 
-        var versions = GameLauncher.InstalledVersions();
-        if (versions.Count == 0)
+        var version = SelectedVersion();
+        if (version is null)
         {
             owner?.ShowToast("还没有安装任何版本，先去下载页装一个吧。");
             return;
+        }
+
+        var config = AppConfig.Current;
+        if (config.SelectedVersion != version)
+        {
+            config.SelectedVersion = version;
+            config.Save();
         }
 
         var original = button.Content;
@@ -43,7 +102,9 @@ public partial class LaunchPage : UserControl
         try
         {
             var launcher = new GameLauncher();
-            var result = await launcher.LaunchAsync(versions[0], "the_box_mc");
+            var options = new LaunchOptions(config.PlayerName, config.JavaPath, config.MemoryMb,
+                config.VersionIsolation);
+            var result = await launcher.LaunchAsync(version, options);
             owner?.ShowToast(result.Message);
         }
         catch (Exception ex)

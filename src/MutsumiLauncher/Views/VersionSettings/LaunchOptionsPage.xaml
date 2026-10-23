@@ -30,7 +30,9 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="版本隔离" Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                        <ComboBox x:Name="IsolationCombo" Grid.Column="1"
+                                  Style="{StaticResource MtlComboBox}" SelectedIndex="0"
+                                  SelectionChanged="IsolationCombo_SelectionChanged">
                             <ComboBoxItem Content="开启" />
                             <ComboBoxItem Content="关闭" />
                             <ComboBoxItem Content="跟随全局设置" />
@@ -79,18 +81,22 @@
                     <TextBlock Text="内存分配" Style="{StaticResource H2}" />
 
                     <StackPanel Margin="6,14,0,0">
-                        <RadioButton Style="{StaticResource MtlRadio}" Content="跟随全局设置"
-                                     IsChecked="True" Margin="0,0,0,12" />
-                        <RadioButton Style="{StaticResource MtlRadio}" Content="自动配置" Margin="0,0,0,12" />
+                        <RadioButton x:Name="MemoryFollowRadio" Style="{StaticResource MtlRadio}"
+                                     Content="跟随全局设置" IsChecked="True" Margin="0,0,0,12"
+                                     Checked="MemoryRadio_Checked" />
+                        <RadioButton x:Name="MemoryAutoRadio" Style="{StaticResource MtlRadio}"
+                                     Content="自动配置" Margin="0,0,0,12" Checked="MemoryRadio_Checked" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <RadioButton Style="{StaticResource MtlRadio}" Content="自定义"
-                                         VerticalAlignment="Center" />
-                            <Slider Grid.Column="1" Style="{StaticResource MtlSlider}" Minimum="512"
-                                    Maximum="32768" Value="8192" Margin="16,0,0,0" VerticalAlignment="Center" />
+                            <RadioButton x:Name="MemoryCustomRadio" Style="{StaticResource MtlRadio}"
+                                         Content="自定义" VerticalAlignment="Center"
+                                         Checked="MemoryRadio_Checked" />
+                            <Slider x:Name="MemorySlider" Grid.Column="1" Style="{StaticResource MtlSlider}"
+                                    Minimum="512" Maximum="32768" Value="8192" Margin="16,0,0,0"
+                                    VerticalAlignment="Center" ValueChanged="MemorySlider_ValueChanged" />
                         </Grid>
                     </StackPanel>
 
@@ -134,7 +140,7 @@
                                 <ColumnDefinition Width="45*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="8.7 GB / 15.8 GB" FontSize="13" Foreground="{StaticResource Ink}" />
-                            <TextBlock Grid.Column="1" Text="8.0 GB（可用 7.1 GB）" FontSize="13"
+                            <TextBlock x:Name="MemoryAllocText" Grid.Column="1" Text="8.0 GB（可用 7.1 GB）" FontSize="13"
                                        Foreground="{StaticResource Ink}" />
                         </Grid>
                     </StackPanel>
