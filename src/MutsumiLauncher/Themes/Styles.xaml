@@ -43,16 +43,16 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="#4DFFFFFF" BorderBrush="#66FFFFFF"
+                    <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent"
                             BorderThickness="1" CornerRadius="13">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#80FFFFFF" />
+                            <Setter Property="Foreground" Value="#FF1E2C24" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF" />
+                            <Setter Property="Foreground" Value="#FF0F1712" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -64,17 +64,16 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="#4DFFFFFF" BorderBrush="#66FFFFFF"
+                    <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent"
                             BorderThickness="1" CornerRadius="13">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#33D9534F" />
                             <Setter Property="Foreground" Value="#FFB03A36" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#59C9302C" />
+                            <Setter Property="Foreground" Value="#FF8E2A27" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

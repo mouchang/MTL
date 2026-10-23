@@ -31,48 +31,22 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- 顶部导航层：收起时只剩两侧按钮，展开时浮出带三个页签的玻璃条 -->
+                    <!-- 顶部导航层 -->
                     <Grid x:Name="TitleBar" Grid.Row="0" Margin="18,12,18,0" Height="68"
                           Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
-                        <Border x:Name="NavBarSurface" CornerRadius="20"
-                                Background="#52FFFFFF" BorderBrush="#78FFFFFF" BorderThickness="1"
-                                Opacity="0" IsHitTestVisible="False">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270"
-                                                  Opacity="0.10" Color="#FF2E4A38" />
-                            </Border.Effect>
-                        </Border>
-
-                        <Grid Margin="12,0">
-                            <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
-                                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Click="MenuButton_Click" ToolTip="导航">
-                                <Grid Width="15" Height="15">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition />
-                                        <RowDefinition />
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition />
-                                        <ColumnDefinition />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Row="0" Grid.Column="0" Background="#FF35473C"
-                                            CornerRadius="1.5" Margin="0,0,3,3" />
-                                    <Border Grid.Row="0" Grid.Column="1" Background="#FF35473C"
-                                            CornerRadius="1.5" Margin="3,0,0,3" />
-                                    <Border Grid.Row="1" Grid.Column="0" Background="#FF35473C"
-                                            CornerRadius="1.5" Margin="0,3,3,0" />
-                                    <Border Grid.Row="1" Grid.Column="1" Background="#FF35473C"
-                                            CornerRadius="1.5" Margin="3,3,0,0" />
-                                </Grid>
-                            </Button>
+                        <Grid x:Name="NavInner" Margin="12,0">
+                            <!-- 导航条本体：收起时就是左上按钮的形状，展开时向右生长成整条 -->
+                            <Border x:Name="NavBarSurface" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Width="40" Height="40" CornerRadius="16"
+                                    Background="#5CFFFFFF" BorderBrush="#85FFFFFF" BorderThickness="1"
+                                    IsHitTestVisible="False" />
 
                             <StackPanel x:Name="NavTabs" Orientation="Horizontal"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Opacity="0" IsHitTestVisible="False">
                                 <StackPanel.RenderTransform>
-                                    <TranslateTransform Y="-8" />
+                                    <TranslateTransform Y="-6" />
                                 </StackPanel.RenderTransform>
 
                                 <RadioButton x:Name="NavLaunch" Style="{StaticResource NavTab}"
@@ -97,6 +71,35 @@
                                     </StackPanel>
                                 </RadioButton>
                             </StackPanel>
+
+                            <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Click="MenuButton_Click" ToolTip="导航">
+                                <Grid Width="15" Height="15">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="0,0,3,3" />
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="3,0,0,3" />
+                                    <Border Grid.Row="1" Grid.Column="0" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="0,3,3,0" />
+                                    <Border Grid.Row="1" Grid.Column="1" Background="#FF35473C"
+                                            CornerRadius="1.5" Margin="3,3,0,0" />
+                                </Grid>
+                            </Button>
+
+                            <!-- 右侧按钮的独立底片：展开时溶解，与导航条融为一体 -->
+                            <Border x:Name="CloseChrome" Width="40" Height="40" CornerRadius="14"
+                                    Background="#4DFFFFFF" BorderBrush="#66FFFFFF" BorderThickness="1"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    IsHitTestVisible="False" />
 
                             <Button x:Name="CloseButton" Style="{StaticResource CloseButton}"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"

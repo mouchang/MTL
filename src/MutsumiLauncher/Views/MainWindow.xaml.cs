@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using MutsumiLauncher.Services;
 using MutsumiLauncher.Views.Pages;
 
 namespace MutsumiLauncher.Views;
@@ -102,29 +103,59 @@ public partial class MainWindow : Window
     private void SetNavExpanded(bool expanded, bool animate = true)
     {
         _navExpanded = expanded;
+        AppLog.Info($"nav expanded={expanded} animate={animate}");
 
-        var duration = TimeSpan.FromMilliseconds(200);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var fullWidth = NavInner.ActualWidth > 0 ? NavInner.ActualWidth : 40;
         var translate = (TranslateTransform)NavTabs.RenderTransform;
 
         if (!animate)
         {
-            NavBarSurface.Opacity = expanded ? 1 : 0;
+            NavBarSurface.Width = expanded ? fullWidth : 40;
+            NavBarSurface.Height = expanded ? 68 : 40;
             NavTabs.Opacity = expanded ? 1 : 0;
             NavTabs.IsHitTestVisible = expanded;
-            translate.Y = expanded ? 0 : -8;
+            translate.Y = expanded ? 0 : -6;
+            CloseChrome.Opacity = expanded ? 0 : 1;
             return;
         }
 
-        NavBarSurface.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = ease });
+        var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+        // 导航条从左上按钮的形状长出来：宽高同时过渡
+        NavBarSurface.BeginAnimation(WidthProperty,
+            new DoubleAnimation(expanded ? fullWidth : 40, TimeSpan.FromMilliseconds(380))
+            {
+                EasingFunction = ease,
+            });
+        NavBarSurface.BeginAnimation(HeightProperty,
+            new DoubleAnimation(expanded ? 68 : 40, TimeSpan.FromMilliseconds(320))
+            {
+                EasingFunction = ease,
+            });
+
+        // 页签等导航条铺开后再浮出
         NavTabs.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = ease });
+            new DoubleAnimation(expanded ? 1 : 0, TimeSpan.FromMilliseconds(200))
+            {
+                BeginTime = expanded ? TimeSpan.FromMilliseconds(170) : TimeSpan.Zero,
+                EasingFunction = ease,
+            });
+        NavTabs.IsHitTestVisible = expanded;
 
         translate.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(expanded ? 0 : -8, duration) { EasingFunction = ease });
+            new DoubleAnimation(expanded ? 0 : -6, TimeSpan.FromMilliseconds(240))
+            {
+                BeginTime = expanded ? TimeSpan.FromMilliseconds(170) : TimeSpan.Zero,
+                EasingFunction = ease,
+            });
 
-        NavTabs.IsHitTestVisible = expanded;
+        // 右侧按钮底片随导航条到达而溶解 / 随导航条退回而复原
+        CloseChrome.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(expanded ? 0 : 1, TimeSpan.FromMilliseconds(expanded ? 260 : 200))
+            {
+                BeginTime = expanded ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(240),
+                EasingFunction = ease,
+            });
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

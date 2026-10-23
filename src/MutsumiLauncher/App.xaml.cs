@@ -9,6 +9,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             AppLog.Error(args.ExceptionObject as Exception ?? new Exception("Unknown unhandled exception"));

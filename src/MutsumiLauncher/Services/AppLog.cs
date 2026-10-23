@@ -2,14 +2,28 @@ using System.IO;
 
 namespace MutsumiLauncher.Services;
 
-/// <summary>极简日志：写入 %LOCALAPPDATA%\Mutsumi Launcher\logs\app.log。</summary>
+/// <summary>极简日志：优先 %LOCALAPPDATA%\Mutsumi Launcher\logs\app.log，失败则退回程序目录。</summary>
 public static class AppLog
 {
     private static readonly object Gate = new();
 
-    public static string LogPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Mutsumi Launcher", "logs", "app.log");
+    public static string LogPath { get; } = ResolveLogPath();
+
+    private static string ResolveLogPath()
+    {
+        try
+        {
+            var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (!string.IsNullOrWhiteSpace(dir))
+                return Path.Combine(dir, "Mutsumi Launcher", "logs", "app.log");
+        }
+        catch
+        {
+            // 忽略，走兜底
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, "mtl.log");
+    }
 
     public static void Info(string message) => Write("INFO", message);
 
@@ -21,13 +35,26 @@ public static class AppLog
 
     private static void Write(string level, string message)
     {
+        var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}{Environment.NewLine}";
+
         try
         {
             lock (Gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-                File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}{Environment.NewLine}");
+                File.AppendAllText(LogPath, line);
             }
+            return;
+        }
+        catch
+        {
+            // 继续尝试兜底路径
+        }
+
+        try
+        {
+            var fallback = Path.Combine(AppContext.BaseDirectory, "mtl.log");
+            File.AppendAllText(fallback, line);
         }
         catch
         {
