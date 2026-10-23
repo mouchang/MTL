@@ -125,22 +125,6 @@
                         <CheckBox Style="{StaticResource MtlCheckBox}" Margin="0,10,0,0"
                                   Content="多人游戏服务器列表" />
 
-                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="0,16,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="PCL 启动器程序" FontSize="14" Foreground="{StaticResource Ink}" />
-                                <TextBlock Text="打包正式版 PCL，以便没有启动器的玩家安装整合包" FontSize="12"
-                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </CheckBox>
-                        <CheckBox Style="{StaticResource MtlCheckBox}" IsChecked="True" Margin="28,10,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="PCL 个性化内容" FontSize="14" Foreground="{StaticResource Ink}" />
-                                <TextBlock Text="功能隐藏设置、主页、背景音乐和图片等" FontSize="12"
-                                           Foreground="{StaticResource InkMute}" Margin="10,0,0,0"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </CheckBox>
                     </StackPanel>
                 </StackPanel>
             </Border>

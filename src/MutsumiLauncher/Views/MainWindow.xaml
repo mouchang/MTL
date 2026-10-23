@@ -109,6 +109,15 @@
 
                     <!-- 页面宿主 -->
                     <ContentControl x:Name="PageHost" Grid.Row="1" />
+
+                    <!-- 版本设置浮层：从底部滑出，覆盖内容区（不含标题栏） -->
+                    <ContentControl x:Name="SettingsHost" Grid.Row="1" Panel.ZIndex="20"
+                                    Visibility="Collapsed" HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch">
+                        <ContentControl.RenderTransform>
+                            <TranslateTransform Y="0" />
+                        </ContentControl.RenderTransform>
+                    </ContentControl>
                 </Grid>
 
                 <!-- 轻提示 -->

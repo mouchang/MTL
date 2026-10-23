@@ -78,9 +78,9 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <Button Style="{StaticResource CircleButton}" Content="&#xE70E;"
+                <Button Grid.Row="1" Style="{StaticResource CircleButton}" Content="&#xE70E;"
                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Margin="0,0,8,8" Click="ScrollTop_Click" ToolTip="回到顶部" />
+                        Margin="0,0,10,10" Click="ScrollTop_Click" ToolTip="回到顶部" />
             </Grid>
         </Border>
     </Grid>

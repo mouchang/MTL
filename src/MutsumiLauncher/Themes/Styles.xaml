@@ -688,7 +688,7 @@
 
     <!-- ============ 滚动条 ============ -->
     <Style TargetType="ScrollBar">
-        <Setter Property="Width" Value="8" />
+        <Setter Property="Width" Value="4" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Template">
             <Setter.Value>
@@ -702,7 +702,7 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#59FFFFFF" CornerRadius="4" Margin="1,0" />
+                                            <Border Background="#59FFFFFF" CornerRadius="2" />
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>

@@ -46,8 +46,6 @@ public partial class LaunchPage : UserControl
 
     private void VersionSettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new VersionSettingsWindow();
-        if (Window.GetWindow(this) is { } owner) window.Owner = owner;
-        window.Show();
+        (Window.GetWindow(this) as MainWindow)?.OpenVersionSettings();
     }
 }

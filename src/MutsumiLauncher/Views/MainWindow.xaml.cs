@@ -16,6 +16,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(2.4) };
     private bool _suppressNav;
     private bool _navExpanded;
+    private bool _settingsOpen;
+    private VersionSettingsView? _settingsView;
     private string _currentPage = "launch";
 
     public MainWindow()
@@ -48,7 +50,7 @@ public partial class MainWindow : Window
 
             if (Environment.GetEnvironmentVariable("MTL_OPEN_SETTINGS") == "1")
             {
-                new VersionSettingsWindow { Owner = this }.Show();
+                OpenVersionSettings();
             }
         };
         SizeChanged += (_, _) => UpdateShellClip();
@@ -166,7 +168,55 @@ public partial class MainWindow : Window
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
         if (_suppressNav || _pages.Count == 0) return;
-        if (sender is RadioButton { Tag: string key }) ShowPage(key);
+        if (sender is not RadioButton { Tag: string key }) return;
+
+        if (_settingsOpen) CloseVersionSettings();
+        ShowPage(key);
+    }
+
+    /// <summary>在主窗口内从底部滑出版本设置。</summary>
+    public void OpenVersionSettings()
+    {
+        if (_settingsOpen) return;
+        _settingsOpen = true;
+
+        _settingsView ??= new VersionSettingsView();
+        SettingsHost.Content = _settingsView;
+        SettingsHost.Visibility = Visibility.Visible;
+
+        // 标题栏保持可用，但不选中任何页签
+        NavTabs.Visibility = Visibility.Visible;
+        _suppressNav = true;
+        NavLaunch.IsChecked = false;
+        NavDownload.IsChecked = false;
+        NavSettings.IsChecked = false;
+        _suppressNav = false;
+
+        var translate = (TranslateTransform)SettingsHost.RenderTransform;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        SettingsHost.Opacity = 0;
+        translate.Y = 240;
+        SettingsHost.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = ease });
+        translate.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(240, 0, TimeSpan.FromMilliseconds(340)) { EasingFunction = ease });
+    }
+
+    private void CloseVersionSettings()
+    {
+        if (!_settingsOpen) return;
+        _settingsOpen = false;
+
+        var translate = (TranslateTransform)SettingsHost.RenderTransform;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+
+        SettingsHost.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
+
+        var slide = new DoubleAnimation(0, 240, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease };
+        slide.Completed += (_, _) => SettingsHost.Visibility = Visibility.Collapsed;
+        translate.BeginAnimation(TranslateTransform.YProperty, slide);
     }
 
     private void MenuButton_Click(object sender, RoutedEventArgs e) => SetNavExpanded(!_navExpanded);
