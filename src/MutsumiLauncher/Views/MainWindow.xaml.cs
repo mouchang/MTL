@@ -180,27 +180,33 @@ public partial class MainWindow : Window
         if (_settingsOpen) return;
         _settingsOpen = true;
 
-        _settingsView ??= new VersionSettingsView();
+        if (_settingsView is null)
+        {
+            _settingsView = new VersionSettingsView();
+            _settingsView.CloseRequested += (_, _) => CloseVersionSettings();
+        }
+
         SettingsHost.Content = _settingsView;
         SettingsHost.Visibility = Visibility.Visible;
-
-        // 标题栏保持可用，但不选中任何页签
-        NavTabs.Visibility = Visibility.Visible;
-        _suppressNav = true;
-        NavLaunch.IsChecked = false;
-        NavDownload.IsChecked = false;
-        NavSettings.IsChecked = false;
-        _suppressNav = false;
 
         var translate = (TranslateTransform)SettingsHost.RenderTransform;
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         SettingsHost.Opacity = 0;
-        translate.Y = 240;
+        translate.Y = 320;
         SettingsHost.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = ease });
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
         translate.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(240, 0, TimeSpan.FromMilliseconds(340)) { EasingFunction = ease });
+            new DoubleAnimation(320, 0, TimeSpan.FromMilliseconds(380)) { EasingFunction = ease });
+
+        // 主界面标题栏按钮随浮层升起溶解
+        var dissolve = new CubicEase { EasingMode = EasingMode.EaseOut };
+        MenuButton.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = dissolve });
+        CloseButton.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = dissolve });
+        NavTabs.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(NavTabs.Opacity, 0, TimeSpan.FromMilliseconds(160)));
     }
 
     private void CloseVersionSettings()
@@ -212,11 +218,38 @@ public partial class MainWindow : Window
         var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
 
         SettingsHost.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
 
-        var slide = new DoubleAnimation(0, 240, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease };
-        slide.Completed += (_, _) => SettingsHost.Visibility = Visibility.Collapsed;
+        var slide = new DoubleAnimation(0, 320, TimeSpan.FromMilliseconds(320)) { EasingFunction = ease };
+        slide.Completed += (_, _) =>
+        {
+            SettingsHost.Visibility = Visibility.Collapsed;
+
+            // 清掉动画后再复原标题栏与导航层状态
+            MenuButton.BeginAnimation(OpacityProperty, null);
+            CloseButton.BeginAnimation(OpacityProperty, null);
+            NavTabs.BeginAnimation(OpacityProperty, null);
+            MenuButton.Opacity = 1;
+            CloseButton.Opacity = 1;
+
+            _suppressNav = true;
+            NavLaunch.IsChecked = _currentPage == "launch";
+            NavDownload.IsChecked = _currentPage == "download";
+            NavSettings.IsChecked = _currentPage == "settings";
+            _suppressNav = false;
+
+            SetNavExpanded(_currentPage != "launch", animate: false);
+        };
         translate.BeginAnimation(TranslateTransform.YProperty, slide);
+
+        // 标题栏按钮随浮层退场而复原
+        var appear = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+        {
+            BeginTime = TimeSpan.FromMilliseconds(120),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        MenuButton.BeginAnimation(OpacityProperty, appear);
+        CloseButton.BeginAnimation(OpacityProperty, appear);
     }
 
     private void MenuButton_Click(object sender, RoutedEventArgs e) => SetNavExpanded(!_navExpanded);
