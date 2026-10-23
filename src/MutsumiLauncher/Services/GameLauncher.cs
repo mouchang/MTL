@@ -12,7 +12,8 @@ public sealed record LaunchProgress(double Percent, string Message);
 
 public sealed record LaunchResult(bool Started, string Message, string? LogPath);
 
-public sealed record LaunchOptions(string PlayerName, string JavaPath, int MemoryMb, bool VersionIsolation);
+public sealed record LaunchOptions(string PlayerName, string Uuid, string JavaPath, int MemoryMb,
+    bool VersionIsolation);
 
 /// <summary>准备并启动一个已安装版本：解压 natives、拼 classpath、替换参数、选 Java、拉资源索引。</summary>
 public sealed class GameLauncher
@@ -78,7 +79,7 @@ public sealed class GameLauncher
         if (java is null) return new LaunchResult(false, "没有可用的 Java，请先安装或指定 Java 路径。", null);
 
         var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, options.PlayerName,
-            options.MemoryMb);
+            options.Uuid, options.MemoryMb);
 
         var logDir = Path.Combine(GamePaths.Root, "logs");
         Directory.CreateDirectory(logDir);
@@ -124,9 +125,10 @@ public sealed class GameLauncher
     }
 
     private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,
-        string nativesDir, string classpath, string playerName, int memoryMb)
+        string nativesDir, string classpath, string playerName, string uuid, int memoryMb)
     {
-        var uuid = OfflineUuid(playerName);
+        if (string.IsNullOrWhiteSpace(uuid)) uuid = OfflineUuid(playerName);
+
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["auth_player_name"] = playerName,

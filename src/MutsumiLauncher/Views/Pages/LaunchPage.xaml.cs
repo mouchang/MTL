@@ -22,7 +22,10 @@ public partial class LaunchPage : UserControl
             {
                 _subscribed = true;
                 main.VersionSelectionChanged += RefreshVersions;
+                main.AccountChanged += _ => ApplyAccount();
             }
+
+            ApplyAccount();
         };
         NameCard.SizeChanged += (_, _) => AlignAvatar();
     }
@@ -49,6 +52,13 @@ public partial class LaunchPage : UserControl
             config.SelectedVersion = _versions[0];
             config.Save();
         }
+    }
+
+    private void ApplyAccount()
+    {
+        var account = AccountService.EnsureDefault();
+        AccountNameText.Text = account.Name;
+        AccountTypeBadge.Text = account.TypeLabel;
     }
 
     private string? SelectedVersion()
@@ -95,9 +105,10 @@ public partial class LaunchPage : UserControl
 
         try
         {
+            var account = AccountService.Current ?? AccountService.EnsureDefault();
             var launcher = new GameLauncher();
-            var options = new LaunchOptions(config.PlayerName, config.JavaPath, config.MemoryMb,
-                config.VersionIsolation);
+            var options = new LaunchOptions(account.Name, account.Uuid, config.JavaPath,
+                config.MemoryMb, config.VersionIsolation);
             var result = await launcher.LaunchAsync(version, options);
             owner?.ShowToast(result.Message);
         }
@@ -115,7 +126,7 @@ public partial class LaunchPage : UserControl
 
     private void SwitchAccount_Click(object sender, RoutedEventArgs e)
     {
-        (Window.GetWindow(this) as MainWindow)?.ShowToast("账号切换还没接上，后面接微软 / 离线登录。");
+        (Window.GetWindow(this) as MainWindow)?.OpenAccountPicker();
     }
 
     private void VersionSettings_Click(object sender, RoutedEventArgs e)

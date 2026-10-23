@@ -177,6 +177,25 @@ public partial class MainWindow : Window
     /// <summary>在主窗口内从底部滑出版本设置。</summary>
     public event Action? VersionSelectionChanged;
 
+    public event Action<Account?>? AccountChanged;
+
+    public void OpenAccountPicker()
+    {
+        AccountService.EnsureDefault();
+
+        var picker = new AccountPickerView();
+        picker.Configure(AccountService.All, AccountService.Current);
+        picker.AccountChosen += account => AccountChanged?.Invoke(account);
+        picker.Closed += () =>
+        {
+            AccountHost.Visibility = Visibility.Collapsed;
+            AccountHost.Content = null;
+        };
+
+        AccountHost.Content = picker;
+        AccountHost.Visibility = Visibility.Visible;
+    }
+
     public void OpenVersionPicker()
     {
         var versions = GameLauncher.InstalledVersions();

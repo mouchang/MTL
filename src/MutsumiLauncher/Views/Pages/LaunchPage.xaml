@@ -25,10 +25,12 @@
                 <StackPanel Orientation="Horizontal">
                     <Border Background="{StaticResource Accent}" CornerRadius="6" Padding="7,2"
                             VerticalAlignment="Center">
-                        <TextBlock Text="正版" Foreground="White" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock x:Name="AccountTypeBadge" Text="离线" Foreground="White"
+                                   FontSize="12" FontWeight="SemiBold" />
                     </Border>
-                    <TextBlock Text="the_box_mc" FontSize="17" Foreground="{StaticResource Ink}"
-                               Margin="9,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="AccountNameText" Text="the_box_mc" FontSize="17"
+                               Foreground="{StaticResource Ink}" Margin="9,0,0,0"
+                               VerticalAlignment="Center" />
                     <Button Style="{StaticResource LinkIconButton}" Margin="8,0,0,0"
                             Click="SwitchAccount_Click" ToolTip="切换账号">
                         <Path Data="M2.5,4.5 L12,4.5 M9.5,2 L12,4.5 L9.5,7 M13.5,11.5 L4,11.5 M6.5,9 L4,11.5 L6.5,14"

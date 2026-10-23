@@ -124,6 +124,12 @@
                                     Panel.ZIndex="22" Visibility="Collapsed"
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Stretch" />
+
+                    <!-- 账号浮层 -->
+                    <ContentControl x:Name="AccountHost" Grid.Row="0" Grid.RowSpan="2"
+                                    Panel.ZIndex="23" Visibility="Collapsed"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
                 </Grid>
 
                 <!-- 轻提示 -->

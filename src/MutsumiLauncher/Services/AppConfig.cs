@@ -21,6 +21,10 @@ public sealed class AppConfig
 
     public string CustomInfo { get; set; } = "PCL";
 
+    public List<Account> Accounts { get; set; } = [];
+
+    public string SelectedAccount { get; set; } = string.Empty;
+
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 
     private static AppConfig? _current;
