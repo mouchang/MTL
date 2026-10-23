@@ -18,8 +18,10 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="56" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="170" />
                         <ColumnDefinition Width="56" />
-                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="170" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -28,35 +30,52 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="名称" Style="{StaticResource FieldLabel}" />
-                    <controls:MtlSearchBox x:Name="SearchNameBox" Grid.Column="1" Margin="0,0,16,0"
+                    <controls:MtlSearchBox x:Name="SearchNameBox" Grid.Column="1" Grid.ColumnSpan="3"
                                            Placeholder="输入名称" />
-                    <TextBlock Text="来源" Style="{StaticResource FieldLabel}" Grid.Column="2" Margin="8,0,0,0" />
-                    <ComboBox Grid.Column="3" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                    <TextBlock Text="来源" Style="{StaticResource FieldLabel}" Grid.Column="4" Margin="8,0,0,0" />
+                    <ComboBox Grid.Column="5" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
                         <ComboBoxItem Content="全部" />
                         <ComboBoxItem Content="Modrinth" />
                         <ComboBoxItem Content="CurseForge" />
                     </ComboBox>
 
                     <TextBlock Text="版本" Style="{StaticResource FieldLabel}" Grid.Row="1" Margin="0,10,0,0" />
-                    <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MtlComboBox}"
-                              Margin="0,10,16,0" SelectedIndex="0">
+                    <ComboBox x:Name="VersionCombo" Grid.Row="1" Grid.Column="1"
+                              Style="{StaticResource MtlComboBox}" Margin="0,10,0,0" SelectedIndex="0">
                         <ComboBoxItem Content="全部（也可自行输入）" />
+                        <ComboBoxItem Content="26.2" />
                         <ComboBoxItem Content="1.21.1" />
                         <ComboBoxItem Content="1.20.1" />
+                        <ComboBoxItem Content="1.16.5" />
                     </ComboBox>
-                    <TextBlock Text="类型" Style="{StaticResource FieldLabel}" Grid.Row="1" Grid.Column="2"
+                    <ComboBox x:Name="LoaderCombo" Grid.Row="1" Grid.Column="3"
+                              Style="{StaticResource MtlComboBox}" Margin="0,10,0,0"
+                              SelectedIndex="0" Visibility="Collapsed">
+                        <ComboBoxItem Content="任意 Mod 加载器" />
+                        <ComboBoxItem Content="Fabric" />
+                        <ComboBoxItem Content="NeoForge" />
+                        <ComboBoxItem Content="Forge" />
+                        <ComboBoxItem Content="Quilt" />
+                    </ComboBox>
+                    <TextBlock Text="类型" Style="{StaticResource FieldLabel}" Grid.Row="1" Grid.Column="4"
                                Margin="8,10,0,0" />
-                    <ComboBox x:Name="TypeCombo" Grid.Row="1" Grid.Column="3" Style="{StaticResource MtlComboBox}"
+                    <ComboBox x:Name="TypeCombo" Grid.Row="1" Grid.Column="5" Style="{StaticResource MtlComboBox}"
                               Margin="0,10,0,0" SelectedIndex="0">
                         <ComboBoxItem Content="全部" />
+                        <ComboBoxItem Content="轻量" />
+                        <ComboBoxItem Content="大型" />
+                        <ComboBoxItem Content="优化" />
                     </ComboBox>
 
-                    <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal"
+                    <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal"
                                 Margin="0,16,0,0">
                         <Button Style="{StaticResource PrimaryButton}" Content="搜索" Width="110"
                                 Click="Search_Click" />
                         <Button Style="{StaticResource SecondaryButton}" Content="重置条件" Width="110"
                                 Margin="10,0,0,0" Click="ResetSearch_Click" />
+                        <Button x:Name="InstallPackButton" Style="{StaticResource SecondaryButton}"
+                                Content="安装已有整合包" Width="150" Margin="10,0,0,0"
+                                Visibility="Collapsed" Click="InstallPack_Click" />
                     </StackPanel>
                 </Grid>
             </StackPanel>

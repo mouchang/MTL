@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using MutsumiLauncher.ViewModels;
+using MutsumiLauncher.Views;
 
 namespace MutsumiLauncher.Views.Pages;
 
@@ -28,6 +29,10 @@ public partial class CommunitySearchView : UserControl
             _ => "输入 Mod 名称",
         };
 
+        // Mod 分类多一个加载器下拉；整合包分类多一个“安装已有整合包”按钮
+        LoaderCombo.Visibility = kind == "mod" ? Visibility.Visible : Visibility.Collapsed;
+        InstallPackButton.Visibility = kind == "pack" ? Visibility.Visible : Visibility.Collapsed;
+
         _source = CommunitySamples.ForKind(kind);
         SearchNameBox.Text = string.Empty;
         ResultsList.ItemsSource = _source;
@@ -47,6 +52,11 @@ public partial class CommunitySearchView : UserControl
                 .ToList();
 
         Loading.IsActive = false;
+    }
+
+    private void InstallPack_Click(object sender, RoutedEventArgs e)
+    {
+        (Window.GetWindow(this) as MainWindow)?.ShowToast("安装已有整合包：文件选择与解析还没接上。");
     }
 
     private void ResetSearch_Click(object sender, RoutedEventArgs e)
