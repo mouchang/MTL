@@ -6,11 +6,12 @@ namespace MutsumiLauncher.Views.Pages;
 
 public partial class DownloadPage : UserControl
 {
+    private CommunitySearchView? _communityView;
+
     public DownloadPage()
     {
         InitializeComponent();
         DataContext = new DownloadPageViewModel();
-        Loaded += (_, _) => ResultsList.ItemsSource = ModSamples.SearchResults;
     }
 
     private void CommunityToggle_Changed(object sender, RoutedEventArgs e)
@@ -23,34 +24,30 @@ public partial class DownloadPage : UserControl
 
     private void Source_Checked(object sender, RoutedEventArgs e)
     {
-        if (OriginalPanel is null || CommunityPanel is null) return;
-        if (sender is not RadioButton { Tag: string tag }) return;
+        if (OriginalPanel is null || CommunityHost is null) return;
+        if (sender is not RadioButton { Tag: string kind }) return;
 
-        var original = tag == "original";
-        OriginalPanel.Visibility = original ? Visibility.Visible : Visibility.Collapsed;
-        CommunityPanel.Visibility = original ? Visibility.Collapsed : Visibility.Visible;
+        if (kind == "original")
+        {
+            OriginalPanel.Visibility = Visibility.Visible;
+            CommunityHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _communityView ??= new CommunitySearchView();
+        _communityView.Configure(kind, TitleFor(kind));
+
+        CommunityHost.Content = _communityView;
+        CommunityHost.Visibility = Visibility.Visible;
+        OriginalPanel.Visibility = Visibility.Collapsed;
     }
 
-    private async void Search_Click(object sender, RoutedEventArgs e)
+    private static string TitleFor(string kind) => kind switch
     {
-        SearchLoading.IsActive = true;
-        await Task.Delay(450);
-
-        var query = SearchNameBox.Text.Trim();
-        ResultsList.ItemsSource = query.Length == 0
-            ? ModSamples.SearchResults
-            : ModSamples.SearchResults
-                .Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                            || m.EnglishName.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-        SearchLoading.IsActive = false;
-    }
-
-    private void ResetSearch_Click(object sender, RoutedEventArgs e)
-    {
-        SearchNameBox.Text = string.Empty;
-        ResultsList.ItemsSource = ModSamples.SearchResults;
-        SearchLoading.IsActive = false;
-    }
+        "pack" => "搜索 整合包",
+        "datapack" => "搜索 数据包",
+        "resourcepack" => "搜索 资源包",
+        "shader" => "搜索 光影包",
+        _ => "搜索 Mod",
+    };
 }
