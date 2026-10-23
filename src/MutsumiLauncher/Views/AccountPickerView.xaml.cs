@@ -131,6 +131,33 @@ public partial class AccountPickerView : UserControl
         AccountChosen?.Invoke(account);
     }
 
+    private void MicrosoftLogin_Click(object sender, RoutedEventArgs e)
+    {
+        var clientId = AppConfig.Current.MicrosoftClientId;
+        if (string.IsNullOrWhiteSpace(clientId))
+            clientId = Environment.GetEnvironmentVariable("MTL_MS_CLIENT_ID") ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "微软登录",
+                "还没有配置 Azure 应用的 clientId。" + Environment.NewLine +
+                "在 config.json 里填 MicrosoftClientId，或设置环境变量 MTL_MS_CLIENT_ID 后重试。",
+                "知道了", null);
+            return;
+        }
+
+        var dialog = new MicrosoftLoginDialog(clientId) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true || dialog.Profile is not { } profile) return;
+
+        var account = AccountService.AddMicrosoft(profile.Name, profile.Uuid, profile.AccessToken,
+            dialog.SkinPath);
+
+        Refresh(AccountService.All, account.Name);
+        HintText.Text = $"已登录微软账号 {account.Name}。";
+        HintText.Foreground = new SolidColorBrush(Color.FromRgb(0x4E, 0x9E, 0x72));
+        AccountChosen?.Invoke(account);
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Backdrop_MouseDown(object sender, MouseButtonEventArgs e)

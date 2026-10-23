@@ -13,6 +13,11 @@ public sealed class Account
 
     public string Uuid { get; set; } = string.Empty;
 
+    public string AccessToken { get; set; } = string.Empty;
+
+    /// <summary>缓存的皮肤文件（用于显示正脸）。</summary>
+    public string SkinPath { get; set; } = string.Empty;
+
     [JsonIgnore]
     public bool IsMicrosoft => Type.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
 
@@ -76,6 +81,31 @@ public static class AccountService
         config.Accounts.Add(account);
         config.SelectedAccount = name;
         config.PlayerName = name;
+        config.Save();
+        return account;
+    }
+
+    public static Account AddMicrosoft(string name, string uuid, string accessToken, string? skinPath)
+    {
+        var config = AppConfig.Current;
+        var account = config.Accounts.FirstOrDefault(a => a.Uuid == uuid);
+
+        if (account is null)
+        {
+            account = new Account { Name = name, Type = "microsoft", Uuid = uuid };
+            config.Accounts.Add(account);
+        }
+        else
+        {
+            account.Name = name;
+        }
+
+        account.Type = "microsoft";
+        account.AccessToken = accessToken;
+        if (!string.IsNullOrWhiteSpace(skinPath)) account.SkinPath = skinPath;
+
+        config.SelectedAccount = account.Name;
+        config.PlayerName = account.Name;
         config.Save();
         return account;
     }

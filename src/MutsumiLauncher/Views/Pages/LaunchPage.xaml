@@ -15,7 +15,7 @@
                                           Opacity="0.14" Color="#FF2E4A38" />
                     </Border.Effect>
                 </Border>
-                <Image Source="/Assets/avatar.png" Width="64" Height="64"
+                <Image x:Name="AvatarImage" Source="/Assets/avatar.png" Width="64" Height="64"
                        RenderOptions.BitmapScalingMode="NearestNeighbor" />
             </Grid>
 

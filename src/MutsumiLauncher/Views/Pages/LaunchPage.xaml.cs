@@ -1,5 +1,7 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.Views;
 
@@ -59,6 +61,17 @@ public partial class LaunchPage : UserControl
         var account = AccountService.EnsureDefault();
         AccountNameText.Text = account.Name;
         AccountTypeBadge.Text = account.TypeLabel;
+
+        // 微软账号显示皮肤正脸，离线默认史蒂夫
+        if (!string.IsNullOrWhiteSpace(account.SkinPath) && File.Exists(account.SkinPath)
+            && SkinService.CreateFace(account.SkinPath) is { } face)
+        {
+            AvatarImage.Source = face;
+        }
+        else
+        {
+            AvatarImage.Source = new BitmapImage(new Uri("pack://application:,,,/Assets/avatar.png"));
+        }
     }
 
     private string? SelectedVersion()
@@ -107,8 +120,8 @@ public partial class LaunchPage : UserControl
         {
             var account = AccountService.Current ?? AccountService.EnsureDefault();
             var launcher = new GameLauncher();
-            var options = new LaunchOptions(account.Name, account.Uuid, config.JavaPath,
-                config.MemoryMb, config.VersionIsolation);
+            var options = new LaunchOptions(account.Name, account.Uuid, account.AccessToken,
+                account.IsMicrosoft, config.JavaPath, config.MemoryMb, config.VersionIsolation);
             var result = await launcher.LaunchAsync(version, options);
             owner?.ShowToast(result.Message);
         }

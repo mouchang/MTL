@@ -25,6 +25,10 @@ public sealed class AppConfig
 
     public string SelectedAccount { get; set; } = string.Empty;
 
+    /// <summary>微软登录用的 Azure 应用 clientId（也可用环境变量 MTL_MS_CLIENT_ID）。</summary>
+    public string MicrosoftClientId { get; set; } = string.Empty;
+
+
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 
     private static AppConfig? _current;

@@ -95,6 +95,9 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 
 - **账号**：启动页头像旁的账号胶囊显示当前账号与类型（离线/正版），点 ⇄ 从底部滑出账号浮层，可添加离线账号（校验 3–16 位字母数字下划线）、切换、删除；账号列表与选择写入 `config.json`，启动时使用当前账号的名字与离线 UUID（`OfflinePlayer:<name>` 的 MD5）。
 
+- **微软登录**：账号浮层里的「微软登录」走设备码流程（`login.microsoftonline.com/consumers`），授权后依次换取 Xbox Live / XSTS / Minecraft accessToken，拉取档案与皮肤；需要先在 `config.json` 填 `MicrosoftClientId`（或设置环境变量 `MTL_MS_CLIENT_ID`）。
+- **皮肤头像**：微软账号下载皮肤 PNG，裁 8×8 正脸并叠加帽子层（64×64 皮肤），按最近邻放大显示；离线账号使用内置史蒂夫头像。启动时微软账号使用 `accessToken` + `userType=msa`。
+
 ## 素材替换
 
 界面用的是占位素材，可以直接替换同名文件：
@@ -118,7 +121,8 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - [x] 资源文件（assets 索引 + objects，断点续传、并发下载）
 - [x] 启动页版本切换与配置持久化（`config.json`）
 - [x] 离线账号管理（添加 / 切换 / 删除，离线 UUID）
-- [ ] 微软正版登录（OAuth 设备码）
+- [x] 微软正版登录（设备码 OAuth → Xbox Live → XSTS → Minecraft 服务，需自备 clientId）
+- [x] 皮肤头像（微软账号拉皮肤裁正脸，离线默认史蒂夫）
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传
 - [ ] 实例（版本隔离）管理

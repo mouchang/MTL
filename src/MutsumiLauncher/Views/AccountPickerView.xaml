@@ -93,6 +93,20 @@
 
                 <TextBlock x:Name="HintText" Style="{StaticResource Caption}" Margin="0,8,0,0"
                            Text="输入离线用户名（3–16 位，字母、数字或下划线），回车或点添加。" />
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="有正版账号？用微软账号登录。" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                            Content="微软登录" Height="34" Padding="16,0"
+                            Click="MicrosoftLogin_Click" />
+                </Grid>
+
+
             </StackPanel>
         </Border>
     </Grid>
