@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using MutsumiLauncher.Services;
 using MutsumiLauncher.Views;
 
 namespace MutsumiLauncher.Views.Pages;
@@ -26,17 +27,35 @@ public partial class LaunchPage : UserControl
     private async void Launch_Click(object sender, RoutedEventArgs e)
     {
         var button = (Button)sender;
-        var original = button.Content;
+        var owner = Window.GetWindow(this) as MainWindow;
 
+        var versions = GameLauncher.InstalledVersions();
+        if (versions.Count == 0)
+        {
+            owner?.ShowToast("还没有安装任何版本，先去下载页装一个吧。");
+            return;
+        }
+
+        var original = button.Content;
         button.IsEnabled = false;
         button.Content = "启动中…";
 
-        await Task.Delay(900);
-
-        button.Content = original;
-        button.IsEnabled = true;
-
-        (Window.GetWindow(this) as MainWindow)?.ShowToast("启动流程还没接上，下一步接入版本扫描与 JVM 参数。");
+        try
+        {
+            var launcher = new GameLauncher();
+            var result = await launcher.LaunchAsync(versions[0], "the_box_mc");
+            owner?.ShowToast(result.Message);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "launch game");
+            owner?.ShowToast("启动失败：" + ex.Message);
+        }
+        finally
+        {
+            button.Content = original;
+            button.IsEnabled = true;
+        }
     }
 
     private void SwitchAccount_Click(object sender, RoutedEventArgs e)

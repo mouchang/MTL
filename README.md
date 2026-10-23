@@ -88,6 +88,8 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 
 - **版本安装**：下载页每个版本行都有「安装」，确认后依次拉取版本 JSON、client jar、依赖库（含 Windows natives），逐文件做 SHA-1 校验，落盘到游戏目录；顶部有进度条。
 
+- **启动游戏**：启动页「启动游戏」会挑选已安装版本启动——解压 natives、拼 classpath、按 `minecraftArguments` / `arguments.game` 替换占位符、用离线 UUID，并按版本要求自动选 Java（1.16 及更早 → 8、1.17 → 16、1.18–1.20.4 → 17、1.20.5+ → 21）；游戏输出写入 `游戏目录\logs\<版本>-<时间>.log`。实测可启动 Beta 1.8.1。
+
 ## 素材替换
 
 界面用的是占位素材，可以直接替换同名文件：
@@ -107,8 +109,9 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - [x] 版本清单拉取（Mojang piston-meta，带本地缓存与失败回退）
 - [x] Java 探测（JAVA_HOME / PATH / 注册表 / 安装目录 / Minecraft 运行时，解析版本号）
 - [x] 版本安装（版本 JSON、client jar、libraries，SHA-1 校验，进度条）
-- [ ] 资源文件（assets）下载与 natives 解压
-- [ ] JVM 参数与按版本自动选择 Java
+- [x] 启动游戏（natives 解压、classpath、参数替换、按版本自动选 Java、进程与日志）
+- [ ] 资源文件（assets）下载
+- [ ] 实例/版本选择与启动参数持久化
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传
 - [ ] 实例（版本隔离）管理

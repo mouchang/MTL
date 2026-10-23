@@ -23,6 +23,17 @@ public sealed class VersionDetail
     [JsonPropertyName("downloads")] public Dictionary<string, Artifact> Downloads { get; set; } = [];
 
     [JsonPropertyName("libraries")] public List<Library> Libraries { get; set; } = [];
+
+    [JsonPropertyName("arguments")] public JsonElement? Arguments { get; set; }
+
+    [JsonPropertyName("minecraftArguments")] public string? MinecraftArguments { get; set; }
+
+    [JsonPropertyName("javaVersion")] public JavaVersionInfo? JavaVersion { get; set; }
+}
+
+public sealed class JavaVersionInfo
+{
+    [JsonPropertyName("majorVersion")] public int MajorVersion { get; set; }
 }
 
 public sealed class AssetIndex
