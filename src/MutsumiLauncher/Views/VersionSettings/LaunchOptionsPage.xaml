@@ -61,16 +61,15 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
+                        <ComboBox x:Name="JavaCombo" Grid.Column="1" Style="{StaticResource MtlComboBox}"
+                                  SelectedIndex="0" SelectionChanged="JavaCombo_SelectionChanged">
                             <ComboBoxItem Content="自动选择" />
-                            <ComboBoxItem Content="Java 21 (21.0.5)" />
-                            <ComboBoxItem Content="Java 25 (25.0.1.0)" />
                         </ComboBox>
                     </Grid>
 
                     <Border Background="#99D9EEF7" CornerRadius="10" Padding="14,10" Margin="110,10,0,0">
-                        <TextBlock FontSize="12" Foreground="#FF3E5C6E" TextWrapping="Wrap"
-                                   Text="将会使用：Java 25 (25.0.1.0)  C:\Users\the box\AppData\Roaming\.minecraft\runtime\java-runtime-epsilon\bin\" />
+                        <TextBlock x:Name="JavaInfoText" FontSize="12" Foreground="#FF3E5C6E"
+                                   TextWrapping="Wrap" Text="正在检测本机 Java…" />
                     </Border>
                 </StackPanel>
             </Border>
