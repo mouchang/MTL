@@ -24,6 +24,37 @@ public static class DownloadMirror
         }
     }
 
+    /// <summary>允许走 CDN 的 host（登录/账号接口不在其中）。</summary>
+    public static readonly HashSet<string> CdnHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "piston-meta.mojang.com",
+        "piston-data.mojang.com",
+        "launcher.mojang.com",
+        "libraries.minecraft.net",
+        "resources.download.minecraft.net",
+        "bmclapi2.bangbang93.com",
+        "bmclapi.bangbang93.com",
+        "api.modrinth.com",
+        "cdn.modrinth.com",
+        "meta.fabricmc.net",
+        "maven.fabricmc.net",
+        "maven.minecraftforge.net",
+        "maven.neoforged.net",
+        "files.minecraftforge.net",
+    };
+
+    public static bool ShouldUseCdn(Uri uri)
+    {
+        var baseUrl = CustomCdnBase;
+        if (baseUrl is null) return false;
+        if (uri.Host.Equals(new Uri(baseUrl).Host, StringComparison.OrdinalIgnoreCase)) return false;
+
+        return CdnHosts.Contains(uri.Host);
+    }
+
+    public static Uri BuildCdnUri(Uri uri, string baseUrl)
+        => new($"{baseUrl.TrimEnd('/')}/{uri.Host}{uri.AbsolutePath}{uri.Query}");
+
     private static string ApplyCdn(string url)
     {
         var baseUrl = CustomCdnBase;
@@ -32,7 +63,7 @@ public static class DownloadMirror
         try
         {
             var uri = new Uri(url);
-            return $"{baseUrl}/{uri.Host}{uri.AbsolutePath}{uri.Query}";
+            return ShouldUseCdn(uri) ? BuildCdnUri(uri, baseUrl).ToString() : url;
         }
         catch
         {
@@ -69,7 +100,8 @@ public static class DownloadMirror
         ? $"{BmclapiBase}/assets/{hash[..2]}/{hash}"
         : $"https://resources.download.minecraft.net/{hash[..2]}/{hash}");
 
-    public static string ModrinthApiBase => UseMcim ? $"{McimBase}/modrinth/v2" : OfficialModrinthApi;
+    public static string ModrinthApiBase
+        => ApplyCdn(UseMcim ? $"{McimBase}/modrinth/v2" : OfficialModrinthApi);
 
     /// <summary>Modrinth CDN 文件走 MCIM。</summary>
     public static string ModFileUrl(string url)
@@ -77,8 +109,9 @@ public static class DownloadMirror
         if (!UseMcim || string.IsNullOrWhiteSpace(url)) return url;
 
         if (url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
-            return url.Replace("cdn.modrinth.com", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase);
+            return ApplyCdn(url.Replace("cdn.modrinth.com", "mod.mcimirror.top",
+                StringComparison.OrdinalIgnoreCase));
 
-        return url;
+        return ApplyCdn(url);
     }
 }

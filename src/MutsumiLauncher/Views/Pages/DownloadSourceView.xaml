@@ -215,9 +215,9 @@
 
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
             <StackPanel>
-                <TextBlock Text="自定义原版 CDN（可选）" Style="{StaticResource H2}" />
+                <TextBlock Text="全接口 CDN（自定义反代）" Style="{StaticResource H2}" />
                 <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,10"
-                           Text="填入你自己的反代前缀（例如 Cloudflare Worker：https://mirror.example.com），启动器会把原版资源地址改写为「前缀/原host/路径」。留空则关闭。" />
+                           Text="默认走 https://mtl.dpdns.org。所有下载接口（原版、Modrinth、Fabric、Forge/NeoForge）都会改写为「前缀/原host/路径」；某个 host 被 CDN 拒绝时自动回退直连。留空则全部直连。" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

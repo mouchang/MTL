@@ -46,8 +46,11 @@ public sealed class AppConfig
     /// <summary>用户是否手动选过代理模式；没选过时允许自动迁移到 auto。</summary>
     public bool NetworkModeChosen { get; set; }
 
-    /// <summary>自定义原版 CDN 前缀（可选），如 https://你的域名；为空表示不启用。</summary>
-    public string VanillaCdnBase { get; set; } = string.Empty;
+    /// <summary>全接口 CDN 前缀（如自建 Cloudflare Worker）；默认走 mtl.dpdns.org。</summary>
+    public string VanillaCdnBase { get; set; } = "https://mtl.dpdns.org";
+
+    /// <summary>用户是否手动改过 CDN 前缀（改过就不再自动填默认值）。</summary>
+    public bool CdnChosen { get; set; }
 
     public string ProxyHost { get; set; } = "127.0.0.1";
 
@@ -75,6 +78,12 @@ public sealed class AppConfig
                         && config.NetworkMode.Equals("direct", StringComparison.OrdinalIgnoreCase))
                     {
                         config.NetworkMode = "auto";
+                        config.Save();
+                    }
+
+                    if (!config.CdnChosen && string.IsNullOrWhiteSpace(config.VanillaCdnBase))
+                    {
+                        config.VanillaCdnBase = "https://mtl.dpdns.org";
                         config.Save();
                     }
 

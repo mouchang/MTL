@@ -80,6 +80,7 @@ public partial class DownloadSourceView : UserControl
     private void SaveCdn_Click(object sender, RoutedEventArgs e)
     {
         AppConfig.Current.VanillaCdnBase = VanillaCdnBox.Text.Trim();
+        AppConfig.Current.CdnChosen = true;
         AppConfig.Current.Save();
         _onChanged?.Invoke();
     }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -81,10 +82,85 @@ public static class HttpUtil
                 break;
         }
 
-        var client = new HttpClient(handler) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
+        var client = new HttpClient(new CdnHandler(handler)) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
         if (!string.IsNullOrWhiteSpace(userAgent))
             client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
 
         return client;
+    }
+
+    /// <summary>把允许的 host 重写到 CDN；CDN 拒绝或失败时自动回退直连（并记住该 host 本次会话不再走 CDN）。</summary>
+    private sealed class CdnHandler : DelegatingHandler
+    {
+        private static readonly ConcurrentDictionary<string, bool> BrokenHosts = new(StringComparer.OrdinalIgnoreCase);
+
+        public CdnHandler(HttpMessageHandler inner) : base(inner)
+        {
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var uri = request.RequestUri;
+            var baseUrl = DownloadMirror.CustomCdnBase;
+
+            if (uri is null || baseUrl is null
+                || !DownloadMirror.ShouldUseCdn(uri)
+                || BrokenHosts.ContainsKey(uri.Host))
+                return await base.SendAsync(request, cancellationToken);
+
+            byte[]? body = request.Content is null
+                ? null
+                : await request.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            try
+            {
+                using var cdnRequest = Clone(request, DownloadMirror.BuildCdnUri(uri, baseUrl), body);
+                var response = await base.SendAsync(cdnRequest, cancellationToken);
+
+                if (response.IsSuccessStatusCode) return response;
+
+                if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound
+                    or HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout)
+                {
+                    BrokenHosts[uri.Host] = true;
+                }
+
+                AppLog.Info($"cdn fallback {uri.Host}: {(int)response.StatusCode}");
+                response.Dispose();
+            }
+            catch (Exception ex)
+            {
+                BrokenHosts[uri.Host] = true;
+                AppLog.Error(ex, $"cdn request {uri.Host}");
+            }
+
+            using var directRequest = Clone(request, uri, body);
+            return await base.SendAsync(directRequest, cancellationToken);
+        }
+
+        private static HttpRequestMessage Clone(HttpRequestMessage source, Uri uri, byte[]? body)
+        {
+            var clone = new HttpRequestMessage(source.Method, uri)
+            {
+                Version = source.Version,
+                VersionPolicy = source.VersionPolicy,
+            };
+
+            foreach (var header in source.Headers)
+                clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+
+            if (body is not null)
+            {
+                clone.Content = new ByteArrayContent(body);
+                if (source.Content is not null)
+                {
+                    foreach (var header in source.Content.Headers)
+                        clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return clone;
+        }
     }
 }
