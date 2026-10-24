@@ -81,7 +81,7 @@
                                        VerticalAlignment="Center" Margin="0,0,10,0" />
                             <RadioButton x:Name="LoaderAllRadio" Style="{StaticResource SegmentItem}"
                                          GroupName="LoaderFilter" Content="全部" Tag=""
-                                         IsChecked="True" Margin="0,0,4,0" Checked="LoaderFilter_Checked" />
+                                         Margin="0,0,4,0" Checked="LoaderFilter_Checked" />
                             <RadioButton Style="{StaticResource SegmentItem}" GroupName="LoaderFilter"
                                          Content="Fabric" Tag="fabric" Margin="0,0,4,0"
                                          Checked="LoaderFilter_Checked" />

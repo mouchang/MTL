@@ -84,6 +84,9 @@ public partial class ModrinthDetailView : UserControl
     public ModrinthDetailView()
     {
         InitializeComponent();
+
+        // 构造完成后再选中，避免 XAML 解析阶段触发 Checked 事件时控件还没赋值
+        LoaderAllRadio.IsChecked = true;
     }
 
     public async Task LoadAsync(ModrinthItem item, string? initialGameVersion, Action onBack,
@@ -248,6 +251,8 @@ public partial class ModrinthDetailView : UserControl
 
     private void ApplyFilter(string? gameVersion)
     {
+        if (FileList is null || ListHeader is null) return;
+
         var versions = _versions
             .Where(v => gameVersion is null || v.GameVersions.Contains(gameVersion))
             .Where(v => _loaderFilter.Length == 0
