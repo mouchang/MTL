@@ -1,6 +1,8 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
 
@@ -11,6 +13,7 @@ public partial class DownloadPage : UserControl
     private CommunitySearchView? _communityView;
     private DownloadPageViewModel? _viewModel;
     private bool _versionsRequested;
+    private bool _detailCoveredOriginal;
 
     public DownloadPage()
     {
@@ -44,6 +47,8 @@ public partial class DownloadPage : UserControl
         if (OriginalPanel is null || CommunityHost is null) return;
         if (sender is not RadioButton { Tag: string kind }) return;
 
+        CloseDetail(animated: false);
+
         if (kind == "original")
         {
             OriginalPanel.Visibility = Visibility.Visible;
@@ -51,7 +56,12 @@ public partial class DownloadPage : UserControl
             return;
         }
 
-        _communityView ??= new CommunitySearchView();
+        if (_communityView is null)
+        {
+            _communityView = new CommunitySearchView();
+            _communityView.DetailRequested += OpenModrinthDetail;
+        }
+
         _communityView.Configure(kind, TitleFor(kind));
 
         CommunityHost.Content = _communityView;
@@ -59,39 +69,83 @@ public partial class DownloadPage : UserControl
         OriginalPanel.Visibility = Visibility.Collapsed;
     }
 
-    private async void InstallVersion_Click(object sender, RoutedEventArgs e)
+    private void Version_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not Button { Tag: VersionEntry entry } || string.IsNullOrEmpty(entry.Url)) return;
+        if (sender is not FrameworkElement { Tag: VersionEntry entry }) return;
 
-        var owner = Window.GetWindow(this);
-        var message = $"要安装 Minecraft {entry.Name} 吗？" + Environment.NewLine +
-                      "将下载版本 JSON、客户端 jar 与依赖库到：" + Environment.NewLine +
-                      GamePaths.Root;
-        var confirmed = MessageDialog.Show(owner, "安装版本", message, "安装");
-        if (!confirmed) return;
+        var view = new VersionDetailView();
+        view.Load(entry, () => CloseDetail(), ShowToast);
+        OpenDetail(view);
+    }
 
-        InstallBar.Visibility = Visibility.Visible;
-        InstallFill.Width = 0;
-        InstallText.Text = $"准备安装 {entry.Name}…";
+    private void OpenModrinthDetail(ModrinthItem item)
+    {
+        var view = new ModrinthDetailView();
+        _ = view.LoadAsync(item, () => CloseDetail(), ShowToast);
+        OpenDetail(view);
+    }
 
-        try
+    private void OpenDetail(FrameworkElement view)
+    {
+        _detailCoveredOriginal = OriginalPanel.Visibility == Visibility.Visible;
+        OriginalPanel.Visibility = Visibility.Collapsed;
+        CommunityHost.Visibility = Visibility.Collapsed;
+
+        DetailHost.Content = view;
+        DetailHost.Visibility = Visibility.Visible;
+
+        var slide = new DoubleAnimation(90, 0, TimeSpan.FromMilliseconds(280))
         {
-            var installer = new VersionInstaller();
-            var progress = new Progress<InstallProgress>(p =>
-            {
-                InstallText.Text = $"{entry.Name}：{p.Message}";
-                InstallFill.Width = InstallTrack.ActualWidth * Math.Clamp(p.Percent, 0, 100) / 100.0;
-            });
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        DetailSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        DetailHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+    }
 
-            await installer.InstallAsync(entry.Name, entry.Url, progress);
-            InstallText.Text = $"{entry.Name} 安装完成 → {Path.Combine(GamePaths.VersionsDir, entry.Name)}";
-            (owner as MainWindow)?.ShowToast($"{entry.Name} 安装完成");
-        }
-        catch (Exception ex)
+    private void CloseDetail(bool animated = true)
+    {
+        if (DetailHost.Content is null) return;
+
+        if (!animated)
         {
-            AppLog.Error(ex, "install version");
-            InstallText.Text = $"安装失败：{ex.Message}";
+            DetailSlide.BeginAnimation(TranslateTransform.XProperty, null);
+            DetailHost.BeginAnimation(OpacityProperty, null);
+            DetailHost.Visibility = Visibility.Collapsed;
+            DetailHost.Content = null;
+            RestorePanels();
+            return;
         }
+
+        var slide = new DoubleAnimation(0, 90, TimeSpan.FromMilliseconds(200))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+        };
+        slide.Completed += (_, _) =>
+        {
+            DetailHost.Visibility = Visibility.Collapsed;
+            DetailHost.Content = null;
+            RestorePanels();
+        };
+
+        DetailSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        DetailHost.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)));
+    }
+
+    private void RestorePanels()
+    {
+        if (_detailCoveredOriginal)
+        {
+            OriginalPanel.Visibility = Visibility.Visible;
+        }
+        else if (CommunityHost.Content is not null)
+        {
+            CommunityHost.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ShowToast(string message)
+    {
+        (Window.GetWindow(this) as MainWindow)?.ShowToast(message);
     }
 
     private static string TitleFor(string kind) => kind switch

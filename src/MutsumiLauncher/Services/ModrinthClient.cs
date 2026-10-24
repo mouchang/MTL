@@ -33,6 +33,33 @@ public sealed class ModrinthHit
     [JsonPropertyName("project_type")] public string ProjectType { get; set; } = string.Empty;
 }
 
+public sealed class ModrinthProject
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("slug")] public string Slug { get; set; } = string.Empty;
+
+    [JsonPropertyName("title")] public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")] public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("body")] public string Body { get; set; } = string.Empty;
+
+    [JsonPropertyName("categories")] public List<string> Categories { get; set; } = [];
+
+    [JsonPropertyName("loaders")] public List<string> Loaders { get; set; } = [];
+
+    [JsonPropertyName("game_versions")] public List<string> GameVersions { get; set; } = [];
+
+    [JsonPropertyName("downloads")] public long Downloads { get; set; }
+
+    [JsonPropertyName("icon_url")] public string? IconUrl { get; set; }
+
+    [JsonPropertyName("updated")] public DateTimeOffset Updated { get; set; }
+
+    [JsonPropertyName("source_url")] public string? SourceUrl { get; set; }
+}
+
 public sealed class ModrinthVersion
 {
     [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
@@ -44,6 +71,12 @@ public sealed class ModrinthVersion
     [JsonPropertyName("game_versions")] public List<string> GameVersions { get; set; } = [];
 
     [JsonPropertyName("loaders")] public List<string> Loaders { get; set; } = [];
+
+    [JsonPropertyName("version_type")] public string VersionType { get; set; } = "release";
+
+    [JsonPropertyName("date_published")] public DateTimeOffset DatePublished { get; set; }
+
+    [JsonPropertyName("downloads")] public long Downloads { get; set; }
 
     [JsonPropertyName("files")] public List<ModrinthFile> Files { get; set; } = [];
 }
@@ -129,6 +162,20 @@ public sealed class ModrinthClient
         var json = await Http.GetStringAsync(url, cancellationToken);
         var response = JsonSerializer.Deserialize<ModrinthSearchResponse>(json);
         return response?.Hits ?? [];
+    }
+
+    public async Task<ModrinthProject?> GetProjectAsync(string projectId,
+        CancellationToken cancellationToken = default)
+    {
+        var json = await Http.GetStringAsync($"{BaseUrl}/project/{projectId}", cancellationToken);
+        return JsonSerializer.Deserialize<ModrinthProject>(json);
+    }
+
+    public async Task<IReadOnlyList<ModrinthVersion>> GetVersionsAsync(string projectId,
+        CancellationToken cancellationToken = default)
+    {
+        var json = await Http.GetStringAsync($"{BaseUrl}/project/{projectId}/version", cancellationToken);
+        return JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
     }
 
     public async Task<ModrinthVersion?> GetLatestVersionAsync(string projectId, string? gameVersion,

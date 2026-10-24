@@ -95,12 +95,13 @@
                 <ItemsControl x:Name="ResultsList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF">
+                            <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF"
+                                    Background="Transparent" PreviewMouseLeftButtonUp="OpenDetail_Click"
+                                    Tag="{Binding}" Cursor="Hand">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
                                     <Grid Width="42" Height="42" VerticalAlignment="Top">
@@ -132,10 +133,6 @@
                                                    Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
                                     </StackPanel>
 
-                                    <Button Grid.Column="2" Style="{StaticResource SecondaryButton}"
-                                            Content="安装" Height="28" FontSize="12" Padding="12,0"
-                                            VerticalAlignment="Center" Tag="{Binding}"
-                                            Click="Install_Click" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

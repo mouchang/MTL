@@ -14,6 +14,9 @@ public partial class CommunitySearchView : UserControl
     private string _kind = "mod";
     private string _projectType = "mod";
 
+    /// <summary>点击结果行时请求上层打开详情页。</summary>
+    public event Action<ModrinthItem>? DetailRequested;
+
     public CommunitySearchView()
     {
         InitializeComponent();
@@ -122,44 +125,10 @@ public partial class CommunitySearchView : UserControl
         await RunSearchAsync();
     }
 
-    private async void Install_Click(object sender, RoutedEventArgs e)
+    private void OpenDetail_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is not Button { Tag: ModrinthItem item }) return;
-
-        Loading.IsActive = true;
-        StatusText.Text = $"正在获取 {item.Title} 的文件…";
-
-        try
-        {
-            var version = await _client.GetLatestVersionAsync(item.ProjectId, GameVersion(), Loader());
-            if (version is null)
-            {
-                StatusText.Text = "没有找到匹配当前版本 / 加载器的文件，换个条件再试。";
-                return;
-            }
-
-            var file = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files.FirstOrDefault();
-            if (file is null)
-            {
-                StatusText.Text = "这个项目没有可下载的文件。";
-                return;
-            }
-
-            var directory = Path.Combine(GameDir(), FolderFor(item.ProjectType));
-            var saved = await _client.DownloadAsync(file.Url, file.Filename, directory, file.Hashes?.Sha1);
-
-            StatusText.Text = $"已安装 {item.Title} → {saved}";
-            (Window.GetWindow(this) as MainWindow)?.ShowToast($"{item.Title} 安装完成");
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "modrinth install");
-            StatusText.Text = "安装失败：" + ex.Message;
-        }
-        finally
-        {
-            Loading.IsActive = false;
-        }
+        if (sender is FrameworkElement { Tag: ModrinthItem item })
+            DetailRequested?.Invoke(item);
     }
 
     private void InstallPack_Click(object sender, RoutedEventArgs e)

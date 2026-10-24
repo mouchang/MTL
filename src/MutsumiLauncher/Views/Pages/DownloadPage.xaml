@@ -105,11 +105,11 @@
                         <ItemsControl ItemsSource="{Binding Latest}" Margin="0,10,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,7">
+                                    <Grid Margin="0,7" Background="Transparent" Cursor="Hand"
+                                          PreviewMouseLeftButtonUp="Version_Click" Tag="{Binding}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <Image Source="{Binding Icon}" Width="34" Height="34"
                                                VerticalAlignment="Center"
@@ -120,10 +120,6 @@
                                             <TextBlock Text="{Binding Caption}" Style="{StaticResource Caption}"
                                                        Margin="0,2,0,0" />
                                         </StackPanel>
-                                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}"
-                                                Content="安装" Height="28" FontSize="12" Padding="12,0"
-                                                VerticalAlignment="Center" Tag="{Binding}"
-                                                Click="InstallVersion_Click" />
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -139,11 +135,11 @@
                                 <ItemsControl ItemsSource="{Binding Versions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Height="46">
+                                            <Grid Height="46" Background="Transparent" Cursor="Hand"
+                                                  PreviewMouseLeftButtonUp="Version_Click" Tag="{Binding}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <Image Source="{Binding Icon}" Width="24" Height="24"
                                                        VerticalAlignment="Center"
@@ -155,10 +151,6 @@
                                                     <TextBlock Text="{Binding Caption}" FontSize="11"
                                                                Foreground="{StaticResource InkMute}" />
                                                 </StackPanel>
-                                                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}"
-                                                        Content="安装" Height="26" FontSize="12" Padding="12,0"
-                                                        VerticalAlignment="Center" Tag="{Binding}"
-                                                        Click="InstallVersion_Click" />
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -174,5 +166,14 @@
         <!-- ===== 右侧：社区资源（按分类复用同一个搜索页） ===== -->
         <ContentControl x:Name="CommunityHost" Grid.Column="1" Visibility="Collapsed"
                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+
+        <!-- 详情页：从右侧滑入 -->
+        <ContentControl x:Name="DetailHost" Grid.Column="1" Visibility="Collapsed"
+                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                        Panel.ZIndex="20" Opacity="0">
+            <ContentControl.RenderTransform>
+                <TranslateTransform x:Name="DetailSlide" X="0" />
+            </ContentControl.RenderTransform>
+        </ContentControl>
     </Grid>
 </UserControl>
