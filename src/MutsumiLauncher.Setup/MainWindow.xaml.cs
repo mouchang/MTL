@@ -30,11 +30,9 @@ public partial class MainWindow : Window
                 dirFromArgs = arg["/DIR=".Length..].Trim('"');
         }
 
-        var defaultDir = IsElevated
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                "Mutsumi Launcher")
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Mutsumi Launcher");
+        // 默认装到用户目录：启动器不需要管理员权限就能把游戏数据写到安装目录里的 game        var defaultDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs", "Mutsumi Launcher");
 
         if (!TryGetWritable(defaultDir))
         {

@@ -19,6 +19,7 @@ public partial class App : Application
         }
 
         NormalizePath();
+        GamePaths.MigrateFromAppDataIfNeeded();
 
         base.OnStartup(e);
         AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");

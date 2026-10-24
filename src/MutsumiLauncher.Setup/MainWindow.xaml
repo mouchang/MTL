@@ -52,7 +52,7 @@
             <StackPanel Grid.Row="1" Margin="28,6,28,0">
                 <TextBlock Text="选择安装位置" FontSize="20" FontWeight="SemiBold"
                            Foreground="#FF2E3E35" Margin="0,6,0,4" />
-                <TextBlock Text="安装器会把启动器完整安装到下面的文件夹，安装目录可以自己选择。"
+                <TextBlock Text="安装器会把启动器完整安装到下面的文件夹，安装目录可以自己选择。版本、资源、日志等游戏数据会保存在安装目录下的 game 文件夹。"
                            FontSize="12" Foreground="#FF6B7F72" TextWrapping="Wrap" Margin="0,0,0,14" />
 
                 <Grid>
