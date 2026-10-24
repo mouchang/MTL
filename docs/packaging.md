@@ -46,3 +46,15 @@ powershell -Command "Compress-Archive -Path dist\setup-app\* -DestinationPath di
 - 直接把 payload.zip 解压到目标目录，**不依赖 %TEMP%**，受限环境也能装；
 - 创建桌面/开始菜单快捷方式，写入「应用和功能」卸载项；
 - 支持静默：`MTLSetup.exe /S /DIR="D:\Games\MTL"`。
+
+## 便携单文件（PCL2 风格）
+
+```bash
+dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64   --self-contained true -p:PublishSingleFile=true   -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true   -p:Version=0.1.0 -p:DebugType=None -o dist/portable
+```
+
+产物 `dist/portable/MutsumiLauncher.exe`（约 60 MB），双击即用，不需要安装。
+
+注意：.NET 单文件首次运行会把 native 库解压到 `%TEMP%\.net\...`，
+如果系统 `%TEMP%` 不可写（例如被设成受限目录），启动会失败。
+把用户变量 `TEMP` / `TMP` 指向可写目录即可。

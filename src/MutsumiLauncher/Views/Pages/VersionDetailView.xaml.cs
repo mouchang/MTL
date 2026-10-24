@@ -406,8 +406,11 @@ public partial class VersionDetailView : UserControl
                 if (!File.Exists(vanillaJson))
                 {
                     ProgressText.Text = $"先安装原版 {_entry.Name}…";
+
+                    // 原版必须装到 versions/<游戏版本>，加载器版本靠 inheritsFrom 引用它；
+                    // 自定义实例名只用于加载器实例，不能给原版用。
                     await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
-                        installAssets: false, instanceName: instanceName);
+                        installAssets: false);
                 }
 
                 string id;
