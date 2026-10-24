@@ -53,7 +53,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private string PayloadPath => Path.Combine(AppContext.BaseDirectory, "payload.zip");
+    private static Stream? OpenPayload()
+    {
+        var stream = typeof(MainWindow).Assembly.GetManifestResourceStream("payload.zip");
+        if (stream is not null) return stream;
+
+        var file = Path.Combine(AppContext.BaseDirectory, "payload.zip");
+        return File.Exists(file) ? File.OpenRead(file) : null;
+    }
 
     internal static void Log(string message)
     {
@@ -111,11 +118,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log($"install requested: dir={dir}, payload={PayloadPath}, exists={File.Exists(PayloadPath)}");
+        Log($"install requested: dir={dir}");
 
-        if (!File.Exists(PayloadPath))
+        using var probe = OpenPayload();
+        if (probe is null)
         {
-            Status("找不到安装包 payload.zip，请确认它和安装程序在同一个文件夹。", error: true);
+            Status("安装包数据缺失，请重新下载安装程序。", error: true);
             return;
         }
 
@@ -170,7 +178,8 @@ public partial class MainWindow : Window
 
     private async Task ExtractPayloadAsync(string targetDir)
     {
-        using var archive = ZipFile.OpenRead(PayloadPath);
+        using var stream = OpenPayload() ?? throw new InvalidOperationException("安装包数据缺失");
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
         var total = archive.Entries.Count;
         var index = 0;
 

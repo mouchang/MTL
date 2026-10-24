@@ -15,4 +15,8 @@
     <Company>Mutsumi</Company>
     <Product>Mutsumi Launcher Setup</Product>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\dist\MutsumiLauncher-0.1.0-win-x64.zip" LogicalName="payload.zip" />
+  </ItemGroup>
 </Project>
