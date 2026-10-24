@@ -34,7 +34,6 @@ public static class DownloadMirror
         "resources.download.minecraft.net",
         "bmclapi2.bangbang93.com",
         "bmclapi.bangbang93.com",
-        "api.modrinth.com",
         "cdn.modrinth.com",
         "meta.fabricmc.net",
         "maven.fabricmc.net",
@@ -43,11 +42,26 @@ public static class DownloadMirror
         "files.minecraftforge.net",
     };
 
+    /// <summary>账号 / 登录 / 带凭据的接口，永远不走 CDN。</summary>
+    public static readonly HashSet<string> NoCdnHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "login.microsoftonline.com",
+        "login.live.com",
+        "user.auth.xboxlive.com",
+        "xsts.auth.xboxlive.com",
+        "api.minecraftservices.com",
+        "api.modrinth.com",
+        "sessionserver.mojang.com",
+        "authserver.mojang.com",
+        "textures.minecraft.net",
+    };
+
     public static bool ShouldUseCdn(Uri uri)
     {
         var baseUrl = CustomCdnBase;
         if (baseUrl is null) return false;
         if (uri.Host.Equals(new Uri(baseUrl).Host, StringComparison.OrdinalIgnoreCase)) return false;
+        if (NoCdnHosts.Contains(uri.Host)) return false;
 
         return CdnHosts.Contains(uri.Host);
     }

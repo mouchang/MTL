@@ -105,6 +105,7 @@ public static class HttpUtil
             var baseUrl = DownloadMirror.CustomCdnBase;
 
             if (uri is null || baseUrl is null
+                || request.Headers.Authorization is not null
                 || !DownloadMirror.ShouldUseCdn(uri)
                 || BrokenHosts.ContainsKey(uri.Host))
                 return await base.SendAsync(request, cancellationToken);
