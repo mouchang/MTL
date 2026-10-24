@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.Views;
 
@@ -11,6 +12,8 @@ public partial class LaunchPage : UserControl
 {
     private IReadOnlyList<string> _versions = [];
     private bool _subscribed;
+    private FileSystemWatcher? _watcher;
+    private DispatcherTimer? _watcherDebounce;
 
     public LaunchPage()
     {
@@ -19,6 +22,7 @@ public partial class LaunchPage : UserControl
         {
             AlignAvatar();
             RefreshVersions();
+            StartWatchingVersions();
 
             if (!_subscribed && Window.GetWindow(this) is MainWindow main)
             {
@@ -30,6 +34,71 @@ public partial class LaunchPage : UserControl
             ApplyAccount();
         };
         NameCard.SizeChanged += (_, _) => AlignAvatar();
+        Unloaded += (_, _) => StopWatchingVersions();
+    }
+
+    /// <summary>实时监听 versions 目录，安装/删除/重命名版本后自动刷新，不用手动点刷新。</summary>
+    private void StartWatchingVersions()
+    {
+        if (_watcher is not null) return;
+
+        try
+        {
+            Directory.CreateDirectory(GamePaths.VersionsDir);
+
+            _watcherDebounce ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+            _watcherDebounce.Tick += (_, _) =>
+            {
+                _watcherDebounce?.Stop();
+                RefreshVersions();
+            };
+
+            _watcher = new FileSystemWatcher(GamePaths.VersionsDir)
+            {
+                NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName,
+                IncludeSubdirectories = false,
+            };
+
+            void Schedule()
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (_watcherDebounce is null) return;
+                    _watcherDebounce.Stop();
+                    _watcherDebounce.Start();
+                });
+            }
+
+            _watcher.Created += (_, _) => Schedule();
+            _watcher.Deleted += (_, _) => Schedule();
+            _watcher.Renamed += (_, _) => Schedule();
+            _watcher.EnableRaisingEvents = true;
+
+            AppLog.Info("watching versions dir: " + GamePaths.VersionsDir);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "watch versions");
+        }
+    }
+
+    private void StopWatchingVersions()
+    {
+        try
+        {
+            if (_watcher is not null)
+            {
+                _watcher.EnableRaisingEvents = false;
+                _watcher.Dispose();
+                _watcher = null;
+            }
+
+            _watcherDebounce?.Stop();
+        }
+        catch
+        {
+            // 忽略
+        }
     }
 
     /// <summary>头像中心与用户名胶囊中心对齐。</summary>
@@ -56,7 +125,15 @@ public partial class LaunchPage : UserControl
         VersionText.Text = SelectedVersion() ?? "未安装版本";
 
         var config = AppConfig.Current;
-        if (string.IsNullOrWhiteSpace(config.SelectedVersion) && _versions.Count > 0)
+
+        if (_versions.Count > 0 && !_versions.Contains(config.SelectedVersion))
+        {
+            // 当前版本被删除或改名：自动切换到第一个可用版本
+            config.SelectedVersion = _versions[0];
+            config.Save();
+            VersionText.Text = config.SelectedVersion;
+        }
+        else if (string.IsNullOrWhiteSpace(config.SelectedVersion) && _versions.Count > 0)
         {
             config.SelectedVersion = _versions[0];
             config.Save();
