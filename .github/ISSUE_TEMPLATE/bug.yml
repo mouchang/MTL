@@ -1,0 +1,66 @@
+name: Bug 报告
+description: 启动器崩溃、无法启动游戏、下载失败等问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！提交前请先确认使用的是最新版本，并尽量附上日志。
+
+  - type: textarea
+    id: describe
+    attributes:
+      label: 问题描述
+      description: 发生了什么？期望是什么？
+      placeholder: 点击启动后启动面板显示……/下载到 90% 失败……
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 出现……
+    validations:
+      required: true
+
+  - type: input
+    id: launcher-version
+    attributes:
+      label: 启动器版本
+      description: 设置 → 关于 里可以看到
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 系统 / Java
+      placeholder: Windows 11 24H2，Java 21.0.7
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: |
+        启动器日志：安装目录下的 `mtl.log` 或 `logs/app.log`
+        游戏日志：`game/logs/` 下最新的 `.log`
+        可以直接拖文件到这里，或粘贴关键报错。
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图 / 录屏
+      description: 可直接拖入图片或视频
+    validations:
+      required: false

@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.configuration }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c ${{ matrix.configuration }} --no-restore
+
+      - name: Publish (Release only)
+        if: matrix.configuration == 'Release'
+        run: >
+          dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:DebugType=None -o dist/publish
+
+      - name: Upload artifact
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MutsumiLauncher-win-x64
+          path: dist/publish
+          retention-days: 7

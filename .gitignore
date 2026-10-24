@@ -72,3 +72,16 @@ release/
 /data/
 /logs/
 *.pid
+
+# ---- 游戏数据 / 本地测试目录 ----
+game/
+src/**/game/
+*.mrpack
+
+# ---- Cloudflare Worker 本地文件 ----
+worker/node_modules/
+worker/.wrangler/
+worker/.dev.vars
+
+# ---- 本地工具 / 临时脚本 ----
+/_tools/

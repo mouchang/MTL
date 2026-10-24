@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用说明 / 打包文档
+    url: https://github.com/mouchang/MTL/blob/main/docs/packaging.md
+    about: 构建、发布与打包相关的说明
+  - name: 讨论区
+    url: https://github.com/mouchang/MTL/discussions
+    about: 不确定是不是 Bug、或者想先聊聊，可以在这里发

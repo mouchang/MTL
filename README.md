@@ -1,13 +1,22 @@
 # Mutsumi Launcher
 
 [![GitHub](https://img.shields.io/badge/GitHub-mouchang%2FMTL-2E3E35?logo=github)](https://github.com/mouchang/MTL)
+[![Build](https://github.com/mouchang/MTL/actions/workflows/build.yml/badge.svg)](https://github.com/mouchang/MTL/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-4E9E72)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![WPF](https://img.shields.io/badge/UI-WPF-8FD8A8)](#)
 
 **MTL** · 一个面向 Minecraft 的桌面启动器（WPF / .NET 10）。
 
-> 当前进度：`0.1.0`。已完成：真实版本清单、Java 探测、版本下载安装（含 assets）、启动游戏、离线账号、微软正版登录（需 Azure 应用先通过 Mojang 的应用审核）。
+> 当前版本 `0.1.0`。支持原版 / Fabric / Forge / NeoForge 安装与启动、Modrinth、整合包导入导出、自动更新。微软正版登录等待 Mojang 应用审核。
+
+| 文档 | 说明 |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 环境、构建、代码风格、提交规范 |
+| [CHANGELOG.md](CHANGELOG.md) | 版本更新记录 |
+| [SECURITY.md](SECURITY.md) | 安全问题报告方式 |
+| [docs/packaging.md](docs/packaging.md) | NSIS 打包、发布流程 |
+| [worker/README.md](worker/README.md) | Cloudflare Worker（更新代理 / NeoForge 反代） |
 
 ![启动页](docs/screenshots/launch.png)
 
@@ -45,14 +54,18 @@ $env:MTL_START_PAGE = "download"   # launch / download / settings
 
 ```text
 MutsumiLauncher/
-├─ src/MutsumiLauncher/
-│  ├─ Themes/          # 调色板、控件样式（按钮/标签页/卡片/手风琴）
-│  ├─ Views/           # MainWindow + Pages（Launch / Download / Settings）
-│  ├─ ViewModels/      # 下载页的版本数据（占位）
-│  ├─ Services/        # 日志
-│  ├─ Assets/          # 背景、头像、图标
-│  └─ app.manifest     # PerMonitorV2 DPI
-├─ docs/screenshots/   # 界面截图
+├─ src/MutsumiLauncher/          # 启动器主程序
+│  ├─ Themes/                   # 调色板、控件样式
+│  ├─ Views/                    # MainWindow、Pages、VersionSettings、浮层
+│  ├─ ViewModels/               # 列表项数据模型
+│  ├─ Services/                 # 安装、启动、下载、更新、账号等核心逻辑
+│  ├─ Assets/                   # 背景、头像、图标
+│  └─ app.manifest              # PerMonitorV2 DPI + 管理员权限
+├─ src/MutsumiLauncher.Setup/    # 旧版自定义安装器（保留）
+├─ installer/MutsumiLauncher.nsi # NSIS 安装脚本
+├─ worker/                       # Cloudflare Worker（更新代理 / NeoForge 反代）
+├─ docs/                         # 文档与界面截图
+├─ .github/workflows/            # Build / Release 自动构建
 └─ MutsumiLauncher.slnx
 ```
 
@@ -148,20 +161,26 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - [x] 仓库初始化与工程骨架
 - [x] 三页界面与导航（启动 / 下载 / 设置）
 - [x] 版本清单拉取（Mojang piston-meta，带本地缓存与失败回退）
-- [x] Java 探测（JAVA_HOME / PATH / 注册表 / 安装目录 / Minecraft 运行时，解析版本号）
+- [x] Java 探测与自动下载（Adoptium JRE）
 - [x] 版本安装（版本 JSON、client jar、libraries，SHA-1 校验，进度条）
+- [x] Fabric / Forge / NeoForge 安装与 PCL2 式合并实例
 - [x] 启动游戏（natives 解压、classpath、参数替换、按版本自动选 Java、进程与日志）
+- [x] 启动面板（进度 / PID / 日志 / 强制关闭 / 崩溃原因）
 - [x] 资源文件（assets 索引 + objects，断点续传、并发下载）
-- [x] 启动页版本切换与配置持久化（`config.json`）
+- [x] 启动页版本切换、实时监听与配置持久化
 - [x] 离线账号管理（添加 / 切换 / 删除，离线 UUID）
 - [x] 微软正版登录（设备码 OAuth → Xbox Live → XSTS → Minecraft 服务，需自备 clientId）
 - [x] 皮肤头像（微软账号拉皮肤裁正脸，离线默认史蒂夫）
-- [x] Modrinth 搜索与安装（mod / 资源包 / 光影 / 数据包）
-- [ ] 整合包 `.mrpack` 自动解析安装
-- [ ] 游戏启动与进程管理
-- [ ] 资源下载、校验与断点续传
-- [ ] 实例（版本隔离）管理
+- [x] Modrinth 搜索、详情、前置展示、加载器筛选
+- [x] Mod 管理（启用 / 禁用 / 删除 / 从文件安装 / 更新检查）
+- [x] 整合包 `.mrpack` 导入与导出（`.mrpack` / `.zip`）
+- [x] 下载任务面板（进度 / 速度 / 取消 / 重试）
+- [x] 自动更新（支持 Cloudflare Worker 代理）
+- [x] NSIS 单文件自包含安装器
+- [ ] 微软登录（等待 Mojang 应用审核）
+- [ ] CurseForge 搜索与整合包（等待 API 审核）
+- [ ] OptiFine 安装
 
 ## 许可
 
-待定（尚未添加 `LICENSE`）。MTL 为独立项目，与任何现有启动器无隶属关系。
+[MIT](LICENSE) © 2026 mouchang。MTL 为独立项目，与任何现有启动器无隶属关系。

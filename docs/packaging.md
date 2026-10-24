@@ -1,5 +1,23 @@
 # 打包发布
 
+## 一键发布（GitHub Actions）
+
+推送 `v*` tag 会自动完成：
+
+1. `dotnet publish` 自包含发布；
+2. 安装 NSIS 并编译 `installer/MutsumiLauncher.nsi`；
+3. 创建 GitHub Release，上传 `MutsumiLauncher-<版本>-Setup.exe`。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+也可以在 Actions → Release → Run workflow 手动输入 tag。
+
+> 自动更新读取的是 `releases/latest`，所以发布时**必须**附带文件名包含 `Setup` 的 exe，
+> 否则启动器会认为没有可用更新。
+
 自包含（推荐，用户无需安装 .NET）：
 
 ```bash

@@ -3,6 +3,7 @@
 
 # Windows 脚本与 VS 工程文件保持 CRLF
 *.sln       text eol=crlf
+*.slnx      text eol=crlf
 *.csproj    text eol=crlf
 *.vbproj    text eol=crlf
 *.fsproj    text eol=crlf
