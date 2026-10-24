@@ -74,8 +74,21 @@ public sealed class GameLauncher
 
         var classpath = BuildClasspath(detail, jarPath);
 
+        var missing = classpath.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(entry => !File.Exists(entry))
+            .ToList();
+
+        if (missing.Count > 0)
+        {
+            var names = string.Join("、", missing.Take(3).Select(Path.GetFileName));
+            return new LaunchResult(false,
+                $"缺少 {missing.Count} 个依赖文件（如 {names}），请到下载页重新安装该版本以补全文件。",
+                null);
+        }
+
         var gameDir = options.VersionIsolation ? versionDir : GamePaths.Root;
         Directory.CreateDirectory(gameDir);
+        GameOptions.EnsureLanguage(gameDir);
 
         progress?.Report(new LaunchProgress(20, "选择 Java…"));
         var java = await PickJavaAsync(detail, options.JavaPath);
@@ -99,6 +112,8 @@ public sealed class GameLauncher
             CreateNoWindow = true,
         };
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+
+        AppLog.Info($"launch command: {java.ExecutablePath} {string.Join(' ', arguments)}");
 
         var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) AppendLine(logPath, e.Data); };
@@ -213,6 +228,8 @@ public sealed class GameLauncher
         {
             foreach (var item in jvmArray.EnumerateArray())
             {
+                if (!IsArgumentAllowed(item)) continue;
+
                 foreach (var raw in ReadArgumentValues(item))
                 {
                     var value = Substitute(raw, values);
@@ -242,17 +259,10 @@ public sealed class GameLauncher
 
                 foreach (var item in element.Value.EnumerateArray())
                 {
-                    if (item.ValueKind == JsonValueKind.String)
-                    {
-                        arguments.Add(Substitute(item.GetString() ?? string.Empty, values));
-                    }
-                    else if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("value", out var value))
-                    {
-                        if (value.ValueKind == JsonValueKind.String)
-                            arguments.Add(Substitute(value.GetString() ?? string.Empty, values));
-                        else if (value.ValueKind == JsonValueKind.Array)
-                            arguments.AddRange(value.EnumerateArray().Select(v => Substitute(v.GetString() ?? string.Empty, values)));
-                    }
+                    if (!IsArgumentAllowed(item)) continue;
+
+                    foreach (var raw in ReadArgumentValues(item))
+                        arguments.Add(Substitute(raw, values));
                 }
             }
         }
@@ -282,6 +292,49 @@ public sealed class GameLauncher
         var json = "{\"game\":[" + string.Join(",", game) + "],\"jvm\":[" + string.Join(",", jvm) + "]}";
         using var document = System.Text.Json.JsonDocument.Parse(json);
         return document.RootElement.Clone();
+    }
+
+    /// <summary>按 rules 过滤参数（例如 -XstartOnFirstThread 只允许 macOS）。</summary>
+    private static bool IsArgumentAllowed(System.Text.Json.JsonElement item)
+    {
+        if (item.ValueKind != System.Text.Json.JsonValueKind.Object) return true;
+        if (!item.TryGetProperty("rules", out var rules)
+            || rules.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return true;
+
+        var allowed = false;
+
+        foreach (var rule in rules.EnumerateArray())
+        {
+            if (!RuleMatches(rule)) continue;
+
+            var action = rule.TryGetProperty("action", out var actionElement)
+                ? actionElement.GetString()
+                : "allow";
+
+            allowed = action == "allow";
+        }
+
+        return allowed;
+    }
+
+    private static bool RuleMatches(System.Text.Json.JsonElement rule)
+    {
+        // 需要启动器特性判断的规则（demo、自定义分辨率等）一律跳过
+        if (rule.TryGetProperty("features", out _)) return false;
+
+        if (rule.TryGetProperty("os", out var os))
+        {
+            if (os.TryGetProperty("name", out var name)
+                && !string.Equals(name.GetString(), "windows", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (os.TryGetProperty("arch", out var arch)
+                && !string.Equals(arch.GetString(), "x86_64", StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
     }
 
     private static IEnumerable<string> ReadArgumentValues(System.Text.Json.JsonElement item)

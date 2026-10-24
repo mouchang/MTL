@@ -124,7 +124,11 @@ public partial class LaunchPage : UserControl
             var options = new LaunchOptions(account.Name, account.Uuid, account.AccessToken,
                 account.IsMicrosoft, settings.EffectiveJavaPath, settings.EffectiveMemoryMb,
                 settings.EffectiveIsolation);
-            var result = await launcher.LaunchAsync(version, options);
+
+            var progress = new Progress<LaunchProgress>(p =>
+                button.Content = p.Percent > 0 ? $"{p.Message}" : button.Content);
+
+            var result = await launcher.LaunchAsync(version, options, progress);
             owner?.ShowToast(result.Message);
         }
         catch (Exception ex)

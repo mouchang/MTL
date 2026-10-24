@@ -104,10 +104,20 @@ public sealed class VersionInstaller
 
         var name = string.IsNullOrWhiteSpace(instanceName) ? id : instanceName.Trim();
         var versionDir = Path.Combine(GamePaths.VersionsDir, name);
-        if (Directory.Exists(versionDir) && Directory.EnumerateFiles(versionDir).Any())
-            throw new InvalidOperationException($"实例「{name}」已存在，请换一个实例名称。");
-
         Directory.CreateDirectory(versionDir);
+
+        // 上次下载中断会留下 .tmp，先清掉；已存在的完整文件会被跳过
+        foreach (var stale in Directory.EnumerateFiles(versionDir, "*.tmp"))
+        {
+            try
+            {
+                File.Delete(stale);
+            }
+            catch
+            {
+                // 忽略清理失败
+            }
+        }
 
         progress?.Report(new InstallProgress(1, $"获取 {id} 的版本信息…"));
         var json = await Http.GetStringAsync(
@@ -124,8 +134,19 @@ public sealed class VersionInstaller
         {
             progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
             var clientUrl = DownloadMirror.ClientUrl(id, client.Url);
+            var clientBase = transferred;
+            var lastClientReport = DateTime.UtcNow;
+
             await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{name}.jar"), client.Sha1,
-                cancellationToken);
+                cancellationToken, chunk =>
+                {
+                    if ((DateTime.UtcNow - lastClientReport).TotalMilliseconds < 180) return;
+                    lastClientReport = DateTime.UtcNow;
+
+                    progress?.Report(new InstallProgress(6 + Math.Min(14, chunk / 1048576.0),
+                        $"下载客户端 jar… {chunk / 1048576.0:0.0} MB", clientBase + chunk));
+                });
+
             transferred += client.Size;
         }
 
@@ -148,10 +169,22 @@ public sealed class VersionInstaller
                 transferred));
 
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
-            if (File.Exists(target)) continue;
+            if (File.Exists(target) && new FileInfo(target).Length > 0) continue;
 
             var libraryUrl = DownloadMirror.LibraryUrl(artifact.Url, artifact.Path);
-            await DownloadAsync(libraryUrl, target, artifact.Sha1, cancellationToken);
+            var libraryBase = transferred;
+            var lastLibraryReport = DateTime.UtcNow;
+            var libraryPercent = percent;
+
+            await DownloadAsync(libraryUrl, target, artifact.Sha1, cancellationToken, chunk =>
+            {
+                if ((DateTime.UtcNow - lastLibraryReport).TotalMilliseconds < 180) return;
+                lastLibraryReport = DateTime.UtcNow;
+
+                progress?.Report(new InstallProgress(libraryPercent,
+                    $"下载依赖 {index}/{artifacts.Count}…", libraryBase + chunk));
+            });
+
             transferred += artifact.Size;
         }
 
@@ -168,6 +201,9 @@ public sealed class VersionInstaller
 
         progress?.Report(new InstallProgress(100, "安装完成"));
         AppLog.Info($"install {id} -> {name}: done, {index} artifacts");
+
+        var gameDir = InstanceSettings.Load(name).EffectiveIsolation ? versionDir : GamePaths.Root;
+        GameOptions.EnsureLanguage(gameDir);
     }
 
     private static IEnumerable<Artifact> GetWindowsArtifacts(Library library)
@@ -206,7 +242,7 @@ public sealed class VersionInstaller
     }
 
     private static async Task DownloadAsync(string url, string targetPath, string? sha1,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action<long>? onBytes = null)
     {
         var directory = Path.GetDirectoryName(targetPath);
         if (directory is not null) Directory.CreateDirectory(directory);
@@ -216,9 +252,22 @@ public sealed class VersionInstaller
         using (var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
         {
             response.EnsureSuccessStatusCode();
+
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await using var target = File.Create(tempPath);
-            await source.CopyToAsync(target, cancellationToken);
+
+            await using (var target = File.Create(tempPath))
+            {
+                var buffer = new byte[81920];
+                long total = 0;
+                int read;
+
+                while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                {
+                    await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    total += read;
+                    onBytes?.Invoke(total);
+                }
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(sha1))

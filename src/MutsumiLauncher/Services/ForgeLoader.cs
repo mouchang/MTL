@@ -185,10 +185,6 @@ public sealed class ForgeLoader
             var id = Path.GetFileName(produced[0]);
             var finalName = string.IsNullOrWhiteSpace(instanceName) ? id : instanceName.Trim();
             var finalDir = Path.Combine(GamePaths.VersionsDir, finalName);
-            if (!finalName.Equals(id, StringComparison.OrdinalIgnoreCase)
-                && Directory.Exists(finalDir) && Directory.EnumerateFiles(finalDir).Any())
-                throw new InvalidOperationException($"实例「{finalName}」已存在，请换一个实例名称。");
-
             CopyDirectory(produced[0], finalDir);
 
             if (!finalName.Equals(id, StringComparison.OrdinalIgnoreCase))

@@ -54,9 +54,6 @@ public sealed class FabricLoader
             ? $"fabric-loader-{loaderVersion}-{gameVersion}"
             : instanceName.Trim();
         var versionDir = Path.Combine(GamePaths.VersionsDir, id);
-        if (Directory.Exists(versionDir) && Directory.EnumerateFiles(versionDir).Any())
-            throw new InvalidOperationException($"实例「{id}」已存在，请换一个实例名称。");
-
         Directory.CreateDirectory(versionDir);
         await File.WriteAllTextAsync(Path.Combine(versionDir, $"{id}.json"), json, cancellationToken);
 
