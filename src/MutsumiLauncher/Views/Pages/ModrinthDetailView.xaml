@@ -87,35 +87,55 @@
                         <ItemsControl x:Name="FileList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Style="{StaticResource GhostButton}" Padding="10,8"
-                                            Margin="0,2,0,0" HorizontalContentAlignment="Stretch"
-                                            Tag="{Binding}" Click="InstallFile_Click">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="30" Height="30" CornerRadius="8"
-                                                    Background="{Binding LoaderBrush}"
-                                                    VerticalAlignment="Center" Margin="0,0,10,0">
-                                                <TextBlock Text="{Binding LoaderInitial}" Foreground="White"
-                                                           FontSize="11" FontWeight="SemiBold"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding Title}" FontSize="14"
-                                                           Foreground="{StaticResource Ink}" />
-                                                <TextBlock Text="{Binding Subtitle}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}"
-                                                           Margin="0,2,0,0" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="安装" FontSize="12"
-                                                       Foreground="{StaticResource AccentDeep}"
-                                                       VerticalAlignment="Center" Margin="12,0,0,0" />
-                                        </Grid>
-                                    </Button>
+                                    <StackPanel Margin="0,2,0,0">
+                                        <Button Style="{StaticResource GhostButton}" Padding="10,8"
+                                                HorizontalContentAlignment="Stretch"
+                                                Tag="{Binding}" Click="InstallFile_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="30" Height="30" CornerRadius="8"
+                                                        Background="{Binding LoaderBrush}"
+                                                        VerticalAlignment="Center" Margin="0,0,10,0">
+                                                    <TextBlock Text="{Binding LoaderInitial}" Foreground="White"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Title}" FontSize="14"
+                                                               Foreground="{StaticResource Ink}" />
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="11"
+                                                               Foreground="{StaticResource InkMute}"
+                                                               Margin="0,2,0,0" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="安装" FontSize="12"
+                                                           Foreground="{StaticResource AccentDeep}"
+                                                           VerticalAlignment="Center" Margin="12,0,0,0" />
+                                            </Grid>
+                                        </Button>
+
+                                        <ItemsControl ItemsSource="{Binding Dependencies}" Margin="40,2,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource GhostButton}" Padding="8,2"
+                                                            Margin="0,0,6,4" Tag="{Binding}"
+                                                            Click="Dependency_Click">
+                                                        <TextBlock Text="{Binding Label}" FontSize="11"
+                                                                   Foreground="{StaticResource AccentDeep}" />
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

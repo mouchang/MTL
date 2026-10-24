@@ -130,6 +130,17 @@ public partial class MainWindow : Window
         FloaterText.Text = $"下载中 {active} 项 · {percent:0}%";
     }
 
+    /// <summary>跳到下载页的社区资源 Mod 页面（会先关掉版本设置浮层）。</summary>
+    public void OpenCommunityMod(string? gameVersion, string? loader)
+    {
+        if (_settingsOpen) CloseVersionSettings();
+
+        ShowPage("download");
+
+        if (_pages.TryGetValue("download", out var page) && page is DownloadPage download)
+            download.OpenCommunityMod(gameVersion, loader);
+    }
+
     public void OpenFolderBrowser(string path, string? title = null)
     {
         var browser = new FolderBrowserView();

@@ -18,6 +18,8 @@ public partial class CommunitySearchView : UserControl
     private string _projectType = "mod";
     private int _page;
     private long _totalHits;
+    private string? _presetGameVersion;
+    private string? _presetLoader;
 
     /// <summary>点击结果行时请求上层打开详情页。</summary>
     public event Action<ModrinthItem, string?>? DetailRequested;
@@ -50,6 +52,61 @@ public partial class CommunitySearchView : UserControl
         _page = 0;
         _ = LoadVersionsAsync();
         _ = RunSearchAsync(0);
+    }
+
+    /// <summary>预选游戏版本 / 加载器并立即搜索（从版本设置的 Mod 管理跳转过来）。</summary>
+    public void Preset(string? gameVersion, string? loader)
+    {
+        _presetGameVersion = gameVersion;
+        _presetLoader = loader;
+        _ = ApplyPresetAsync();
+    }
+
+    private async Task ApplyPresetAsync()
+    {
+        await LoadVersionsAsync();
+
+        if (!string.IsNullOrWhiteSpace(_presetGameVersion))
+        {
+            var index = -1;
+
+            for (var i = 1; i < VersionCombo.Items.Count; i++)
+            {
+                if (VersionCombo.Items[i] is ComboBoxItem item
+                    && string.Equals(item.Tag as string, _presetGameVersion, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index < 0)
+            {
+                VersionCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = _presetGameVersion,
+                    Tag = _presetGameVersion,
+                });
+                index = VersionCombo.Items.Count - 1;
+            }
+
+            VersionCombo.SelectedIndex = index;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_presetLoader))
+        {
+            for (var i = 1; i < LoaderCombo.Items.Count; i++)
+            {
+                if (LoaderCombo.Items[i] is ComboBoxItem item
+                    && string.Equals(item.Tag as string, _presetLoader, StringComparison.OrdinalIgnoreCase))
+                {
+                    LoaderCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        await RunSearchAsync(0);
     }
 
     private async Task RunSearchAsync(int page = 0)

@@ -29,6 +29,33 @@ public partial class DownloadPage : UserControl
         _ = _viewModel?.LoadAsync();
     }
 
+    /// <summary>从版本设置跳转到「社区资源 → Mod」，并预选版本与加载器。</summary>
+    public void OpenCommunityMod(string? gameVersion, string? loader)
+    {
+        CommunityToggle.IsChecked = true;
+        CommunityItems.Visibility = Visibility.Visible;
+
+        if (_communityView is null)
+        {
+            _communityView = new CommunitySearchView();
+            _communityView.DetailRequested += OpenModrinthDetail;
+        }
+
+        CommunityModRadio.IsChecked = true;
+
+        // 单选按钮已经处于选中状态时不会触发 Checked，这里保证页面已配置
+        if (!ReferenceEquals(CommunityHost.Content, _communityView))
+        {
+            _communityView.Configure("mod", TitleFor("mod"));
+            CommunityHost.Content = _communityView;
+        }
+
+        CommunityHost.Visibility = Visibility.Visible;
+        OriginalPanel.Visibility = Visibility.Collapsed;
+
+        _communityView.Preset(gameVersion, loader);
+    }
+
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         _ = _viewModel?.LoadAsync(forceRefresh: true);

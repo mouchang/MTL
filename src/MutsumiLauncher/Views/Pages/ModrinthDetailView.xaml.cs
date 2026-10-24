@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,11 +10,21 @@ using MutsumiLauncher.ViewModels;
 
 namespace MutsumiLauncher.Views.Pages;
 
+public sealed class DependencyChip
+{
+    public required string ProjectId { get; init; }
+
+    public required string Label { get; init; }
+}
+
 public sealed class ModrinthFileRow
 {
     public required ModrinthVersion Version { get; init; }
 
     public required ModrinthFile File { get; init; }
+
+    /// <summary>该版本的前置（异步填充）。</summary>
+    public ObservableCollection<DependencyChip> Dependencies { get; } = [];
 
     public string Title => Version.Name;
 
@@ -61,6 +73,8 @@ public partial class ModrinthDetailView : UserControl
     private ModrinthProject? _project;
     private IReadOnlyList<ModrinthVersion> _versions = [];
     private string? _selectedGameVersion;
+    private string? _currentGameVersion;
+    private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Action? _onBack;
     private Action<string>? _toast;
 
@@ -73,6 +87,7 @@ public partial class ModrinthDetailView : UserControl
         Action<string> toast)
     {
         _item = item;
+        _currentGameVersion = initialGameVersion;
         _onBack = onBack;
         _toast = toast;
 
@@ -233,7 +248,7 @@ public partial class ModrinthDetailView : UserControl
 
         ListHeader.Text = gameVersion is null ? "全部版本" : $"{gameVersion}（所选版本）";
 
-        FileList.ItemsSource = versions
+        var rows = versions
             .Select(v => new ModrinthFileRow
             {
                 Version = v,
@@ -241,6 +256,89 @@ public partial class ModrinthDetailView : UserControl
             })
             .Where(row => row.File is not null)
             .ToList();
+
+        FileList.ItemsSource = rows;
+
+        foreach (var row in rows)
+            _ = LoadDependenciesAsync(row);
+    }
+
+    private async Task LoadDependenciesAsync(ModrinthFileRow row)
+    {
+        try
+        {
+            foreach (var dependency in row.Version.Dependencies)
+            {
+                if (string.IsNullOrWhiteSpace(dependency.ProjectId)) continue;
+                if (dependency.DependencyType is "embedded" or "incompatible") continue;
+
+                var project = await GetProjectCachedAsync(dependency.ProjectId!);
+                var title = project?.Title ?? dependency.ProjectId!;
+                var prefix = dependency.DependencyType == "required" ? "前置：" : "可选：";
+
+                Dispatcher.Invoke(() => row.Dependencies.Add(new DependencyChip
+                {
+                    ProjectId = dependency.ProjectId!,
+                    Label = prefix + title,
+                }));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "load dependencies");
+        }
+    }
+
+    private async Task<ModrinthProject?> GetProjectCachedAsync(string projectId)
+    {
+        if (_projectCache.TryGetValue(projectId, out var cached)) return cached;
+
+        var project = await _client.GetProjectAsync(projectId);
+        _projectCache[projectId] = project;
+        return project;
+    }
+
+    private async void Dependency_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: DependencyChip chip }) return;
+
+        try
+        {
+            Loading.IsActive = true;
+
+            var project = await GetProjectCachedAsync(chip.ProjectId);
+            if (project is null)
+            {
+                _toast?.Invoke("打不开这个前置项目。");
+                return;
+            }
+
+            var versions = await _client.GetVersionsAsync(project.Id);
+            var hit = new ModrinthHit
+            {
+                ProjectId = project.Id,
+                Slug = project.Slug,
+                Title = project.Title,
+                Description = project.Description,
+                Author = string.Empty,
+                Downloads = project.Downloads,
+                IconUrl = project.IconUrl,
+                Categories = project.Categories,
+                ProjectType = project.ProjectType,
+            };
+
+            var item = new ModrinthItem { Hit = hit };
+            await LoadAsync(item, _currentGameVersion, _onBack!, _toast!);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "open dependency");
+            _toast?.Invoke("打开前置失败：" + ex.Message);
+        }
+        finally
+        {
+            Loading.IsActive = false;
+        }
     }
 
     private static double ParseGameVersion(string version)

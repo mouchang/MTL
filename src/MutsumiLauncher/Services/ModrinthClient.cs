@@ -73,6 +73,8 @@ public sealed class ModrinthProject
     [JsonPropertyName("updated")] public DateTimeOffset Updated { get; set; }
 
     [JsonPropertyName("source_url")] public string? SourceUrl { get; set; }
+
+    [JsonPropertyName("project_type")] public string ProjectType { get; set; } = "mod";
 }
 
 public sealed class ModrinthVersion
@@ -94,6 +96,19 @@ public sealed class ModrinthVersion
     [JsonPropertyName("downloads")] public long Downloads { get; set; }
 
     [JsonPropertyName("files")] public List<ModrinthFile> Files { get; set; } = [];
+
+    [JsonPropertyName("dependencies")] public List<ModrinthDependency> Dependencies { get; set; } = [];
+}
+
+public sealed class ModrinthDependency
+{
+    [JsonPropertyName("version_id")] public string? VersionId { get; set; }
+
+    [JsonPropertyName("project_id")] public string? ProjectId { get; set; }
+
+    [JsonPropertyName("file_name")] public string? FileName { get; set; }
+
+    [JsonPropertyName("dependency_type")] public string DependencyType { get; set; } = "required";
 }
 
 public sealed class ModrinthFile

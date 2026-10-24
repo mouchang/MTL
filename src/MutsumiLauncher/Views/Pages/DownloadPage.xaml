@@ -35,7 +35,7 @@
 
                         <StackPanel x:Name="CommunityItems" Margin="0,0,0,6">
                             <RadioButton Style="{StaticResource SidebarSubItem}" GroupName="DownloadSource"
-                                         Tag="mod" Checked="Source_Checked">
+                                         Tag="mod" x:Name="CommunityModRadio" Checked="Source_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE7B8;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,10,0" />
                                     <TextBlock Text="mod" VerticalAlignment="Center" />

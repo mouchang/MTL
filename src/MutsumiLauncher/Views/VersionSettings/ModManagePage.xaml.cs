@@ -144,6 +144,24 @@ public partial class ModManagePage : UserControl, IInstancePage
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
 
+    private void InstallNewMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        var info = InstanceService.GetInfo(_version);
+        var gameVersion = info.InheritsFrom ?? info.VersionId;
+
+        var loader = info.Loader switch
+        {
+            "Fabric" => "fabric",
+            "Forge" => "forge",
+            "NeoForge" => "neoforge",
+            _ => null,
+        };
+
+        (Window.GetWindow(this) as MainWindow)?.OpenCommunityMod(gameVersion, loader);
+    }
+
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
