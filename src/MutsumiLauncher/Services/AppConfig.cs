@@ -47,7 +47,7 @@ public sealed class AppConfig
     public bool NetworkModeChosen { get; set; }
 
     /// <summary>全接口 CDN 前缀（如自建 Cloudflare Worker）；默认走 mtl.dpdns.org。</summary>
-    public string VanillaCdnBase { get; set; } = "https://mtl.dpdns.org";
+    public string VanillaCdnBase { get; set; } = string.Empty;
 
     /// <summary>用户是否手动改过 CDN 前缀（改过就不再自动填默认值）。</summary>
     public bool CdnChosen { get; set; }
@@ -81,11 +81,6 @@ public sealed class AppConfig
                         config.Save();
                     }
 
-                    if (!config.CdnChosen && string.IsNullOrWhiteSpace(config.VanillaCdnBase))
-                    {
-                        config.VanillaCdnBase = "https://mtl.dpdns.org";
-                        config.Save();
-                    }
 
                     return config;
                 }

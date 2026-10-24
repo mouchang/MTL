@@ -20,9 +20,6 @@ public sealed class ForgeLoader
 {
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(10));
 
-    /// <summary>NeoForge 官方 maven 在国内直连不通，走 Cloudflare 反代（路径规则：/&lt;host&gt;/&lt;path&gt;）。</summary>
-    private const string NeoForgeCdnBase = "https://mtl.dpdns.org/maven.neoforged.net";
-
     private const string NeoForgeOriginBase = "https://maven.neoforged.net";
 
     private static string NeoForgeVersionListUrl(string baseUrl)
@@ -144,21 +141,32 @@ public sealed class ForgeLoader
             }
             else
             {
-                try
+                var cdnBase = DownloadMirror.CustomCdnBase;
+                var cdnBaseUrl = cdnBase is null ? null : $"{cdnBase}/maven.neoforged.net";
+
+                if (cdnBaseUrl is not null)
                 {
-                    await DownloadAsync(NeoForgeInstallerUrl(NeoForgeCdnBase, loaderVersion), installer,
-                        cancellationToken);
+                    try
+                    {
+                        await DownloadAsync(NeoForgeInstallerUrl(cdnBaseUrl, loaderVersion), installer,
+                            cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Error(ex, "neoforge cdn installer");
+                        await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion),
+                            installer, cancellationToken);
+                    }
+
+                    // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
+                    progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
+                    await PatchInstallerHostsAsync(installer, cdnBaseUrl, cancellationToken);
                 }
-                catch (Exception ex)
+                else
                 {
-                    AppLog.Error(ex, "neoforge cdn installer");
                     await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion), installer,
                         cancellationToken);
                 }
-
-                // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
-                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
-                await PatchInstallerHostsAsync(installer, cancellationToken);
             }
 
             // 3. 选 Java
@@ -302,7 +310,8 @@ public sealed class ForgeLoader
     /// 把安装器 jar 内 JSON 里的 maven.neoforged.net 地址替换成 CDN，
     /// 这样安装器自身下载依赖时也走 CDN（无需代理）。
     /// </summary>
-    private static async Task PatchInstallerHostsAsync(string jarPath, CancellationToken cancellationToken)
+    private static async Task PatchInstallerHostsAsync(string jarPath, string cdnBaseUrl,
+        CancellationToken cancellationToken)
     {
         using var archive = ZipFile.Open(jarPath, ZipArchiveMode.Update);
 
@@ -324,8 +333,8 @@ public sealed class ForgeLoader
             if (!text.Contains("maven.neoforged.net", StringComparison.OrdinalIgnoreCase)) continue;
 
             var patched = text
-                .Replace("https://maven.neoforged.net", NeoForgeCdnBase, StringComparison.OrdinalIgnoreCase)
-                .Replace("http://maven.neoforged.net", NeoForgeCdnBase, StringComparison.OrdinalIgnoreCase);
+                .Replace("https://maven.neoforged.net", cdnBaseUrl, StringComparison.OrdinalIgnoreCase)
+                .Replace("http://maven.neoforged.net", cdnBaseUrl, StringComparison.OrdinalIgnoreCase);
 
             var name = entry.FullName;
             entry.Delete();
