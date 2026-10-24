@@ -19,6 +19,17 @@ public sealed class ForgeLoader
 {
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(10));
 
+    /// <summary>NeoForge 官方 maven 在国内直连不通，走 Cloudflare 反代（路径规则：/&lt;host&gt;/&lt;path&gt;）。</summary>
+    private const string NeoForgeCdnBase = "https://mtl.dpdns.org/maven.neoforged.net";
+
+    private const string NeoForgeOriginBase = "https://maven.neoforged.net";
+
+    private static string NeoForgeVersionListUrl(string baseUrl)
+        => $"{baseUrl}/api/maven/versions/releases/net/neoforged/neoforge";
+
+    private static string NeoForgeInstallerUrl(string baseUrl, string version)
+        => $"{baseUrl}/releases/net/neoforged/neoforge/{version}/neoforge-{version}-installer.jar";
+
     public static async Task<IReadOnlyList<string>> GetVersionsAsync(LoaderKind kind, string gameVersion,
         CancellationToken cancellationToken = default)
     {
@@ -48,9 +59,9 @@ public sealed class ForgeLoader
     private static async Task<IReadOnlyList<string>> GetNeoForgeVersionsAsync(string gameVersion,
         CancellationToken cancellationToken)
     {
-        var json = await Http.GetStringAsync(
-            "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge",
-            cancellationToken);
+        var json = await GetStringWithFallbackAsync(
+            NeoForgeVersionListUrl(NeoForgeCdnBase),
+            NeoForgeVersionListUrl(NeoForgeOriginBase), cancellationToken);
 
         using var document = JsonDocument.Parse(json);
         var prefix = NeoForgePrefix(gameVersion);
@@ -120,11 +131,28 @@ public sealed class ForgeLoader
 
             // 2. 下载安装器
             progress?.Report(new InstallProgress(8, "下载安装器…"));
-            var installerUrl = kind == LoaderKind.Forge
-                ? $"https://bmclapi2.bangbang93.com/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer"
-                : $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{loaderVersion}/neoforge-{loaderVersion}-installer.jar";
             var installer = Path.Combine(temp, "installer.jar");
-            await DownloadAsync(installerUrl, installer, cancellationToken);
+
+            if (kind == LoaderKind.Forge)
+            {
+                var forgeUrl =
+                    $"https://bmclapi2.bangbang93.com/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer";
+                await DownloadAsync(forgeUrl, installer, cancellationToken);
+            }
+            else
+            {
+                try
+                {
+                    await DownloadAsync(NeoForgeInstallerUrl(NeoForgeCdnBase, loaderVersion), installer,
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "neoforge cdn installer");
+                    await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion), installer,
+                        cancellationToken);
+                }
+            }
 
             // 3. 选 Java
             var java = await PickJavaAsync(gameVersion);
@@ -265,6 +293,20 @@ public sealed class ForgeLoader
         }
 
         return 8;
+    }
+
+    private static async Task<string> GetStringWithFallbackAsync(string primary, string fallback,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Http.GetStringAsync(primary, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "cdn request");
+            return await Http.GetStringAsync(fallback, cancellationToken);
+        }
     }
 
     private static async Task DownloadAsync(string url, string target, CancellationToken cancellationToken)
