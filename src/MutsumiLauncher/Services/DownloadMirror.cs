@@ -14,18 +14,44 @@ public static class DownloadMirror
     public static bool UseBmclapi =>
         !AppConfig.Current.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>自定义 CDN 前缀（例如自建 Cloudflare Worker），为空则不启用。</summary>
+    public static string? CustomCdnBase
+    {
+        get
+        {
+            var value = AppConfig.Current.VanillaCdnBase;
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim().TrimEnd('/');
+        }
+    }
+
+    private static string ApplyCdn(string url)
+    {
+        var baseUrl = CustomCdnBase;
+        if (baseUrl is null || string.IsNullOrWhiteSpace(url)) return url;
+
+        try
+        {
+            var uri = new Uri(url);
+            return $"{baseUrl}/{uri.Host}{uri.AbsolutePath}{uri.Query}";
+        }
+        catch
+        {
+            return url;
+        }
+    }
+
     public static bool UseMcim =>
         !AppConfig.Current.ModMirror.Equals("official", StringComparison.OrdinalIgnoreCase);
 
-    public static string ManifestUrl => UseBmclapi
+    public static string ManifestUrl => ApplyCdn(UseBmclapi
         ? $"{BmclapiBase}/mc/game/version_manifest_v2.json"
-        : OfficialManifest;
+        : OfficialManifest);
 
     public static string VersionJsonUrl(string id, string officialUrl) =>
-        UseBmclapi ? $"{BmclapiBase}/version/{id}/json" : officialUrl;
+        ApplyCdn(UseBmclapi ? $"{BmclapiBase}/version/{id}/json" : officialUrl);
 
     public static string ClientUrl(string id, string officialUrl) =>
-        UseBmclapi ? $"{BmclapiBase}/version/{id}/client" : officialUrl;
+        ApplyCdn(UseBmclapi ? $"{BmclapiBase}/version/{id}/client" : officialUrl);
 
     /// <summary>libraries.minecraft.net 的资源走 BMCLAPI 的 maven 路由。</summary>
     public static string LibraryUrl(string? officialUrl, string? path)
@@ -39,9 +65,9 @@ public static class DownloadMirror
         return officialUrl;
     }
 
-    public static string AssetObjectUrl(string hash) => UseBmclapi
+    public static string AssetObjectUrl(string hash) => ApplyCdn(UseBmclapi
         ? $"{BmclapiBase}/assets/{hash[..2]}/{hash}"
-        : $"https://resources.download.minecraft.net/{hash[..2]}/{hash}";
+        : $"https://resources.download.minecraft.net/{hash[..2]}/{hash}");
 
     public static string ModrinthApiBase => UseMcim ? $"{McimBase}/modrinth/v2" : OfficialModrinthApi;
 

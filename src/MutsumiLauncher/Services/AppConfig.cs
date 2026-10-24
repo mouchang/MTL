@@ -46,6 +46,9 @@ public sealed class AppConfig
     /// <summary>用户是否手动选过代理模式；没选过时允许自动迁移到 auto。</summary>
     public bool NetworkModeChosen { get; set; }
 
+    /// <summary>自定义原版 CDN 前缀（可选），如 https://你的域名；为空表示不启用。</summary>
+    public string VanillaCdnBase { get; set; } = string.Empty;
+
     public string ProxyHost { get; set; } = "127.0.0.1";
 
     public int ProxyPort { get; set; } = 7890;

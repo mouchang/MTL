@@ -106,19 +106,6 @@ public sealed class VersionInstaller
         var versionDir = Path.Combine(GamePaths.VersionsDir, name);
         Directory.CreateDirectory(versionDir);
 
-        // 上次下载中断会留下 .tmp，先清掉；已存在的完整文件会被跳过
-        foreach (var stale in Directory.EnumerateFiles(versionDir, "*.tmp"))
-        {
-            try
-            {
-                File.Delete(stale);
-            }
-            catch
-            {
-                // 忽略清理失败
-            }
-        }
-
         progress?.Report(new InstallProgress(1, $"获取 {id} 的版本信息…"));
         var json = await Http.GetStringAsync(
             DownloadMirror.VersionJsonUrl(id, versionUrl), cancellationToken);
@@ -249,16 +236,33 @@ public sealed class VersionInstaller
 
         var tempPath = targetPath + ".tmp";
 
-        using (var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            response.EnsureSuccessStatusCode();
+            var existing = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
 
-            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-            await using (var target = File.Create(tempPath))
+            try
             {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+                if (existing > 0)
+                    request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existing, null);
+
+                using var response = await Http.SendAsync(request,
+                    HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                var resumed = existing > 0
+                              && response.StatusCode == System.Net.HttpStatusCode.PartialContent;
+
+                if (!resumed) existing = 0;
+                response.EnsureSuccessStatusCode();
+
+                await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var target = new FileStream(tempPath,
+                    resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None,
+                    81920, useAsync: true);
+
                 var buffer = new byte[81920];
-                long total = 0;
+                var total = existing;
                 int read;
 
                 while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
@@ -268,19 +272,24 @@ public sealed class VersionInstaller
                     onBytes?.Invoke(total);
                 }
             }
-        }
+            catch (Exception ex) when (attempt == 0)
+            {
+                AppLog.Error(ex, $"download {url}");
+                continue;
+            }
 
-        if (!string.IsNullOrWhiteSpace(sha1))
-        {
+            if (string.IsNullOrWhiteSpace(sha1)) break;
+
             var bytes = await File.ReadAllBytesAsync(tempPath, cancellationToken);
             var actual = Convert.ToHexString(SHA1.HashData(bytes));
-            if (!actual.Equals(sha1, StringComparison.OrdinalIgnoreCase))
-            {
-                File.Delete(tempPath);
-                throw new InvalidDataException($"校验失败：{Path.GetFileName(targetPath)}");
-            }
+
+            if (actual.Equals(sha1, StringComparison.OrdinalIgnoreCase)) break;
+
+            AppLog.Info($"checksum mismatch, retrying full download: {Path.GetFileName(targetPath)}");
+            File.Delete(tempPath);
         }
 
         File.Move(tempPath, targetPath, overwrite: true);
     }
+
 }
