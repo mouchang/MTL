@@ -113,6 +113,34 @@ public sealed class GameLauncher
 
         var gameDir = options.VersionIsolation ? versionDir : GamePaths.Root;
         Directory.CreateDirectory(gameDir);
+
+        // Fabric 会在 .fabric/remappedJars 写重映射后的 jar；临时目录也放到游戏目录，避免系统 TEMP 不可写
+        var tempDir = Path.Combine(gameDir, "temp");
+        Directory.CreateDirectory(tempDir);
+
+        var remapDir = Path.Combine(gameDir, ".fabric", "remappedJars");
+        Directory.CreateDirectory(remapDir);
+
+        // 清理上次异常退出留下的半成品（Fabric 遇到会报 can't delete incompletely remapped files）
+        try
+        {
+            foreach (var stale in Directory.EnumerateFiles(remapDir, "*.tmp", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    File.Delete(stale);
+                }
+                catch
+                {
+                    // 删不掉就交给 Fabric 处理
+                }
+            }
+        }
+        catch
+        {
+            // 忽略
+        }
+
         GameOptions.EnsureLanguage(gameDir);
 
         progress?.Report(new LaunchProgress(20, "选择 Java…"));
@@ -172,12 +200,38 @@ public sealed class GameLauncher
         var entries = new List<string> { jarPath };
 
         entries.AddRange(AllowedLibraries(detail)
-            .Select(l => l.Downloads?.Artifact)
-            .Where(a => a?.Path is not null)
-            .Select(a => Path.Combine(GamePaths.LibrariesDir, a!.Path!))
+            .Select(library => library.Downloads?.Artifact?.Path is { } artifactPath
+                ? artifactPath
+                : MavenPathFromName(library.Name))
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => Path.Combine(GamePaths.LibrariesDir, path!))
             .Where(File.Exists));
 
         return string.Join(';', entries);
+    }
+
+    /// <summary>没有 downloads.artifact 的库（Fabric/NeoForge 常见）按 maven 坐标推导路径。</summary>
+    private static string? MavenPathFromName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+
+        var extension = "jar";
+        var at = name.IndexOf('@');
+        if (at >= 0)
+        {
+            extension = name[(at + 1)..];
+            name = name[..at];
+        }
+
+        var parts = name.Split(':');
+        if (parts.Length < 3) return null;
+
+        var group = parts[0].Replace('.', '/');
+        var artifact = parts[1];
+        var version = parts[2];
+        var classifier = parts.Length > 3 ? "-" + parts[3] : string.Empty;
+
+        return $"{group}/{artifact}/{version}/{artifact}-{version}{classifier}.{extension}";
     }
 
     /// <summary>Fabric/Forge 等 profile 通过 inheritsFrom 继承原版，这里合并成一份可启动的版本。</summary>
@@ -259,6 +313,8 @@ public sealed class GameLauncher
 
         if (memoryMb > 0) arguments.Add($"-Xmx{memoryMb}M");
 
+        arguments.Add($"-Djava.io.tmpdir={Path.Combine(gameDir, "temp")}");
+
         // Forge / NeoForge 等会在 arguments.jvm 里带自定义 JVM 参数
         if (detail.Arguments is { ValueKind: System.Text.Json.JsonValueKind.Object } jvmContainer
             && jvmContainer.TryGetProperty("jvm", out var jvmArray)
@@ -281,7 +337,11 @@ public sealed class GameLauncher
 
         if (!string.IsNullOrWhiteSpace(detail.MainClass)) arguments.Add(detail.MainClass);
 
-        if (!string.IsNullOrWhiteSpace(detail.MinecraftArguments))
+        var hasModernArguments = detail.Arguments is
+            { ValueKind: System.Text.Json.JsonValueKind.Object } modern
+            && modern.TryGetProperty("game", out _);
+
+        if (!hasModernArguments && !string.IsNullOrWhiteSpace(detail.MinecraftArguments))
         {
             foreach (var token in detail.MinecraftArguments.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                 arguments.Add(Substitute(token, values));

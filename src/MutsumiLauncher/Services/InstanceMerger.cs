@@ -46,6 +46,31 @@ public static class InstanceMerger
         // 记录合并前的原版版本，供「安装新 Mod」等场景还原游戏版本
         vanilla["mtlBaseVersion"] = vanillaId;
 
+        // 有 arguments 对象时，旧式 minecraftArguments 会与启动器自己拼的参数冲突（重复 -cp / 主类）
+        if (vanilla["arguments"] is JsonObject)
+        {
+            vanilla.Remove("minecraftArguments");
+
+            if (vanilla["arguments"] is JsonObject argsObject
+                && argsObject["jvm"] is JsonArray jvmArray)
+            {
+                var filtered = new JsonArray();
+
+                for (var i = 0; i < jvmArray.Count; i++)
+                {
+                    var item = jvmArray[i];
+                    var text = item is JsonValue value && value.TryGetValue<string>(out var str) ? str : null;
+
+                    if (text is "-cp" or "${classpath}" or "-classpath") continue;
+                    if (text is not null && text.Contains("${classpath}")) continue;
+
+                    filtered.Add(item?.DeepClone());
+                }
+
+                argsObject["jvm"] = filtered;
+            }
+        }
+
         File.WriteAllText(Path.Combine(targetDir, $"{instanceName}.json"),
             vanilla.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
