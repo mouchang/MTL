@@ -24,7 +24,7 @@
                             Content="&#xE711;" Click="Close_Click" ToolTip="关闭" />
                 </Grid>
 
-                <TextBlock Text="点击账号即可切换。目前支持离线账号，微软登录还在接入中。"
+                <TextBlock Text="点击账号即可切换。支持离线账号与微软正版账号。"
                            Style="{StaticResource Caption}" Margin="0,4,0,0" />
 
                 <ScrollViewer MaxHeight="260" Margin="0,12,0,0"
@@ -102,7 +102,7 @@
                     <TextBlock Text="有正版账号？用微软账号登录。" Style="{StaticResource Caption}"
                                VerticalAlignment="Center" />
                     <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
-                            Content="微软登录" Height="34" Padding="16,0"
+                            Content="正版登录" Height="34" Padding="16,0"
                             Click="MicrosoftLogin_Click" />
                 </Grid>
 
