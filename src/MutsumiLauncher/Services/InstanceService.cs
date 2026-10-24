@@ -205,16 +205,33 @@ public static class InstanceService
             // 目录不存在 / 无权限时仍然尝试打开
         }
 
-        // 首选 explorer.exe：不依赖 shell 文件关联，权限受限环境也能用
+        // 1) cmd start：和打开网页同一套做法，最稳
+        try
+        {
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/c start \"\" \"{path}\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = Environment.SystemDirectory,
+            })?.Dispose();
+
+            AppLog.Info($"open folder via cmd: {path}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "open folder via cmd");
+        }
+
+        // 2) 直接拉 explorer
         try
         {
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"")
             {
-                UseShellExecute = false,
-                CreateNoWindow = true,
+                UseShellExecute = true,
             })?.Dispose();
 
-            AppLog.Info($"open folder: {path}");
+            AppLog.Info($"open folder via explorer: {path}");
             return null;
         }
         catch (Exception ex)
@@ -222,6 +239,7 @@ public static class InstanceService
             AppLog.Error(ex, "open folder via explorer");
         }
 
+        // 3) ShellExecute 目录
         try
         {
             Process.Start(new ProcessStartInfo

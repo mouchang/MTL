@@ -151,6 +151,12 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- 内置文件夹浏览 -->
+                    <ContentControl x:Name="FolderHost" Grid.Row="0" Grid.RowSpan="2"
+                                    Panel.ZIndex="25" Visibility="Collapsed"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
+
                     <!-- 启动日志查看器 -->
                     <ContentControl x:Name="LogHost" Grid.Row="0" Grid.RowSpan="2"
                                     Panel.ZIndex="25" Visibility="Collapsed"

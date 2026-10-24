@@ -148,8 +148,7 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
 
-        var error = InstanceService.OpenFolder(ModsDir);
-        if (error is not null) Toast("打开文件夹失败：" + error);
+        (Window.GetWindow(this) as MainWindow)?.OpenFolderBrowser(ModsDir, "Mod 文件夹");
     }
 
     private void InstallFromFile_Click(object sender, RoutedEventArgs e)

@@ -130,6 +130,20 @@ public partial class MainWindow : Window
         FloaterText.Text = $"下载中 {active} 项 · {percent:0}%";
     }
 
+    public void OpenFolderBrowser(string path, string? title = null)
+    {
+        var browser = new FolderBrowserView();
+        browser.Closed += () =>
+        {
+            FolderHost.Visibility = Visibility.Collapsed;
+            FolderHost.Content = null;
+        };
+
+        browser.Load(path, title);
+        FolderHost.Content = browser;
+        FolderHost.Visibility = Visibility.Visible;
+    }
+
     public void OpenLogViewer(string instance)
     {
         var viewer = new LogViewerView();
