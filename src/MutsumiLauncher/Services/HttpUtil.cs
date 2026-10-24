@@ -61,18 +61,22 @@ public static class HttpUtil
             AutomaticDecompression = DecompressionMethods.All,
         };
 
+        var usingProxy = false;
+
         switch (Mode)
         {
             case "auto" when SystemProxyReachable():
             case "system":
                 handler.UseProxy = true;
                 handler.Proxy = WebRequest.GetSystemWebProxy();
+                usingProxy = true;
                 break;
 
             case "custom" when !string.IsNullOrWhiteSpace(config.ProxyHost):
                 handler.UseProxy = true;
                 handler.Proxy = new WebProxy(config.ProxyHost.Trim(),
                     config.ProxyPort <= 0 ? 7890 : config.ProxyPort);
+                usingProxy = true;
                 break;
 
             default:
@@ -81,10 +85,75 @@ public static class HttpUtil
                 break;
         }
 
-        var client = new HttpClient(handler) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
+        HttpMessageHandler pipeline = usingProxy ? new DirectFallbackHandler(handler) : handler;
+
+        var client = new HttpClient(pipeline) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
         if (!string.IsNullOrWhiteSpace(userAgent))
             client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
 
         return client;
+    }
+
+    /// <summary>代理请求遇到 SSL / 连接错误时，自动改用直连重试一次。</summary>
+    private sealed class DirectFallbackHandler : DelegatingHandler
+    {
+        private static readonly HttpClient Direct = new(new SocketsHttpHandler
+        {
+            UseProxy = false,
+            ConnectTimeout = TimeSpan.FromSeconds(15),
+            AutomaticDecompression = DecompressionMethods.All,
+        })
+        {
+            Timeout = TimeSpan.FromMinutes(5),
+        };
+
+        public DirectFallbackHandler(HttpMessageHandler inner) : base(inner)
+        {
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            byte[]? body = request.Content is null
+                ? null
+                : await request.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            try
+            {
+                using var first = Clone(request, body);
+                return await base.SendAsync(first, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                AppLog.Error(ex, $"proxy request failed, retry direct: {request.RequestUri}");
+
+                using var retry = Clone(request, body);
+                return await Direct.SendAsync(retry, cancellationToken);
+            }
+        }
+
+        private static HttpRequestMessage Clone(HttpRequestMessage source, byte[]? body)
+        {
+            var clone = new HttpRequestMessage(source.Method, source.RequestUri)
+            {
+                Version = source.Version,
+                VersionPolicy = source.VersionPolicy,
+            };
+
+            foreach (var header in source.Headers)
+                clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+
+            if (body is not null)
+            {
+                clone.Content = new ByteArrayContent(body);
+                if (source.Content is not null)
+                {
+                    foreach (var header in source.Content.Headers)
+                        clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return clone;
+        }
     }
 }

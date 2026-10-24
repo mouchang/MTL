@@ -339,9 +339,15 @@ public partial class VersionDetailView : UserControl
         catch (Exception ex)
         {
             AppLog.Error(ex, "install version");
-            ProgressText.Text = "安装失败：" + ex.Message;
-            DownloadCenter.Complete(task, "失败：" + ex.Message);
-            _toast?.Invoke("安装失败：" + ex.Message);
+
+            var reason = ex.Message;
+            if (!string.IsNullOrWhiteSpace(ex.InnerException?.Message)
+                && !reason.Contains(ex.InnerException.Message, StringComparison.Ordinal))
+                reason += "（" + ex.InnerException.Message + "）";
+
+            ProgressText.Text = "安装失败：" + reason;
+            DownloadCenter.Complete(task, "失败：" + reason);
+            _toast?.Invoke("安装失败：" + reason);
         }
         finally
         {
