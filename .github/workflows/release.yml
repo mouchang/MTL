@@ -43,6 +43,12 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "title=$title" >> $env:GITHUB_OUTPUT
 
+      - name: Remove previous release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: gh release delete "${{ steps.version.outputs.tag }}" --yes 2>$null; exit 0
+
       - name: Publish
         run: >
           dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj

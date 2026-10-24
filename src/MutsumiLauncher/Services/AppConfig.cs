@@ -38,7 +38,7 @@ public sealed class AppConfig
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 
     /// <summary>可选的更新代理（Cloudflare Worker），为空时直连 GitHub API。</summary>
-    public string UpdateProxy { get; set; } = string.Empty;
+    public string UpdateProxy { get; set; } = "https://releases.mtl.dpdns.org/gh";
 
     /// <summary>原版下载源：bmclapi（默认，国内加速）或 official。</summary>
     public string VanillaMirror { get; set; } = "bmclapi";
