@@ -97,6 +97,13 @@ public partial class MainWindow : Window
 
         if (page is LaunchPage launch) launch.RefreshAll();
 
+        // 离开下载页后，不再默认安装到跳转过来的实例
+        if (key != "download" && _pages.TryGetValue("download", out var downloadPage)
+            && downloadPage is DownloadPage community)
+        {
+            community.ClearJumpTarget();
+        }
+
         if (animate)
         {
             page.Opacity = 0;
@@ -131,14 +138,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>跳到下载页的社区资源 Mod 页面（会先关掉版本设置浮层）。</summary>
-    public void OpenCommunityMod(string? gameVersion, string? loader)
+    public void OpenCommunityMod(string? instance, string? gameVersion, string? loader)
     {
         if (_settingsOpen) CloseVersionSettings();
 
         ShowPage("download");
 
         if (_pages.TryGetValue("download", out var page) && page is DownloadPage download)
-            download.OpenCommunityMod(gameVersion, loader);
+            download.OpenCommunityMod(instance, gameVersion, loader);
     }
 
     public void OpenFolderBrowser(string path, string? title = null)

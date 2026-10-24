@@ -74,6 +74,7 @@ public partial class ModrinthDetailView : UserControl
     private IReadOnlyList<ModrinthVersion> _versions = [];
     private string? _selectedGameVersion;
     private string? _currentGameVersion;
+    private string? _targetInstance;
     private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Action? _onBack;
     private Action<string>? _toast;
@@ -84,9 +85,10 @@ public partial class ModrinthDetailView : UserControl
     }
 
     public async Task LoadAsync(ModrinthItem item, string? initialGameVersion, Action onBack,
-        Action<string> toast)
+        Action<string> toast, string? targetInstance = null)
     {
         _item = item;
+        _targetInstance = targetInstance;
         _currentGameVersion = initialGameVersion;
         _onBack = onBack;
         _toast = toast;
@@ -265,27 +267,37 @@ public partial class ModrinthDetailView : UserControl
 
     private async Task LoadDependenciesAsync(ModrinthFileRow row)
     {
-        try
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var ordered = row.Version.Dependencies
+            .Where(d => !string.IsNullOrWhiteSpace(d.ProjectId))
+            .Where(d => d.DependencyType is "required" or "optional")
+            .OrderBy(d => d.DependencyType == "required" ? 0 : 1);
+
+        foreach (var dependency in ordered)
         {
-            foreach (var dependency in row.Version.Dependencies)
+            if (!seen.Add(dependency.ProjectId!)) continue;
+
+            string title;
+
+            try
             {
-                if (string.IsNullOrWhiteSpace(dependency.ProjectId)) continue;
-                if (dependency.DependencyType is "embedded" or "incompatible") continue;
-
                 var project = await GetProjectCachedAsync(dependency.ProjectId!);
-                var title = project?.Title ?? dependency.ProjectId!;
-                var prefix = dependency.DependencyType == "required" ? "前置：" : "可选：";
-
-                Dispatcher.Invoke(() => row.Dependencies.Add(new DependencyChip
-                {
-                    ProjectId = dependency.ProjectId!,
-                    Label = prefix + title,
-                }));
+                title = project?.Title ?? dependency.ProjectId!;
             }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "load dependencies");
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "load dependency project");
+                title = dependency.ProjectId!;
+            }
+
+            var prefix = dependency.DependencyType == "required" ? "前置：" : "可选：";
+
+            Dispatcher.Invoke(() => row.Dependencies.Add(new DependencyChip
+            {
+                ProjectId = dependency.ProjectId!,
+                Label = prefix + title,
+            }));
         }
     }
 
@@ -360,8 +372,29 @@ public partial class ModrinthDetailView : UserControl
         try
         {
             DownloadCenter.Report(task, "正在下载文件…", 20);
+
             var directory = Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
-            await _client.DownloadAsync(row.File.Url, row.File.Filename, directory, row.File.Hashes?.Sha1);
+            Directory.CreateDirectory(directory);
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "确认安装位置",
+                InitialDirectory = directory,
+                FileName = row.File.Filename,
+                Filter = "文件 (*.*)|*.*",
+                OverwritePrompt = false,
+                CheckPathExists = true,
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                DownloadCenter.Complete(task, "已取消安装");
+                return;
+            }
+
+            var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
+            await _client.DownloadAsync(row.File.Url, row.File.Filename, targetDirectory,
+                row.File.Hashes?.Sha1);
 
             DownloadCenter.Complete(task, "已安装");
             _toast?.Invoke($"{row.Version.Name} 安装完成");
@@ -387,9 +420,16 @@ public partial class ModrinthDetailView : UserControl
         _ => "mods",
     };
 
-    private static string GameDir()
+    private string GameDir()
     {
-        // 跟随「当前实例」的隔离设置（每个实例可以单独配置）
+        // 从版本设置跳转过来时，默认安装到那个实例
+        if (!string.IsNullOrWhiteSpace(_targetInstance))
+        {
+            var target = InstanceService.GameDirFor(_targetInstance);
+            if (Directory.Exists(target)) return target;
+        }
+
+        // 否则跟随「当前实例」的隔离设置（每个实例可以单独配置）
         var selected = AppConfig.Current.SelectedVersion;
         if (!string.IsNullOrWhiteSpace(selected))
         {

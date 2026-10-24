@@ -33,6 +33,14 @@ public partial class ModManagePage : UserControl, IInstancePage
     public void SetInstance(string version)
     {
         _version = version;
+
+        var info = InstanceService.GetInfo(version);
+        var supported = !info.Loader.Equals("原版", StringComparison.OrdinalIgnoreCase);
+
+        NoLoaderHint.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
+        InstallNewModButton.IsEnabled = supported;
+        InstallNewModButton.ToolTip = supported ? null : "原版没有加载器，无法安装 Mod";
+
         Refresh();
     }
 
@@ -159,7 +167,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             _ => null,
         };
 
-        (Window.GetWindow(this) as MainWindow)?.OpenCommunityMod(gameVersion, loader);
+        (Window.GetWindow(this) as MainWindow)?.OpenCommunityMod(_version, gameVersion, loader);
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)

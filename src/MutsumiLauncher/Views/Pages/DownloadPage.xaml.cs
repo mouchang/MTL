@@ -14,6 +14,7 @@ public partial class DownloadPage : UserControl
     private DownloadPageViewModel? _viewModel;
     private bool _versionsRequested;
     private bool _detailCoveredOriginal;
+    private string? _jumpInstance;
 
     public DownloadPage()
     {
@@ -30,8 +31,13 @@ public partial class DownloadPage : UserControl
     }
 
     /// <summary>从版本设置跳转到「社区资源 → Mod」，并预选版本与加载器。</summary>
-    public void OpenCommunityMod(string? gameVersion, string? loader)
+    /// <summary>离开下载页时调用：取消“默认安装到跳转实例”。</summary>
+    public void ClearJumpTarget() => _jumpInstance = null;
+
+    public void OpenCommunityMod(string? instance, string? gameVersion, string? loader)
     {
+        _jumpInstance = instance;
+
         CommunityToggle.IsChecked = true;
         CommunityItems.Visibility = Visibility.Visible;
 
@@ -108,7 +114,7 @@ public partial class DownloadPage : UserControl
     private void OpenModrinthDetail(ModrinthItem item, string? gameVersion)
     {
         var view = new ModrinthDetailView();
-        _ = view.LoadAsync(item, gameVersion, () => CloseDetail(), ShowToast);
+        _ = view.LoadAsync(item, gameVersion, () => CloseDetail(), ShowToast, _jumpInstance);
         OpenDetail(view);
     }
 
