@@ -32,8 +32,16 @@ jobs:
         run: |
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = $tag.TrimStart('v', 'V')
+
+          $title = ""
+          if (Test-Path ".github/release-title.txt") {
+            $title = (Get-Content ".github/release-title.txt" -Raw).Trim()
+          }
+          if (-not $title) { $title = "Mutsumi Launcher $version" }
+
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
+          "title=$title" >> $env:GITHUB_OUTPUT
 
       - name: Publish
         run: >
@@ -48,7 +56,7 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer/MutsumiLauncher.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DAPP_VERSION=${{ steps.version.outputs.version }}" installer/MutsumiLauncher.nsi
           $source = Get-ChildItem dist -Filter "MutsumiLauncher-*-setup.exe" | Select-Object -First 1
           if (-not $source) { throw "NSIS 没有产出安装包" }
           $target = "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe"
@@ -58,6 +66,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Mutsumi Launcher ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.title }}
           generate_release_notes: true
           files: dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe

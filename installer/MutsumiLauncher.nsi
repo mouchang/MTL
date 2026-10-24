@@ -4,12 +4,14 @@ Unicode true
 !include "MUI2.nsh"
 
 !define APP_NAME "Mutsumi Launcher"
-!define APP_VERSION "0.1.0"
+!ifndef APP_VERSION
+  !define APP_VERSION "1.0.0"
+!endif
 !define APP_EXE "MutsumiLauncher.exe"
 !define APP_PUBLISHER "Mutsumi"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\dist\MutsumiLauncher-0.1.0-setup.exe"
+OutFile "..\dist\MutsumiLauncher-${APP_VERSION}-setup.exe"
 InstallDir "$PROGRAMFILES64\${APP_NAME}"
 InstallDirRegKey HKLM "Software\${APP_NAME}" "InstallDir"
 

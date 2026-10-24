@@ -6,7 +6,7 @@ namespace MutsumiLauncher.Services;
 /// <summary>启动器配置（%LOCALAPPDATA%\Mutsumi Launcher\config.json，不可写时退回 data\）。</summary>
 public sealed class AppConfig
 {
-    public string PlayerName { get; set; } = "the_box_mc";
+    public string PlayerName { get; set; } = string.Empty;
 
     public string SelectedVersion { get; set; } = string.Empty;
 
@@ -19,7 +19,7 @@ public sealed class AppConfig
 
     public string WindowTitle { get; set; } = string.Empty;
 
-    public string CustomInfo { get; set; } = "PCL";
+    public string CustomInfo { get; set; } = "MTL";
 
     public List<Account> Accounts { get; set; } = [];
 

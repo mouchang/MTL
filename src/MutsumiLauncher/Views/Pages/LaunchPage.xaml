@@ -28,7 +28,7 @@
                         <TextBlock x:Name="AccountTypeBadge" Text="离线" Foreground="White"
                                    FontSize="12" FontWeight="SemiBold" />
                     </Border>
-                    <TextBlock x:Name="AccountNameText" Text="the_box_mc" FontSize="17"
+                    <TextBlock x:Name="AccountNameText" Text="Player" FontSize="17"
                                Foreground="{StaticResource Ink}" Margin="9,0,0,0"
                                VerticalAlignment="Center" />
                     <Button Style="{StaticResource LinkIconButton}" Margin="8,0,0,0"

@@ -14,7 +14,8 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
-        VersionText.Text = $"Mutsumi Launcher {UpdateService.CurrentVersion}";
+        VersionText.Text = AppInfo.DisplayName;
+        UpdateStatus.Text = $"版本 {AppInfo.Version} · WPF · .NET 10 · 开源";
         Loaded += async (_, _) =>
         {
             if (_loaded) return;

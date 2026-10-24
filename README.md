@@ -8,7 +8,7 @@
 
 **MTL** · 一个面向 Minecraft 的桌面启动器（WPF / .NET 10）。
 
-> 当前版本 `0.1.0`。支持原版 / Fabric / Forge / NeoForge 安装与启动、Modrinth、整合包导入导出、自动更新。微软正版登录等待 Mojang 应用审核。
+> 当前版本 `MTL alpha v1.0 build 1`（1.0.0）。支持原版 / Fabric / Forge / NeoForge 安装与启动、Modrinth、整合包导入导出、自动更新。微软正版登录等待 Mojang 应用审核。
 
 | 文档 | 说明 |
 | --- | --- |
