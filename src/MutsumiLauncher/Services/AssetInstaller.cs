@@ -54,7 +54,7 @@ public static class AssetInstaller
         var done = 0;
         var bytesDone = 0L;
 
-        using var semaphore = new SemaphoreSlim(12);
+        using var semaphore = new SemaphoreSlim(32);
 
         var tasks = objects.Select(async obj =>
         {

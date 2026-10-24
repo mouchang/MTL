@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 
 namespace MutsumiLauncher.Services;
 
@@ -8,7 +9,46 @@ public static class HttpUtil
 {
     public const string DefaultUserAgent = "MutsumiLauncher/0.1.0 (github.com/mouchang/MTL)";
 
-    public static string Mode => (AppConfig.Current.NetworkMode ?? "direct").Trim().ToLowerInvariant();
+    private static readonly object ProbeLock = new();
+    private static bool? _systemProxyReachable;
+
+    public static string Mode => (AppConfig.Current.NetworkMode ?? "auto").Trim().ToLowerInvariant();
+
+    /// <summary>探测本机系统代理是否真的可用（端口能连上）。结果缓存到进程结束。</summary>
+    public static bool SystemProxyReachable()
+    {
+        if (_systemProxyReachable is { } cached) return cached;
+
+        lock (ProbeLock)
+        {
+            if (_systemProxyReachable is { } again) return again;
+
+            _systemProxyReachable = ProbeSystemProxy();
+            AppLog.Info($"system proxy available: {_systemProxyReachable}");
+            return _systemProxyReachable.Value;
+        }
+    }
+
+    private static bool ProbeSystemProxy()
+    {
+        try
+        {
+            var proxy = WebRequest.GetSystemWebProxy()
+                .GetProxy(new Uri("https://www.example.com"));
+
+            if (proxy is null || proxy.Port <= 0) return false;
+            if (proxy.Host.Contains("example.com", StringComparison.OrdinalIgnoreCase)) return false;
+
+            using var client = new TcpClient();
+            var connect = client.ConnectAsync(proxy.Host, proxy.Port);
+
+            return connect.Wait(TimeSpan.FromMilliseconds(700)) && client.Connected;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = DefaultUserAgent)
     {
@@ -23,6 +63,7 @@ public static class HttpUtil
 
         switch (Mode)
         {
+            case "auto" when SystemProxyReachable():
             case "system":
                 handler.UseProxy = true;
                 handler.Proxy = WebRequest.GetSystemWebProxy();

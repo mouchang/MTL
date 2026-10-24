@@ -115,8 +115,27 @@
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="网络代理" Style="{StaticResource H2}" />
-                <TextBlock Text="默认直连；镜像源在国内可直连，不需要开代理。" Style="{StaticResource Caption}"
+                <TextBlock Text="自动模式会在系统代理可用时使用代理，否则直连。" Style="{StaticResource Caption}"
                            Margin="0,4,0,10" />
+
+                <Button x:Name="ProxyAuto" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ProxyAuto_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="自动（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="系统代理可用时走代理，否则直连" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProxyAutoCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
 
                 <Button x:Name="ProxyDirect" Style="{StaticResource GhostButton}" Padding="14,12"
                         HorizontalContentAlignment="Stretch" Click="ProxyDirect_Click">
@@ -126,7 +145,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="直接连接（默认，推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="直接连接" FontSize="14" Foreground="{StaticResource Ink}" />
                             <TextBlock Text="不使用任何代理，镜像源可直连" FontSize="11"
                                        Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>

@@ -34,6 +34,7 @@ public partial class DownloadSourceView : UserControl
         Highlight(ModMirror, ModMirrorCheck, !modOfficial);
 
         var mode = (config.NetworkMode ?? "direct").Trim().ToLowerInvariant();
+        Highlight(ProxyAuto, ProxyAutoCheck, mode == "auto");
         Highlight(ProxyDirect, ProxyDirectCheck, mode == "direct");
         Highlight(ProxySystem, ProxySystemCheck, mode == "system");
         Highlight(ProxyCustom, ProxyCustomCheck, mode == "custom");
@@ -73,6 +74,8 @@ public partial class DownloadSourceView : UserControl
         _onChanged?.Invoke();
     }
 
+    private void ProxyAuto_Click(object sender, RoutedEventArgs e) => SetProxyMode("auto");
+
     private void ProxyDirect_Click(object sender, RoutedEventArgs e) => SetProxyMode("direct");
 
     private void ProxySystem_Click(object sender, RoutedEventArgs e) => SetProxyMode("system");
@@ -87,6 +90,7 @@ public partial class DownloadSourceView : UserControl
     {
         var config = AppConfig.Current;
         config.NetworkMode = "custom";
+        config.NetworkModeChosen = true;
         config.ProxyHost = string.IsNullOrWhiteSpace(ProxyHostBox.Text) ? "127.0.0.1" : ProxyHostBox.Text.Trim();
         if (int.TryParse(ProxyPortBox.Text.Trim(), out var port) && port > 0) config.ProxyPort = port;
         config.Save();
@@ -97,6 +101,7 @@ public partial class DownloadSourceView : UserControl
     private void SetProxyMode(string mode)
     {
         AppConfig.Current.NetworkMode = mode;
+        AppConfig.Current.NetworkModeChosen = true;
         AppConfig.Current.Save();
         Refresh();
         _onChanged?.Invoke();
