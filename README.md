@@ -97,6 +97,8 @@ MutsumiLauncher/
 - **下载加速**：原版资源默认走 BMCLAPI（版本清单 / 版本 JSON / client / libraries / assets），社区资源默认走 MCIM（Modrinth API、CDN 文件与图标）；可在 `config.json` 用 `VanillaMirror` / `ModMirror` 设为 `official` 切回官方。
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
+- **导出整合包**：版本设置 → 导出，支持 `.mrpack`（Modrinth）和 `.zip`，可选 Mods / 配置 / options.txt / 资源包 / 光影 / 存档；mrpack 自动写入正确的 `dependencies`（minecraft + fabric-loader/forge/neoforge）。
+- **启动日志**：概览页「查看启动日志」打开日志查看器，读取最新 `.log`，支持自动刷新、复制全部、打开日志文件夹。
 - **实例管理**：版本设置里可查看实例路径/占用空间/Mod 数量，**重命名**（同步改目录、版本 JSON、实例设置），**删除实例**（整个目录），打开版本/Mod/存档/截图/日志文件夹。
 - **每实例启动设置**：Java、内存、版本隔离按实例保存到 `instances/<实例>.json`，可「跟随全局」或单独指定。
 - **Mod 管理**：扫描实例 mods 目录，支持启用/禁用（改后缀）、删除、从文件安装、打开文件夹。

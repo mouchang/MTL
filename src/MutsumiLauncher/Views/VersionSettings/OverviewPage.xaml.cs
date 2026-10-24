@@ -152,6 +152,12 @@ public partial class OverviewPage : UserControl, IInstancePage
     private void OpenScreenshotsFolder_Click(object sender, RoutedEventArgs e)
         => OpenFolder(Path.Combine(InstanceService.GameDirFor(_version), "screenshots"));
 
+    private void OpenLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+        (Window.GetWindow(this) as MainWindow)?.OpenLogViewer(_version);
+    }
+
     private void OpenLogsFolder_Click(object sender, RoutedEventArgs e)
         => OpenFolder(Path.Combine(InstanceService.GameDirFor(_version), "logs"));
 

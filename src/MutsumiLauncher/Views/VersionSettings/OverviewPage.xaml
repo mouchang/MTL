@@ -95,6 +95,8 @@
                                 Margin="0,0,10,10" Click="OpenSavesFolder_Click" />
                         <Button Style="{StaticResource SecondaryButton}" Content="截图文件夹" Width="150"
                                 Margin="0,0,10,10" Click="OpenScreenshotsFolder_Click" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="查看启动日志" Width="150"
+                                Margin="0,0,10,10" Click="OpenLog_Click" />
                         <Button Style="{StaticResource SecondaryButton}" Content="日志文件夹" Width="150"
                                 Margin="0,0,10,10" Click="OpenLogsFolder_Click" />
                     </WrapPanel>

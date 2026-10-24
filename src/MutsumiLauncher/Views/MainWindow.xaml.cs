@@ -128,6 +128,20 @@ public partial class MainWindow : Window
         FloaterText.Text = $"下载中 {active} 项 · {percent:0}%";
     }
 
+    public void OpenLogViewer(string instance)
+    {
+        var viewer = new LogViewerView();
+        viewer.Closed += () =>
+        {
+            LogHost.Visibility = Visibility.Collapsed;
+            LogHost.Content = null;
+        };
+
+        viewer.Load(instance);
+        LogHost.Content = viewer;
+        LogHost.Visibility = Visibility.Visible;
+    }
+
     private void DownloadFloater_Click(object sender, MouseButtonEventArgs e)
     {
         var panel = new DownloadPanelView();
