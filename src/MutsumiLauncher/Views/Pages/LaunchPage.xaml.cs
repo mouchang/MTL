@@ -136,11 +136,7 @@ public partial class LaunchPage : UserControl
             panel.Start(version, settings.EffectiveJavaPath);
             owner?.ShowLaunchPanel(panel);
 
-            var progress = new Progress<LaunchProgress>(p =>
-            {
-                button.Content = p.Percent > 0 ? p.Message : button.Content;
-                panel.Update(p);
-            });
+            var progress = new Progress<LaunchProgress>(panel.Update);
 
             var result = await launcher.LaunchAsync(version, options, progress);
 
