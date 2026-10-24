@@ -75,6 +75,7 @@ public partial class ModrinthDetailView : UserControl
     private string? _selectedGameVersion;
     private string? _currentGameVersion;
     private string? _targetInstance;
+    private bool _installing;
     private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Action? _onBack;
     private Action<string>? _toast;
@@ -365,7 +366,9 @@ public partial class ModrinthDetailView : UserControl
     private async void InstallFile_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: ModrinthFileRow row } || _item is null) return;
+        if (_installing) return;
 
+        _installing = true;
         Loading.IsActive = true;
         var task = DownloadCenter.Begin($"安装 {row.Version.Name}", indeterminate: true);
 
@@ -407,6 +410,7 @@ public partial class ModrinthDetailView : UserControl
         }
         finally
         {
+            _installing = false;
             Loading.IsActive = false;
         }
     }
