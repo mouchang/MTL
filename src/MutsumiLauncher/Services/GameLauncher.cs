@@ -10,7 +10,7 @@ namespace MutsumiLauncher.Services;
 
 public sealed record LaunchProgress(double Percent, string Message);
 
-public sealed record LaunchResult(bool Started, string Message, string? LogPath);
+public sealed record LaunchResult(bool Started, string Message, string? LogPath, int ProcessId = 0);
 
 public sealed record LaunchOptions(string PlayerName, string Uuid, string AccessToken, bool IsMicrosoft,
     string JavaPath, int MemoryMb, bool VersionIsolation);
@@ -18,6 +18,31 @@ public sealed record LaunchOptions(string PlayerName, string Uuid, string Access
 /// <summary>准备并启动一个已安装版本：解压 natives、拼 classpath、替换参数、选 Java、拉资源索引。</summary>
 public sealed class GameLauncher
 {
+    private static readonly object ProcessLock = new();
+
+    /// <summary>当前正在运行的游戏进程（供启动面板强制关闭）。</summary>
+    public static Process? ActiveProcess { get; private set; }
+
+    public static bool KillActive()
+    {
+        lock (ProcessLock)
+        {
+            try
+            {
+                if (ActiveProcess is null || ActiveProcess.HasExited) return false;
+
+                ActiveProcess.Kill(entireProcessTree: true);
+                ActiveProcess.WaitForExit(3000);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "kill game process");
+                return false;
+            }
+        }
+    }
+
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(5));
 
     public static IReadOnlyList<string> InstalledVersions()
@@ -123,10 +148,23 @@ public sealed class GameLauncher
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
+        lock (ProcessLock)
+        {
+            ActiveProcess = process;
+        }
+
+        process.Exited += (_, _) =>
+        {
+            lock (ProcessLock)
+            {
+                if (ReferenceEquals(ActiveProcess, process)) ActiveProcess = null;
+            }
+        };
+
         AppLog.Info($"launch {id} with {java.ExecutablePath}, pid {process.Id}");
         progress?.Report(new LaunchProgress(100, $"已启动 {id}（Java {java.Version}）"));
 
-        return new LaunchResult(true, $"已启动 {id}（Java {java.Version}）", logPath);
+        return new LaunchResult(true, $"已启动 {id}（Java {java.Version}）", logPath, process.Id);
     }
 
     private static string BuildClasspath(VersionDetail detail, string jarPath)

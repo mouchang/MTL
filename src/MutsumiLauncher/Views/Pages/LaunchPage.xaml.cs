@@ -132,10 +132,23 @@ public partial class LaunchPage : UserControl
                 account.IsMicrosoft, settings.EffectiveJavaPath, settings.EffectiveMemoryMb,
                 settings.EffectiveIsolation);
 
+            var panel = new LaunchPanelView();
+            panel.Start(version, settings.EffectiveJavaPath);
+            owner?.ShowLaunchPanel(panel);
+
             var progress = new Progress<LaunchProgress>(p =>
-                button.Content = p.Percent > 0 ? $"{p.Message}" : button.Content);
+            {
+                button.Content = p.Percent > 0 ? p.Message : button.Content;
+                panel.Update(p);
+            });
 
             var result = await launcher.LaunchAsync(version, options, progress);
+
+            if (result.Started)
+                panel.SetRunning(result.ProcessId, result.LogPath);
+            else
+                panel.SetFailed(result.Message);
+
             owner?.ShowToast(result.Message);
         }
         catch (Exception ex)

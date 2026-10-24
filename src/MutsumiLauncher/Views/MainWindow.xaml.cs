@@ -148,6 +148,44 @@ public partial class MainWindow : Window
             download.OpenCommunityMod(instance, gameVersion, loader);
     }
 
+    /// <summary>从右侧滑出启动面板，展示进度、进程与强制关闭。</summary>
+    public void ShowLaunchPanel(LaunchPanelView panel)
+    {
+        panel.Closed += HideLaunchPanel;
+        panel.LogRequested += instance => OpenLogViewer(instance);
+
+        LaunchPanelHost.Width = Math.Max(480, ActualWidth * 0.52);
+        LaunchPanelHost.Content = panel;
+        LaunchPanelHost.Visibility = Visibility.Visible;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        LaunchPanelSlide.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(180, 0, TimeSpan.FromMilliseconds(300)) { EasingFunction = ease });
+        LaunchPanelHost.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+    }
+
+    private void HideLaunchPanel()
+    {
+        if (LaunchPanelHost.Content is null) return;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var slide = new DoubleAnimation(0, 180, TimeSpan.FromMilliseconds(220))
+        {
+            EasingFunction = ease,
+        };
+
+        slide.Completed += (_, _) =>
+        {
+            LaunchPanelHost.Visibility = Visibility.Collapsed;
+            LaunchPanelHost.Content = null;
+        };
+
+        LaunchPanelSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        LaunchPanelHost.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)));
+    }
+
     public void OpenFolderBrowser(string path, string? title = null)
     {
         var browser = new FolderBrowserView();

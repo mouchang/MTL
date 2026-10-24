@@ -1,0 +1,109 @@
+<UserControl x:Class="MutsumiLauncher.Views.LaunchPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <Border CornerRadius="22,0,0,22" Background="#F7FFFFFF" BorderBrush="#66FFFFFF"
+            BorderThickness="1,0,0,0" Padding="24,22">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="0" Direction="180" Opacity="0.18"
+                              Color="#FF2E4A38" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <TextBlock x:Name="TitleText" Text="启动游戏" Style="{StaticResource H1}" />
+                <Button Style="{StaticResource LinkIconButton}" HorizontalAlignment="Right"
+                        Content="&#xE711;" Click="Close_Click" ToolTip="关闭面板" />
+            </Grid>
+
+            <TextBlock x:Name="SubtitleText" Grid.Row="1" Style="{StaticResource Caption}"
+                       Margin="0,4,0,12" Text="正在准备启动…" />
+
+            <!-- 进度 -->
+            <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,16">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock x:Name="StatusText" Text="准备中…" FontSize="13"
+                                   Foreground="{StaticResource Ink}" />
+                        <TextBlock x:Name="PercentText" Text="0%" FontSize="13"
+                                   Foreground="{StaticResource AccentDeep}" HorizontalAlignment="Right" />
+                    </Grid>
+
+                    <Grid x:Name="ProgressTrack" Height="6" Margin="0,10,0,0" ClipToBounds="True">
+                        <Border Background="#22FFFFFF" CornerRadius="3" />
+                        <Border x:Name="ProgressFill" Background="{StaticResource AccentDeep}"
+                                CornerRadius="3" HorizontalAlignment="Left" Width="0" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 运行信息 -->
+            <Border Grid.Row="3" Style="{StaticResource GlassCard}" Padding="18,16" Margin="0,14,0,0"
+                    VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="运行信息" Style="{StaticResource H2}" Margin="0,0,0,10" />
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="实例" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="InstanceText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="JavaText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="进程" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="ProcessText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" Text="—" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="日志" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="LogText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis"
+                                   Text="—" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 操作 -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,16,0,0">
+                <Button x:Name="KillButton" Style="{StaticResource DangerButton}" Content="强制关闭"
+                        Width="130" IsEnabled="False" Click="Kill_Click" />
+                <Button x:Name="LogButton" Style="{StaticResource SecondaryButton}" Content="查看日志"
+                        Width="120" Margin="10,0,0,0" Click="Log_Click" />
+                <Button Style="{StaticResource SecondaryButton}" Content="关闭面板"
+                        Width="120" Margin="10,0,0,0" Click="Close_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
