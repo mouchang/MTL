@@ -87,9 +87,6 @@ MutsumiLauncher/
 ## 已接入真实数据
 
 - **断点续传**：客户端/依赖/资源下载中断后保留 `.tmp`，下次自动用 Range 续传，不再从头下。
-- **CDN 可选（默认关闭）**：实测 Cloudflare 反代国内吞吐仅 39–69 KB/s，不如 BMCLAPI 直连，因此默认填空；需要时可自己填反代前缀，NeoForge 等被墙 host 也能救急。
-- **下载走 CDN，数据直连**：只有文件下载（客户端 jar、依赖库、资源对象、Mod 文件、加载器安装器）会走反代前缀；版本清单、版本 JSON、Modrinth API、图标、Fabric/Forge 版本列表、账号登录全部直连。同一 host 下按路径区分，某个下载返回 403/404 时自动回退直连。
-- **全接口 CDN**：设置 → 下载源可填反代前缀（默认 `https://mtl.dpdns.org`），原版 / Modrinth CDN / Fabric / Forge / NeoForge 的下载地址会改写成「前缀/原host/路径」；某个 host 返回 403/404 时自动回退直连并记住。**账号登录、微软/ Mojang API、Modrinth API 以及带 Authorization 的请求永远直连**，不经过 CDN。
 - **下载速度**：下载任务面板实时显示 MB/s（按字节增量计算），客户端与依赖库下载过程中持续刷新。
 - **默认中文**：安装完成与每次启动都会把 `options.txt` 的 `lang` 设为 `zh_cn`，新下载的实例同样生效。
 - **启动前校验**：启动前检查 classpath 是否齐全，缺文件时给出「重新安装以补全」的提示；安装会清理 `.tmp` 残留并重下空文件。
@@ -104,6 +101,7 @@ MutsumiLauncher/
 - **每实例启动设置**：Java、内存、版本隔离按实例保存到 `instances/<实例>.json`，可「跟随全局」或单独指定。
 - **Mod 管理**：扫描实例 mods 目录，支持启用/禁用（改后缀）、删除、从文件安装、打开文件夹。
 - **实例名称**：版本详情页可自定义实例名称（安装到 `versions/<实例名称>`），默认取版本号；选择加载器后自动建议 `26.3-Fabric-0.20.1` 这类不冲突的名字，重名会拒绝安装。
+- **NeoForge CDN**：NeoForge 官方 maven 国内直连不通，安装器与内部下载地址会改写为 `https://mtl.dpdns.org/maven.neoforged.net/...`，失败自动回退官方。
 - **加载器安装**：Fabric / Forge / NeoForge 均可展开选择版本、选中高亮、三者互斥（其余行禁用并显示「与所选加载器不互通」）。Fabric 走 meta profile；Forge/NeoForge 下载官方 installer 在临时目录执行 `--installClient`，再合并 `versions/` 与 `libraries/`。NeoForge 官方 maven 在国内直连不通，需要代理或镜像。
 - **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、带下方导航条、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
 - **图标**：图标下载到本地 `icons/` 缓存并校验图片头，镜像失败时自动回退官方 CDN；原版条目使用官方材质渲染（正式版=草方块、远古版=泥土、预览版=命令方块、愚人节=金块），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。

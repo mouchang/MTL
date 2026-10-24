@@ -213,21 +213,5 @@
         <TextBlock x:Name="ProxyHint" Style="{StaticResource Caption}" TextWrapping="Wrap"
                    Text="网络代理修改后，重启启动器生效。" />
 
-        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
-            <StackPanel>
-                <TextBlock Text="全接口 CDN（自定义反代）" Style="{StaticResource H2}" />
-                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,10"
-                           Text="默认走 https://mtl.dpdns.org。所有下载接口（原版、Modrinth、Fabric、Forge/NeoForge）都会改写为「前缀/原host/路径」；某个 host 被 CDN 拒绝时自动回退直连。留空则全部直连。" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="VanillaCdnBox" Style="{StaticResource SheetTextBox}" Height="34" />
-                    <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="保存"
-                            Width="80" Height="34" Margin="8,0,0,0" Click="SaveCdn_Click" />
-                </Grid>
-            </StackPanel>
-        </Border>
     </StackPanel>
 </UserControl>

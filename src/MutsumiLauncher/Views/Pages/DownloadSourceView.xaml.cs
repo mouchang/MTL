@@ -41,7 +41,6 @@ public partial class DownloadSourceView : UserControl
 
         CustomProxyRow.Visibility = mode == "custom" ? Visibility.Visible : Visibility.Collapsed;
         ProxyHostBox.Text = config.ProxyHost;
-        VanillaCdnBox.Text = config.VanillaCdnBase;
         ProxyPortBox.Text = config.ProxyPort.ToString();
     }
 
@@ -76,14 +75,6 @@ public partial class DownloadSourceView : UserControl
     }
 
     private void ProxyAuto_Click(object sender, RoutedEventArgs e) => SetProxyMode("auto");
-
-    private void SaveCdn_Click(object sender, RoutedEventArgs e)
-    {
-        AppConfig.Current.VanillaCdnBase = VanillaCdnBox.Text.Trim();
-        AppConfig.Current.CdnChosen = true;
-        AppConfig.Current.Save();
-        _onChanged?.Invoke();
-    }
 
     private void ProxyDirect_Click(object sender, RoutedEventArgs e) => SetProxyMode("direct");
 

@@ -22,6 +22,9 @@ public sealed class ForgeLoader
 
     private const string NeoForgeOriginBase = "https://maven.neoforged.net";
 
+    /// <summary>NeoForge 官方 maven 国内直连不通，走 Cloudflare 反代（路径：/&lt;host&gt;/&lt;path&gt;）。</summary>
+    private const string NeoForgeCdnBase = "https://mtl.dpdns.org/maven.neoforged.net";
+
     private static string NeoForgeVersionListUrl(string baseUrl)
         => $"{baseUrl}/api/maven/versions/releases/net/neoforged/neoforge";
 
@@ -57,9 +60,9 @@ public sealed class ForgeLoader
     private static async Task<IReadOnlyList<string>> GetNeoForgeVersionsAsync(string gameVersion,
         CancellationToken cancellationToken)
     {
-        // 版本列表属于「获取数据」，直连官方即可
-        var json = await Http.GetStringAsync(NeoForgeVersionListUrl(NeoForgeOriginBase),
-            cancellationToken);
+        var json = await GetStringWithFallbackAsync(
+            NeoForgeVersionListUrl(NeoForgeCdnBase),
+            NeoForgeVersionListUrl(NeoForgeOriginBase), cancellationToken);
 
         using var document = JsonDocument.Parse(json);
         var prefix = NeoForgePrefix(gameVersion);
@@ -141,32 +144,21 @@ public sealed class ForgeLoader
             }
             else
             {
-                var cdnBase = DownloadMirror.CustomCdnBase;
-                var cdnBaseUrl = cdnBase is null ? null : $"{cdnBase}/maven.neoforged.net";
-
-                if (cdnBaseUrl is not null)
+                try
                 {
-                    try
-                    {
-                        await DownloadAsync(NeoForgeInstallerUrl(cdnBaseUrl, loaderVersion), installer,
-                            cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLog.Error(ex, "neoforge cdn installer");
-                        await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion),
-                            installer, cancellationToken);
-                    }
-
-                    // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
-                    progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
-                    await PatchInstallerHostsAsync(installer, cdnBaseUrl, cancellationToken);
+                    await DownloadAsync(NeoForgeInstallerUrl(NeoForgeCdnBase, loaderVersion), installer,
+                        cancellationToken);
                 }
-                else
+                catch (Exception ex)
                 {
+                    AppLog.Error(ex, "neoforge cdn installer");
                     await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion), installer,
                         cancellationToken);
                 }
+
+                // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
+                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
+                await PatchInstallerHostsAsync(installer, NeoForgeCdnBase, cancellationToken);
             }
 
             // 3. 选 Java
