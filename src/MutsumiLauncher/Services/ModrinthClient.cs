@@ -33,6 +33,13 @@ public sealed class ModrinthHit
     [JsonPropertyName("project_type")] public string ProjectType { get; set; } = string.Empty;
 }
 
+public sealed class ModrinthGameVersion
+{
+    [JsonPropertyName("version")] public string Version { get; set; } = string.Empty;
+
+    [JsonPropertyName("version_type")] public string VersionType { get; set; } = string.Empty;
+}
+
 public sealed class ModrinthProject
 {
     [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
@@ -162,6 +169,14 @@ public sealed class ModrinthClient
         var json = await Http.GetStringAsync(url, cancellationToken);
         var response = JsonSerializer.Deserialize<ModrinthSearchResponse>(json);
         return response?.Hits ?? [];
+    }
+
+    /// <summary>Modrinth 支持的全部游戏版本（用于搜索页版本下拉）。</summary>
+    public async Task<IReadOnlyList<ModrinthGameVersion>> GetGameVersionTagsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var json = await Http.GetStringAsync($"{BaseUrl}/tag/game_version", cancellationToken);
+        return JsonSerializer.Deserialize<List<ModrinthGameVersion>>(json) ?? [];
     }
 
     public async Task<ModrinthProject?> GetProjectAsync(string projectId,

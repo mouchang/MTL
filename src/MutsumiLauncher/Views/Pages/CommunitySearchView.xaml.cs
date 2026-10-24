@@ -15,7 +15,7 @@ public partial class CommunitySearchView : UserControl
     private string _projectType = "mod";
 
     /// <summary>点击结果行时请求上层打开详情页。</summary>
-    public event Action<ModrinthItem>? DetailRequested;
+    public event Action<ModrinthItem, string?>? DetailRequested;
 
     public CommunitySearchView()
     {
@@ -42,6 +42,7 @@ public partial class CommunitySearchView : UserControl
         InstallPackButton.Visibility = kind == "pack" ? Visibility.Visible : Visibility.Collapsed;
 
         SearchNameBox.Text = string.Empty;
+        _ = LoadVersionsAsync();
         _ = RunSearchAsync();
     }
 
@@ -72,6 +73,50 @@ public partial class CommunitySearchView : UserControl
         finally
         {
             Loading.IsActive = false;
+        }
+    }
+
+    /// <summary>版本下拉来源于 Modrinth 的 game_version 标签。</summary>
+    private async Task LoadVersionsAsync()
+    {
+        try
+        {
+            var tags = await _client.GetGameVersionTagsAsync();
+            if (tags.Count == 0) return;
+
+            var releases = tags
+                .Where(t => t.VersionType.Equals("release", StringComparison.OrdinalIgnoreCase))
+                .Select(t => t.Version)
+                .ToList();
+
+            var versions = (releases.Count > 0 ? releases : tags.Select(t => t.Version).ToList())
+                .Distinct()
+                .Take(80)
+                .ToList();
+
+            var selected = GameVersion();
+
+            VersionCombo.Items.Clear();
+            VersionCombo.Items.Add(new ComboBoxItem { Content = "全部（也可自行输入）", Tag = string.Empty });
+            foreach (var version in versions)
+                VersionCombo.Items.Add(new ComboBoxItem { Content = version, Tag = version });
+
+            VersionCombo.SelectedIndex = 0;
+            if (selected is not null)
+            {
+                for (var i = 1; i < VersionCombo.Items.Count; i++)
+                {
+                    if ((VersionCombo.Items[i] as ComboBoxItem)?.Tag as string == selected)
+                    {
+                        VersionCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "modrinth game versions");
         }
     }
 
@@ -151,7 +196,7 @@ public partial class CommunitySearchView : UserControl
     private void OpenDetail_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement { Tag: ModrinthItem item })
-            DetailRequested?.Invoke(item);
+            DetailRequested?.Invoke(item, GameVersion());
     }
 
     private void InstallPack_Click(object sender, RoutedEventArgs e)

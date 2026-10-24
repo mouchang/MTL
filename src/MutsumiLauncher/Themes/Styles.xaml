@@ -149,7 +149,8 @@
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverWash}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentWash}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Accent}" />
+                            <Setter Property="Foreground" Value="White" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -174,8 +175,8 @@
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverWash}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#59FFFFFF" />
-                            <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Accent}" />
+                            <Setter Property="Foreground" Value="White" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -738,7 +739,7 @@
         </Setter>
     </Style>
 
-    <!-- ============ 滚动条 ============ -->
+    <!-- ============ 滚动条：4px 细条 + 主题高亮色 ============ -->
     <Style TargetType="ScrollBar">
         <Setter Property="Width" Value="4" />
         <Setter Property="Background" Value="Transparent" />
@@ -754,7 +755,8 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#59FFFFFF" CornerRadius="2" />
+                                            <Border Background="{StaticResource Accent}" CornerRadius="2"
+                                                    Opacity="0.85" />
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
@@ -767,6 +769,40 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="Height" Value="4" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="Transparent">
+                                <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageLeftCommand" Opacity="0"
+                                                      Focusable="False" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border Background="{StaticResource Accent}"
+                                                            CornerRadius="2" Opacity="0.85" />
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageRightCommand" Opacity="0"
+                                                      Focusable="False" />
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ============ 提示气泡 ============ -->

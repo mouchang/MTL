@@ -8,8 +8,8 @@
                     Margin="88,30,0,0" Width="340">
 
             <!-- 头像：水平中心与下方用户名胶囊对齐（位置在代码里算） -->
-            <Grid x:Name="AvatarHost" Width="104" Height="104" HorizontalAlignment="Left">
-                <Border CornerRadius="52" Background="#59FFFFFF" BorderBrush="#8CFFFFFF" BorderThickness="1">
+            <Grid x:Name="AvatarHost" Width="116" Height="116" HorizontalAlignment="Left">
+                <Border CornerRadius="24" Background="#59FFFFFF" BorderBrush="#8CFFFFFF" BorderThickness="1">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270"
                                           Opacity="0.14" Color="#FF2E4A38" />

@@ -88,9 +88,9 @@ MutsumiLauncher/
 
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
-- **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
+- **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、带下方导航条、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
 - **图标**：原版条目使用官方材质渲染（正式版=草方块、远古版=泥土、预览版=命令方块、愚人节=金块），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。
-- **社区资源（Modrinth）**：搜索走 Modrinth 开放 API，支持按游戏版本、加载器、类型筛选；详情页内按文件安装，按项目类型落到 `mods` / `resourcepacks` / `shaderpacks` / `datapacks`（开启版本隔离时装进 `versions/<版本>/`），文件带 SHA-1 校验。整合包目前下载 `.mrpack`，自动安装待做。Personal Access Token 可选：环境变量 `MTL_MODRINTH_TOKEN` 优先，其次本地 `config.json` 的 `ModrinthToken`（不会入库）。
+- **社区资源（Modrinth）**：搜索走 Modrinth 开放 API，版本下拉直接读取 `/v2/tag/game_version` 的正式版本，支持按游戏版本、加载器、类型筛选；从搜索页进入详情时会把当前选择的版本带过去并自动选中对应标签；详情页内按文件安装，按项目类型落到 `mods` / `resourcepacks` / `shaderpacks` / `datapacks`（开启版本隔离时装进 `versions/<版本>/`），文件带 SHA-1 校验。整合包目前下载 `.mrpack`，自动安装待做。Personal Access Token 可选：环境变量 `MTL_MODRINTH_TOKEN` 优先，其次本地 `config.json` 的 `ModrinthToken`（不会入库）。
 - **Java 探测**：启动器扫描 `JAVA_HOME`、`PATH`、注册表（JavaSoft）、常见安装目录（Adoptium / Microsoft / Zulu / Corretto 等）以及 `.minecraft
 untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java -version`；结果去重后按主版本倒序展示。设置页可查看与重新检测，版本设置里的 Java 下拉直接使用这份列表。
 
@@ -99,6 +99,7 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - **启动游戏**：启动页「启动游戏」会挑选已安装版本启动——解压 natives、拼 classpath、按 `minecraftArguments` / `arguments.game` 替换占位符、用离线 UUID，并按版本要求自动选 Java（1.16 及更早 → 8、1.17 → 16、1.18–1.20.4 → 17、1.20.5+ → 21）；游戏输出写入 `游戏目录\logs\<版本>-<时间>.log`。实测可启动 Beta 1.8.1。
 
 - **资源文件**：安装与启动前都会检查 `assets/indexes/<id>.json`，按索引下载缺失的 objects（按哈希寻址、跳过已存在文件、12 并发），进度实时显示。
+- **界面细节**：所有滚动条统一为 4px 细条 + 主题绿滑块；侧栏选中项与「全部」标签同色高亮；启动页头像外框是比头像大两圈的圆角方形。
 - **缓存管理**：设置页显示缓存大小与路径（版本清单缓存 + 项目图标缓存），一键清理并提示释放大小。
 - **配置持久化**：玩家名、所选版本、Java 路径、内存分配、版本隔离写入 `config.json`；点击启动页的版本胶囊会从底部滑出「选择启动版本」浮层（带滑入/滑出动画），选中即记住；版本设置里的 Java / 内存 / 隔离改动即时保存并参与启动。
 

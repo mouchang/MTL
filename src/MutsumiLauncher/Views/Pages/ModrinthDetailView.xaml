@@ -72,8 +72,8 @@
             <StackPanel>
                 <Border Style="{StaticResource GlassCard}" Padding="14,10" Margin="0,14,0,0">
                     <StackPanel>
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Disabled" Height="96">
+                        <ScrollViewer x:Name="TabScroll" HorizontalScrollBarVisibility="Visible"
+                                      VerticalScrollBarVisibility="Disabled" Height="104">
                             <Grid x:Name="TabPanel" Height="80" HorizontalAlignment="Left" />
                         </ScrollViewer>
                         <TextBlock x:Name="VersionSourceText" Style="{StaticResource Caption}"

@@ -78,10 +78,10 @@ public partial class DownloadPage : UserControl
         OpenDetail(view);
     }
 
-    private void OpenModrinthDetail(ModrinthItem item)
+    private void OpenModrinthDetail(ModrinthItem item, string? gameVersion)
     {
         var view = new ModrinthDetailView();
-        _ = view.LoadAsync(item, () => CloseDetail(), ShowToast);
+        _ = view.LoadAsync(item, gameVersion, () => CloseDetail(), ShowToast);
         OpenDetail(view);
     }
 

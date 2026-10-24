@@ -69,7 +69,8 @@ public partial class ModrinthDetailView : UserControl
         InitializeComponent();
     }
 
-    public async Task LoadAsync(ModrinthItem item, Action onBack, Action<string> toast)
+    public async Task LoadAsync(ModrinthItem item, string? initialGameVersion, Action onBack,
+        Action<string> toast)
     {
         _item = item;
         _onBack = onBack;
@@ -104,7 +105,18 @@ public partial class ModrinthDetailView : UserControl
             }
 
             BuildTabs();
-            ApplyFilter(null);
+
+            if (!string.IsNullOrWhiteSpace(initialGameVersion)
+                && _versions.SelectMany(v => v.GameVersions).Contains(initialGameVersion))
+            {
+                _selectedGameVersion = initialGameVersion;
+                HighlightTabs();
+                ApplyFilter(initialGameVersion);
+            }
+            else
+            {
+                ApplyFilter(null);
+            }
         }
         catch (Exception ex)
         {
@@ -207,6 +219,8 @@ public partial class ModrinthDetailView : UserControl
                 text.Foreground = selected ? Brushes.White : (Brush)FindResource("InkSoft");
                 text.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
             }
+
+            if (selected) child.BringIntoView();
         }
     }
 
