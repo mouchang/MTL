@@ -160,7 +160,7 @@ public sealed class GameLauncher
             AssetIndex = parent.AssetIndex,
             Downloads = parent.Downloads,
             Libraries = libraries,
-            Arguments = HasGameArguments(child.Arguments) ? child.Arguments : parent.Arguments,
+            Arguments = MergeArguments(parent.Arguments, child.Arguments),
             MinecraftArguments = child.MinecraftArguments ?? parent.MinecraftArguments,
             JavaVersion = parent.JavaVersion ?? child.JavaVersion,
             InheritsFrom = parentId,
@@ -196,6 +196,7 @@ public sealed class GameLauncher
             ["user_type"] = isMicrosoft ? "msa" : "legacy",
             ["version_type"] = string.IsNullOrEmpty(detail.Type) ? "release" : detail.Type,
             ["natives_directory"] = nativesDir,
+            ["library_directory"] = GamePaths.LibrariesDir,
             ["classpath"] = classpath,
             ["classpath_separator"] = ";",
             ["launcher_name"] = "MutsumiLauncher",
@@ -211,6 +212,21 @@ public sealed class GameLauncher
         };
 
         if (memoryMb > 0) arguments.Add($"-Xmx{memoryMb}M");
+
+        // Forge / NeoForge 等会在 arguments.jvm 里带自定义 JVM 参数
+        if (detail.Arguments is { ValueKind: System.Text.Json.JsonValueKind.Object } jvmContainer
+            && jvmContainer.TryGetProperty("jvm", out var jvmArray)
+            && jvmArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            foreach (var item in jvmArray.EnumerateArray())
+            {
+                foreach (var raw in ReadArgumentValues(item))
+                {
+                    var value = Substitute(raw, values);
+                    if (!string.IsNullOrWhiteSpace(value)) arguments.Add(value);
+                }
+            }
+        }
 
         arguments.Add("-cp");
         arguments.Add(classpath);
@@ -249,6 +265,57 @@ public sealed class GameLauncher
         }
 
         return arguments;
+    }
+
+    /// <summary>把父/子版本的 arguments 合并成一个 JSON 对象（game + jvm 数组拼接）。</summary>
+    private static System.Text.Json.JsonElement? MergeArguments(
+        System.Text.Json.JsonElement? parent, System.Text.Json.JsonElement? child)
+    {
+        if (parent is null) return child;
+        if (child is null) return parent;
+
+        static List<string> Read(System.Text.Json.JsonElement element, string name)
+        {
+            if (!element.TryGetProperty(name, out var array)
+                || array.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return [];
+
+            return array.EnumerateArray().Select(item => item.GetRawText()).ToList();
+        }
+
+        var game = Read(parent.Value, "game").Concat(Read(child.Value, "game")).ToList();
+        var jvm = Read(parent.Value, "jvm").Concat(Read(child.Value, "jvm")).ToList();
+
+        var json = "{\"game\":[" + string.Join(",", game) + "],\"jvm\":[" + string.Join(",", jvm) + "]}";
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
+
+    private static IEnumerable<string> ReadArgumentValues(System.Text.Json.JsonElement item)
+    {
+        if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            var value = item.GetString();
+            if (!string.IsNullOrWhiteSpace(value)) yield return value;
+            yield break;
+        }
+
+        if (item.ValueKind != System.Text.Json.JsonValueKind.Object) yield break;
+        if (!item.TryGetProperty("value", out var valueElement)) yield break;
+
+        if (valueElement.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            var value = valueElement.GetString();
+            if (!string.IsNullOrWhiteSpace(value)) yield return value;
+        }
+        else if (valueElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            foreach (var entry in valueElement.EnumerateArray())
+            {
+                var value = entry.GetString();
+                if (!string.IsNullOrWhiteSpace(value)) yield return value;
+            }
+        }
     }
 
     private static string Substitute(string value, IReadOnlyDictionary<string, string> map)

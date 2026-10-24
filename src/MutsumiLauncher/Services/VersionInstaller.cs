@@ -98,11 +98,15 @@ public sealed class VersionInstaller
 
     public async Task InstallAsync(string id, string versionUrl,
         IProgress<InstallProgress>? progress = null, bool installAssets = true,
-        CancellationToken cancellationToken = default)
+        string? instanceName = null, CancellationToken cancellationToken = default)
     {
         GamePaths.EnsureCreated();
 
-        var versionDir = Path.Combine(GamePaths.VersionsDir, id);
+        var name = string.IsNullOrWhiteSpace(instanceName) ? id : instanceName.Trim();
+        var versionDir = Path.Combine(GamePaths.VersionsDir, name);
+        if (Directory.Exists(versionDir) && Directory.EnumerateFiles(versionDir).Any())
+            throw new InvalidOperationException($"实例「{name}」已存在，请换一个实例名称。");
+
         Directory.CreateDirectory(versionDir);
 
         progress?.Report(new InstallProgress(1, $"获取 {id} 的版本信息…"));
@@ -111,8 +115,8 @@ public sealed class VersionInstaller
         var detail = JsonSerializer.Deserialize<VersionDetail>(json)
                      ?? throw new InvalidOperationException("版本 JSON 解析失败");
 
-        await File.WriteAllTextAsync(Path.Combine(versionDir, $"{id}.json"), json, cancellationToken);
-        AppLog.Info($"install {id}: json saved, {detail.Libraries.Count} libraries");
+        await File.WriteAllTextAsync(Path.Combine(versionDir, $"{name}.json"), json, cancellationToken);
+        AppLog.Info($"install {id} -> {name}: json saved, {detail.Libraries.Count} libraries");
 
         var transferred = 0L;
 
@@ -120,7 +124,7 @@ public sealed class VersionInstaller
         {
             progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
             var clientUrl = DownloadMirror.ClientUrl(id, client.Url);
-            await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{id}.jar"), client.Sha1,
+            await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{name}.jar"), client.Sha1,
                 cancellationToken);
             transferred += client.Size;
         }
@@ -163,7 +167,7 @@ public sealed class VersionInstaller
         }
 
         progress?.Report(new InstallProgress(100, "安装完成"));
-        AppLog.Info($"install {id}: done, {index} artifacts");
+        AppLog.Info($"install {id} -> {name}: done, {index} artifacts");
     }
 
     private static IEnumerable<Artifact> GetWindowsArtifacts(Library library)

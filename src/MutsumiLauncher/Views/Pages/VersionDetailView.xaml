@@ -27,12 +27,24 @@
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource GlassCard}" Padding="22,18">
-            <StackPanel Orientation="Horizontal">
-                <Image Source="/Assets/grass.png" Width="52" Height="52"
-                       RenderOptions.BitmapScalingMode="NearestNeighbor" VerticalAlignment="Center" />
-                <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
-                    <TextBlock x:Name="VersionText" FontSize="22" Foreground="{StaticResource Ink}" />
-                    <TextBlock x:Name="VersionCaption" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/grass.png" Width="52" Height="52"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor" VerticalAlignment="Center" />
+                    <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="VersionText" FontSize="22" Foreground="{StaticResource Ink}" />
+                        <TextBlock x:Name="VersionCaption" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <TextBlock Text="实例名称" Style="{StaticResource FieldLabel}" Width="70"
+                               VerticalAlignment="Center" />
+                    <TextBox x:Name="InstanceNameBox" Style="{StaticResource SheetTextBox}" Width="240"
+                             Height="34" />
+                    <TextBlock Text="安装到 versions/&lt;实例名称&gt;，避免同名覆盖"
+                               Style="{StaticResource Caption}" VerticalAlignment="Center"
+                               Margin="12,0,0,0" />
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -60,7 +72,6 @@
                                    Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
-
                 <Border x:Name="FabricVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
                     <StackPanel>
                         <TextBlock x:Name="FabricVersionsHint" Style="{StaticResource Caption}"
@@ -73,7 +84,7 @@
 
                 <!-- Forge -->
                 <Button x:Name="ForgeRow" Style="{StaticResource GhostButton}" Padding="8,10"
-                        HorizontalContentAlignment="Stretch" Click="UnsupportedLoader_Click">
+                        HorizontalContentAlignment="Stretch" Click="Forge_Click">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140" />
@@ -83,15 +94,24 @@
                         <TextBlock Text="Forge" FontSize="14" Foreground="{StaticResource Ink}" />
                         <TextBlock x:Name="ForgeStatus" Grid.Column="1" Text="可以添加" FontSize="12"
                                    Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource IconFont}"
-                                   FontSize="12" Foreground="{StaticResource InkMute}"
-                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="ForgeChevron" Grid.Column="2" Text="&#xE76C;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="12"
+                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
+                <Border x:Name="ForgeVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
+                    <StackPanel>
+                        <TextBlock x:Name="ForgeVersionsHint" Style="{StaticResource Caption}"
+                                   Margin="0,0,0,6" Text="正在获取 Forge 版本…" />
+                        <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="ForgeVersions" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
 
                 <!-- NeoForge -->
                 <Button x:Name="NeoForgeRow" Style="{StaticResource GhostButton}" Padding="8,10"
-                        HorizontalContentAlignment="Stretch" Click="UnsupportedLoader_Click">
+                        HorizontalContentAlignment="Stretch" Click="NeoForge_Click">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140" />
@@ -101,11 +121,20 @@
                         <TextBlock Text="NeoForge" FontSize="14" Foreground="{StaticResource Ink}" />
                         <TextBlock x:Name="NeoForgeStatus" Grid.Column="1" Text="可以添加" FontSize="12"
                                    Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource IconFont}"
-                                   FontSize="12" Foreground="{StaticResource InkMute}"
-                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="NeoForgeChevron" Grid.Column="2" Text="&#xE76C;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="12"
+                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
+                <Border x:Name="NeoForgeVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
+                    <StackPanel>
+                        <TextBlock x:Name="NeoForgeVersionsHint" Style="{StaticResource Caption}"
+                                   Margin="0,0,0,6" Text="正在获取 NeoForge 版本…" />
+                        <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="NeoForgeVersions" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
 
                 <!-- OptiFine -->
                 <Button x:Name="OptiFineRow" Style="{StaticResource GhostButton}" Padding="8,10"

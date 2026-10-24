@@ -93,7 +93,8 @@ MutsumiLauncher/
 - **下载加速**：原版资源默认走 BMCLAPI（版本清单 / 版本 JSON / client / libraries / assets），社区资源默认走 MCIM（Modrinth API、CDN 文件与图标）；可在 `config.json` 用 `VanillaMirror` / `ModMirror` 设为 `official` 切回官方。
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
-- **加载器安装**：原版版本详情页的加载器行点击后展开该游戏版本可用的**全部** Fabric Loader 版本（不限稳定版），选中高亮；Fabric / Forge / NeoForge 互斥，选中一个后其余行禁用并显示「与所选加载器不互通」，底部按钮固定为「开始下载」统一安装。
+- **实例名称**：版本详情页可自定义实例名称（安装到 `versions/<实例名称>`），默认取版本号；选择加载器后自动建议 `26.3-Fabric-0.20.1` 这类不冲突的名字，重名会拒绝安装。
+- **加载器安装**：Fabric / Forge / NeoForge 均可展开选择版本、选中高亮、三者互斥（其余行禁用并显示「与所选加载器不互通」）。Fabric 走 meta profile；Forge/NeoForge 下载官方 installer 在临时目录执行 `--installClient`，再合并 `versions/` 与 `libraries/`。NeoForge 官方 maven 在国内直连不通，需要代理或镜像。
 - **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、带下方导航条、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
 - **图标**：图标下载到本地 `icons/` 缓存并校验图片头，镜像失败时自动回退官方 CDN；原版条目使用官方材质渲染（正式版=草方块、远古版=泥土、预览版=命令方块、愚人节=金块），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。
 - **社区资源（Modrinth）**：搜索走 Modrinth 开放 API，版本下拉直接读取 `/v2/tag/game_version` 的正式版本，支持按游戏版本、加载器、类型筛选；从搜索页进入详情时会把当前选择的版本带过去并自动选中对应标签；详情页内按文件安装，按项目类型落到 `mods` / `resourcepacks` / `shaderpacks` / `datapacks`（开启版本隔离时装进 `versions/<版本>/`），文件带 SHA-1 校验。整合包目前下载 `.mrpack`，自动安装待做。Personal Access Token 可选：环境变量 `MTL_MODRINTH_TOKEN` 优先，其次本地 `config.json` 的 `ModrinthToken`（不会入库）。

@@ -44,13 +44,19 @@ public sealed class FabricLoader
 
     /// <summary>安装 Fabric 版本，返回版本 ID。基础原版必须已安装。</summary>
     public async Task<string> InstallAsync(string gameVersion, string loaderVersion,
-        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default)
+        IProgress<InstallProgress>? progress = null, string? instanceName = null,
+        CancellationToken cancellationToken = default)
     {
         progress?.Report(new InstallProgress(5, "获取 Fabric 配置…"));
         var json = await GetProfileJsonAsync(gameVersion, loaderVersion, cancellationToken);
 
-        var id = $"fabric-loader-{loaderVersion}-{gameVersion}";
+        var id = string.IsNullOrWhiteSpace(instanceName)
+            ? $"fabric-loader-{loaderVersion}-{gameVersion}"
+            : instanceName.Trim();
         var versionDir = Path.Combine(GamePaths.VersionsDir, id);
+        if (Directory.Exists(versionDir) && Directory.EnumerateFiles(versionDir).Any())
+            throw new InvalidOperationException($"实例「{id}」已存在，请换一个实例名称。");
+
         Directory.CreateDirectory(versionDir);
         await File.WriteAllTextAsync(Path.Combine(versionDir, $"{id}.json"), json, cancellationToken);
 
