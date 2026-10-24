@@ -79,15 +79,17 @@ public sealed class ForgeLoader
     /// <summary>1.21.1 → 21.1.；1.20.4 → 20.4.；1.20.1 → 47.（NeoForge 特例）。</summary>
     private static string NeoForgePrefix(string gameVersion)
     {
+        // NeoForge 老版本特例：1.20.1 用 47.x
         if (gameVersion == "1.20.1") return "47.";
 
         var parts = gameVersion.Split('.');
-        if (parts.Length >= 3
-            && int.TryParse(parts[1], out var minor)
-            && int.TryParse(parts[2], out var patch))
-        {
-            return $"{minor}.{patch}.";
-        }
+
+        // 1.21.1 → 21.1.；26.3 这类新版本号 → 26.3.0.
+        if (parts.Length >= 3)
+            return $"{parts[1]}.{parts[2]}.";
+
+        if (parts.Length == 2)
+            return parts[0] == "1" ? $"{parts[1]}.0." : $"{parts[0]}.{parts[1]}.0.";
 
         return string.Empty;
     }
