@@ -256,6 +256,17 @@ public partial class VersionDetailView : UserControl
         HintText.Text = $"已选择 {LoaderName(kind)} {version}，点击「开始下载」。";
     }
 
+    /// <summary>安装完成后把新实例设为当前版本，并刷新启动页。</summary>
+    private void NotifyInstalled(string id)
+    {
+        var config = AppConfig.Current;
+        config.SelectedVersion = id;
+        config.Save();
+
+        if (Window.GetWindow(this) is MainWindow main)
+            main.RefreshInstances();
+    }
+
     private void UnsupportedLoader_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedLoaderVersion is not null) return;
@@ -325,6 +336,7 @@ public partial class VersionDetailView : UserControl
                 ProgressText.Text = $"已安装 {id}";
                 if (Status(_selectedLoader!) is { } status) status.Text = "已安装";
                 DownloadCenter.Complete(task, $"已安装 {id}");
+                NotifyInstalled(id);
                 _toast?.Invoke($"安装完成：{id}");
                 return;
             }
@@ -334,6 +346,7 @@ public partial class VersionDetailView : UserControl
             ProgressText.Text = $"{instanceName} 安装完成";
             HintText.Text = "可以在启动页切换到该版本并启动。";
             DownloadCenter.Complete(task, "安装完成");
+            NotifyInstalled(instanceName);
             _toast?.Invoke($"{_entry.Name} 安装完成");
         }
         catch (Exception ex)

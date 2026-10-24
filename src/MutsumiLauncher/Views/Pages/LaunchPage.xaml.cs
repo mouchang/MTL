@@ -42,6 +42,13 @@ public partial class LaunchPage : UserControl
         AvatarHost.Margin = new Thickness(offset, 0, 0, 0);
     }
 
+    /// <summary>重新读取版本列表和账号信息（切回启动页 / 安装完成后调用）。</summary>
+    public void RefreshAll()
+    {
+        RefreshVersions();
+        ApplyAccount();
+    }
+
     /// <summary>读取已安装版本，恢复上次选择。</summary>
     public void RefreshVersions()
     {

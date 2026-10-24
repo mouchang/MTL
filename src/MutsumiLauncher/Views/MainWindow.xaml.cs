@@ -95,6 +95,8 @@ public partial class MainWindow : Window
 
         PageHost.Content = page;
 
+        if (page is LaunchPage launch) launch.RefreshAll();
+
         if (animate)
         {
             page.Opacity = 0;
@@ -225,8 +227,8 @@ public partial class MainWindow : Window
     /// <summary>在主窗口内从底部滑出版本设置。</summary>
     public event Action? VersionSelectionChanged;
 
-    /// <summary>实例被重命名 / 删除后刷新启动页与版本列表。</summary>
-    private void RefreshInstances()
+    /// <summary>实例被安装 / 重命名 / 删除后刷新启动页与版本列表。</summary>
+    public void RefreshInstances()
     {
         if (_pages.TryGetValue("launch", out var page) && page is LaunchPage launch) launch.RefreshVersions();
         VersionSelectionChanged?.Invoke();
