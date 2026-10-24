@@ -81,7 +81,8 @@ public static class AssetInstaller
                 {
                     progress?.Report(new InstallProgress(
                         total == 0 ? 0 : 100.0 * current / total,
-                        $"资源文件 {current}/{total}（{Interlocked.Read(ref bytesDone) / 1048576.0:0.0} MB）"));
+                        $"资源文件 {current}/{total}（{Interlocked.Read(ref bytesDone) / 1048576.0:0.0} MB）",
+                        Interlocked.Read(ref bytesDone)));
                 }
 
                 semaphore.Release();

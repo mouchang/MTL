@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        DownloadCenter.Changed += () => Dispatcher.Invoke(UpdateDownloadFloater);
+
         // 适配小屏 / 高缩放：窗口不超过工作区的 92%
         var work = SystemParameters.WorkArea;
         Width = Math.Min(1120, work.Width * 0.92);
@@ -105,6 +107,37 @@ public partial class MainWindow : Window
         {
             page.Opacity = 1;
         }
+
+        UpdateDownloadFloater();
+    }
+
+    private void UpdateDownloadFloater()
+    {
+        var active = DownloadCenter.ActiveCount;
+        var show = active > 0 && _currentPage != "download";
+        DownloadFloater.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!show) return;
+
+        var percent = DownloadCenter.Tasks.Where(task => !task.IsDone)
+            .Select(task => task.Percent)
+            .DefaultIfEmpty(0)
+            .Average();
+
+        FloaterText.Text = $"下载中 {active} 项 · {percent:0}%";
+    }
+
+    private void DownloadFloater_Click(object sender, MouseButtonEventArgs e)
+    {
+        var panel = new DownloadPanelView();
+        panel.Closed += () =>
+        {
+            DownloadPanelHost.Visibility = Visibility.Collapsed;
+            DownloadPanelHost.Content = null;
+        };
+
+        DownloadPanelHost.Content = panel;
+        DownloadPanelHost.Visibility = Visibility.Visible;
     }
 
     private void SetNavExpanded(bool expanded, bool animate = true)

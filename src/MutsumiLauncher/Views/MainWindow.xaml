@@ -130,6 +130,32 @@
                                     Panel.ZIndex="23" Visibility="Collapsed"
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Stretch" />
+
+                    <!-- 下载浮标（离开下载页时显示） -->
+                    <Border x:Name="DownloadFloater" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="18"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,26,26" Background="#F2FFFFFF" CornerRadius="20"
+                            Padding="16,9" Cursor="Hand" Visibility="Collapsed"
+                            MouseLeftButtonUp="DownloadFloater_Click">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270"
+                                              Opacity="0.2" Color="#FF2E4A38" />
+                        </Border.Effect>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}"
+                                       FontSize="13" Foreground="{StaticResource AccentDeep}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:Name="FloaterText" Text="下载中" FontSize="12"
+                                       Foreground="{StaticResource Ink}" Margin="8,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 下载任务面板 -->
+                    <ContentControl x:Name="DownloadPanelHost" Grid.Row="0" Grid.RowSpan="2"
+                                    Panel.ZIndex="24" Visibility="Collapsed"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
                 </Grid>
 
                 <!-- 轻提示 -->

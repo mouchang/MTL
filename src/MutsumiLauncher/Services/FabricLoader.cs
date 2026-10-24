@@ -59,6 +59,7 @@ public sealed class FabricLoader
 
         var libraries = detail.Libraries;
         var index = 0;
+        var transferred = 0L;
         foreach (var library in libraries)
         {
             index++;
@@ -78,9 +79,10 @@ public sealed class FabricLoader
 
             progress?.Report(new InstallProgress(
                 10 + 80.0 * index / Math.Max(1, libraries.Count),
-                $"下载 Fabric 依赖 {index}/{libraries.Count}…"));
+                $"下载 Fabric 依赖 {index}/{libraries.Count}…",
+                transferred));
 
-            await DownloadAsync(url, target, cancellationToken);
+            transferred += await DownloadAsync(url, target, cancellationToken);
         }
 
         progress?.Report(new InstallProgress(100, "Fabric 安装完成"));
@@ -101,12 +103,15 @@ public sealed class FabricLoader
         return $"{group}/{artifact}/{version}/{artifact}-{version}{classifier}.jar";
     }
 
-    private static async Task DownloadAsync(string url, string target, CancellationToken cancellationToken)
+    private static async Task<long> DownloadAsync(string url, string target,
+        CancellationToken cancellationToken)
     {
         var directory = Path.GetDirectoryName(target);
         if (directory is not null) Directory.CreateDirectory(directory);
 
         var temp = target + ".tmp";
+        long written = 0;
+
         using (var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
                    cancellationToken))
         {
@@ -116,8 +121,10 @@ public sealed class FabricLoader
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
             await using var file = File.Create(temp);
             await source.CopyToAsync(file, cancellationToken);
+            written = file.Length;
         }
 
         File.Move(temp, target, overwrite: true);
+        return written;
     }
 }

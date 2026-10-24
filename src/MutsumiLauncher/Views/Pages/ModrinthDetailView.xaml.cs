@@ -257,15 +257,21 @@ public partial class ModrinthDetailView : UserControl
         if (sender is not Button { Tag: ModrinthFileRow row } || _item is null) return;
 
         Loading.IsActive = true;
+        var task = DownloadCenter.Begin($"安装 {row.Version.Name}", indeterminate: true);
+
         try
         {
+            DownloadCenter.Report(task, "正在下载文件…", 20);
             var directory = Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
             await _client.DownloadAsync(row.File.Url, row.File.Filename, directory, row.File.Hashes?.Sha1);
+
+            DownloadCenter.Complete(task, "已安装");
             _toast?.Invoke($"{row.Version.Name} 安装完成");
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "modrinth install");
+            DownloadCenter.Complete(task, "失败：" + ex.Message);
             _toast?.Invoke("安装失败：" + ex.Message);
         }
         finally

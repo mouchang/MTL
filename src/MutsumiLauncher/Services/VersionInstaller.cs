@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace MutsumiLauncher.Services;
 
-public sealed record InstallProgress(double Percent, string Message);
+public sealed record InstallProgress(double Percent, string Message, long Bytes = 0);
 
 public sealed class VersionDetail
 {
@@ -114,12 +114,15 @@ public sealed class VersionInstaller
         await File.WriteAllTextAsync(Path.Combine(versionDir, $"{id}.json"), json, cancellationToken);
         AppLog.Info($"install {id}: json saved, {detail.Libraries.Count} libraries");
 
+        var transferred = 0L;
+
         if (detail.Downloads.TryGetValue("client", out var client) && client.Url is not null)
         {
             progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
             var clientUrl = DownloadMirror.ClientUrl(id, client.Url);
             await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{id}.jar"), client.Sha1,
                 cancellationToken);
+            transferred += client.Size;
         }
 
         var artifacts = detail.Libraries
@@ -137,13 +140,15 @@ public sealed class VersionInstaller
             cancellationToken.ThrowIfCancellationRequested();
 
             var percent = 8 + 86.0 * index / Math.Max(1, artifacts.Count);
-            progress?.Report(new InstallProgress(percent, $"下载依赖 {index}/{artifacts.Count}…"));
+            progress?.Report(new InstallProgress(percent, $"下载依赖 {index}/{artifacts.Count}…",
+                transferred));
 
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
             if (File.Exists(target)) continue;
 
             var libraryUrl = DownloadMirror.LibraryUrl(artifact.Url, artifact.Path);
             await DownloadAsync(libraryUrl, target, artifact.Sha1, cancellationToken);
+            transferred += artifact.Size;
         }
 
         if (installAssets && detail.AssetIndex is { Url.Length: > 0 } assetIndex)
@@ -151,7 +156,8 @@ public sealed class VersionInstaller
             var mapped = progress is null
                 ? null
                 : new Progress<InstallProgress>(p =>
-                    progress.Report(new InstallProgress(88 + p.Percent * 0.11, p.Message)));
+                    progress.Report(new InstallProgress(88 + p.Percent * 0.11, p.Message,
+                        transferred + p.Bytes)));
 
             await AssetInstaller.EnsureAsync(assetIndex, mapped, cancellationToken);
         }

@@ -48,7 +48,7 @@ public partial class VersionDetailView : UserControl
         FabricStatus.Text = HasFabricVersion(entry.Name) ? "已安装" : "可以添加";
         ForgeStatus.Text = "可以添加";
         NeoForgeStatus.Text = "可以添加";
-        StartButton.Content = "下载";
+        StartButton.Content = "开始下载";
     }
 
     private static bool HasFabricVersion(string gameVersion)
@@ -84,8 +84,7 @@ public partial class VersionDetailView : UserControl
         try
         {
             var loaders = await FabricLoader.GetLoadersAsync(_entry!.Name);
-            var stable = loaders.Where(item => item.Loader.Stable).ToList();
-            var list = (stable.Count > 0 ? stable : loaders.ToList()).Take(40).ToList();
+            var list = loaders.ToList();
 
             FabricVersions.Children.Clear();
             _fabricChips.Clear();
@@ -151,7 +150,7 @@ public partial class VersionDetailView : UserControl
         NeoForgeRow.IsEnabled = false;
         OptiFineRow.IsEnabled = false;
 
-        StartButton.Content = $"下载 Fabric {version}";
+        StartButton.Content = "开始下载";
         HintText.Text = "点击右下角「下载」开始安装。";
     }
 
@@ -169,10 +168,11 @@ public partial class VersionDetailView : UserControl
         _toast?.Invoke($"{name} 还没接入，目前只支持 Fabric。");
     }
 
-    private Progress<InstallProgress> CreateProgress() => new(p =>
+    private Progress<InstallProgress> CreateProgress(DownloadTask task) => new(p =>
     {
         ProgressText.Text = $"{_entry?.Name}：{p.Message}";
         ProgressFill.Width = ProgressTrack.ActualWidth * Math.Clamp(p.Percent, 0, 100) / 100.0;
+        DownloadCenter.Report(task, p.Message, p.Percent, p.Bytes);
     });
 
     private async void StartDownload_Click(object sender, RoutedEventArgs e)
@@ -184,9 +184,14 @@ public partial class VersionDetailView : UserControl
         ProgressText.Text = string.Empty;
         ProgressFill.Width = 0;
 
+        var title = string.IsNullOrEmpty(_selectedLoaderVersion)
+            ? $"安装 {_entry.Name}"
+            : $"安装 {_entry.Name} + Fabric {_selectedLoaderVersion}";
+        var task = DownloadCenter.Begin(title);
+
         try
         {
-            var progress = CreateProgress();
+            var progress = CreateProgress(task);
 
             if (!string.IsNullOrEmpty(_selectedLoaderVersion))
             {
@@ -202,6 +207,7 @@ public partial class VersionDetailView : UserControl
                     progress);
                 ProgressText.Text = $"已安装 {id}";
                 FabricStatus.Text = "已安装";
+                DownloadCenter.Complete(task, $"已安装 {id}");
                 _toast?.Invoke($"Fabric 安装完成：{id}");
                 return;
             }
@@ -209,12 +215,14 @@ public partial class VersionDetailView : UserControl
             await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress);
             ProgressText.Text = $"{_entry.Name} 安装完成";
             HintText.Text = "可以在启动页切换到该版本并启动。";
+            DownloadCenter.Complete(task, "安装完成");
             _toast?.Invoke($"{_entry.Name} 安装完成");
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "install version");
             ProgressText.Text = "安装失败：" + ex.Message;
+            DownloadCenter.Complete(task, "失败：" + ex.Message);
             _toast?.Invoke("安装失败：" + ex.Message);
         }
         finally
