@@ -22,11 +22,7 @@ public static class MicrosoftAuth
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MutsumiLauncher/0.1.0");
-        return client;
-    }
+        => HttpUtil.Create(TimeSpan.FromSeconds(30));
 
     public static async Task<DeviceCodeInfo> StartAsync(string clientId, CancellationToken cancellationToken)
     {

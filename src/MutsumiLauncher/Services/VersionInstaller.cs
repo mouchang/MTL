@@ -94,11 +94,7 @@ public sealed class VersionInstaller
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MutsumiLauncher/0.1.0");
-        return client;
-    }
+        => HttpUtil.Create(TimeSpan.FromMinutes(5));
 
     public async Task InstallAsync(string id, string versionUrl,
         IProgress<InstallProgress>? progress = null, bool installAssets = true,

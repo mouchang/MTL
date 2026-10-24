@@ -9,12 +9,7 @@ public static class IconCache
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "MutsumiLauncher/0.1.0 (github.com/mouchang/MTL)");
-        return client;
-    }
+        => HttpUtil.Create(TimeSpan.FromSeconds(30));
 
     public static string CacheDir => Path.Combine(AppPaths.DataRoot, "icons");
 

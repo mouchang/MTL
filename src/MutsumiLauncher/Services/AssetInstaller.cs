@@ -26,11 +26,7 @@ public static class AssetInstaller
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MutsumiLauncher/0.1.0");
-        return client;
-    }
+        => HttpUtil.Create(TimeSpan.FromMinutes(5));
 
     public static async Task EnsureAsync(AssetIndex index, IProgress<InstallProgress>? progress = null,
         CancellationToken cancellationToken = default)

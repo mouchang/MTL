@@ -115,9 +115,7 @@ public sealed class ModrinthClient
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "MutsumiLauncher/0.1.0 (github.com/mouchang/MTL)");
+        var client = HttpUtil.Create(TimeSpan.FromMinutes(5));
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 
         var token = ResolveToken();

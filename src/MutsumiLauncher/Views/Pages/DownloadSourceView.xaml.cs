@@ -32,6 +32,15 @@ public partial class DownloadSourceView : UserControl
         Highlight(VanillaMirror, VanillaMirrorCheck, !vanillaOfficial);
         Highlight(ModOfficial, ModOfficialCheck, modOfficial);
         Highlight(ModMirror, ModMirrorCheck, !modOfficial);
+
+        var mode = (config.NetworkMode ?? "direct").Trim().ToLowerInvariant();
+        Highlight(ProxyDirect, ProxyDirectCheck, mode == "direct");
+        Highlight(ProxySystem, ProxySystemCheck, mode == "system");
+        Highlight(ProxyCustom, ProxyCustomCheck, mode == "custom");
+
+        CustomProxyRow.Visibility = mode == "custom" ? Visibility.Visible : Visibility.Collapsed;
+        ProxyHostBox.Text = config.ProxyHost;
+        ProxyPortBox.Text = config.ProxyPort.ToString();
     }
 
     private static void Highlight(Button button, TextBlock check, bool selected)
@@ -59,6 +68,35 @@ public partial class DownloadSourceView : UserControl
     private void SetMod(string value)
     {
         AppConfig.Current.ModMirror = value;
+        AppConfig.Current.Save();
+        Refresh();
+        _onChanged?.Invoke();
+    }
+
+    private void ProxyDirect_Click(object sender, RoutedEventArgs e) => SetProxyMode("direct");
+
+    private void ProxySystem_Click(object sender, RoutedEventArgs e) => SetProxyMode("system");
+
+    private void ProxyCustom_Click(object sender, RoutedEventArgs e)
+    {
+        CustomProxyRow.Visibility = Visibility.Visible;
+        ApplyProxy_Click(sender, e);
+    }
+
+    private void ApplyProxy_Click(object sender, RoutedEventArgs e)
+    {
+        var config = AppConfig.Current;
+        config.NetworkMode = "custom";
+        config.ProxyHost = string.IsNullOrWhiteSpace(ProxyHostBox.Text) ? "127.0.0.1" : ProxyHostBox.Text.Trim();
+        if (int.TryParse(ProxyPortBox.Text.Trim(), out var port) && port > 0) config.ProxyPort = port;
+        config.Save();
+        Refresh();
+        _onChanged?.Invoke();
+    }
+
+    private void SetProxyMode(string mode)
+    {
+        AppConfig.Current.NetworkMode = mode;
         AppConfig.Current.Save();
         Refresh();
         _onChanged?.Invoke();

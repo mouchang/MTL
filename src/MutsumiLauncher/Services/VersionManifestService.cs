@@ -46,11 +46,7 @@ public sealed class VersionManifestService
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MutsumiLauncher/0.1.0");
-        return client;
-    }
+        => HttpUtil.Create(TimeSpan.FromSeconds(20));
 
     public static string CachePath => Path.Combine(AppPaths.CacheDir, "version_manifest_v2.json");
 

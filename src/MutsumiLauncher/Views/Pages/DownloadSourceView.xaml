@@ -111,5 +111,87 @@
 
         <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
                    Text="切换后立即生效，新的下载请求会使用所选源；已经下载好的文件不会重新下载。" />
+
+        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="网络代理" Style="{StaticResource H2}" />
+                <TextBlock Text="默认直连；镜像源在国内可直连，不需要开代理。" Style="{StaticResource Caption}"
+                           Margin="0,4,0,10" />
+
+                <Button x:Name="ProxyDirect" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ProxyDirect_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="直接连接（默认，推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="不使用任何代理，镜像源可直连" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProxyDirectCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
+                <Button x:Name="ProxySystem" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ProxySystem_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.4*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="跟随系统代理" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="使用 Windows 的代理设置" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProxySystemCheck" Grid.Column="2" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
+                <Button x:Name="ProxyCustom" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ProxyCustom_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="自定义代理" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="例如 Clash 的 127.0.0.1:7890" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProxyCustomCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
+                <Grid x:Name="CustomProxyRow" Margin="0,10,0,0" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="ProxyHostBox" Style="{StaticResource SheetTextBox}" Height="34" />
+                    <TextBox x:Name="ProxyPortBox" Grid.Column="1" Style="{StaticResource SheetTextBox}"
+                             Height="34" Margin="8,0,0,0" />
+                    <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="应用"
+                            Width="80" Height="34" Margin="8,0,0,0" Click="ApplyProxy_Click" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="ProxyHint" Style="{StaticResource Caption}" TextWrapping="Wrap"
+                   Text="网络代理修改后，重启启动器生效。" />
     </StackPanel>
 </UserControl>

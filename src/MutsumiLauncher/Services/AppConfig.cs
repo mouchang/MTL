@@ -40,6 +40,13 @@ public sealed class AppConfig
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "mcim";
 
+    /// <summary>网络代理：direct（默认直连）/ system（跟随系统）/ custom（自定义）。</summary>
+    public string NetworkMode { get; set; } = "direct";
+
+    public string ProxyHost { get; set; } = "127.0.0.1";
+
+    public int ProxyPort { get; set; } = 7890;
+
 
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 
