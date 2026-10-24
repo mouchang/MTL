@@ -88,8 +88,8 @@ MutsumiLauncher/
 
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
-- **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
-- **图标**：原版条目使用官方材质渲染（草方块 / 泥土 / 预览版），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。
+- **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
+- **图标**：原版条目使用官方材质渲染（正式版=草方块、远古版=泥土、预览版=命令方块、愚人节=金块），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。
 - **社区资源（Modrinth）**：搜索走 Modrinth 开放 API，支持按游戏版本、加载器、类型筛选；详情页内按文件安装，按项目类型落到 `mods` / `resourcepacks` / `shaderpacks` / `datapacks`（开启版本隔离时装进 `versions/<版本>/`），文件带 SHA-1 校验。整合包目前下载 `.mrpack`，自动安装待做。Personal Access Token 可选：环境变量 `MTL_MODRINTH_TOKEN` 优先，其次本地 `config.json` 的 `ModrinthToken`（不会入库）。
 - **Java 探测**：启动器扫描 `JAVA_HOME`、`PATH`、注册表（JavaSoft）、常见安装目录（Adoptium / Microsoft / Zulu / Corretto 等）以及 `.minecraft
 untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java -version`；结果去重后按主版本倒序展示。设置页可查看与重新检测，版本设置里的 Java 下拉直接使用这份列表。
@@ -99,12 +99,13 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - **启动游戏**：启动页「启动游戏」会挑选已安装版本启动——解压 natives、拼 classpath、按 `minecraftArguments` / `arguments.game` 替换占位符、用离线 UUID，并按版本要求自动选 Java（1.16 及更早 → 8、1.17 → 16、1.18–1.20.4 → 17、1.20.5+ → 21）；游戏输出写入 `游戏目录\logs\<版本>-<时间>.log`。实测可启动 Beta 1.8.1。
 
 - **资源文件**：安装与启动前都会检查 `assets/indexes/<id>.json`，按索引下载缺失的 objects（按哈希寻址、跳过已存在文件、12 并发），进度实时显示。
+- **缓存管理**：设置页显示缓存大小与路径（版本清单缓存 + 项目图标缓存），一键清理并提示释放大小。
 - **配置持久化**：玩家名、所选版本、Java 路径、内存分配、版本隔离写入 `config.json`；点击启动页的版本胶囊会从底部滑出「选择启动版本」浮层（带滑入/滑出动画），选中即记住；版本设置里的 Java / 内存 / 隔离改动即时保存并参与启动。
 
 - **账号**：启动页头像旁的账号胶囊显示当前账号与类型（离线/正版），点 ⇄ 从底部滑出账号浮层，可添加离线账号（校验 3–16 位字母数字下划线）、切换、删除；账号列表与选择写入 `config.json`，启动时使用当前账号的名字与离线 UUID（`OfflinePlayer:<name>` 的 MD5）。
 
 - **微软登录**：账号浮层里的「正版登录」弹出带淡入/上滑动画的窗口，显示设备码与验证链接，并**自动复制设备码、自动打开浏览器**；两处都有「复制」按钮兜底。授权后依次换取 Xbox Live / XSTS / Minecraft accessToken，拉取档案与皮肤；需要先在 `config.json` 填 `MicrosoftClientId`（或设置环境变量 `MTL_MS_CLIENT_ID`）。
-- **皮肤头像**：微软账号下载皮肤 PNG，裁 8×8 正脸并叠加帽子层（64×64 皮肤），按最近邻放大显示；离线账号使用内置的官方史蒂夫头像（`Assets/steve-head.png`）。启动时微软账号使用 `accessToken` + `userType=msa`。
+- **皮肤头像**：微软账号下载皮肤 PNG，裁 8×8 正脸并叠加帽子层（64×64 皮肤），按最近邻放大显示；离线账号使用 `Assets/steve-head.png`（取自 Unoclix 的原版史蒂夫皮肤）。启动时微软账号使用 `accessToken` + `userType=msa`。
 
 ## 素材替换
 

@@ -134,6 +134,8 @@ public partial class ModrinthDetailView : UserControl
     private void BuildTabs()
     {
         TabPanel.Children.Clear();
+        TabPanel.ColumnDefinitions.Clear();
+        TabPanel.RowDefinitions.Clear();
 
         var versions = _versions
             .SelectMany(v => v.GameVersions)
@@ -141,8 +143,21 @@ public partial class ModrinthDetailView : UserControl
             .OrderByDescending(ParseGameVersion)
             .ToList();
 
-        AddTab("全部", null);
-        foreach (var version in versions) AddTab(version, version);
+        var labels = new List<(string Text, string? Value)> { ("全部", null) };
+        labels.AddRange(versions.Select(v => (v, (string?)v)));
+
+        var columns = (int)Math.Ceiling(labels.Count / 2.0);
+        for (var i = 0; i < columns; i++) TabPanel.ColumnDefinitions.Add(new ColumnDefinition());
+        TabPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) });
+        TabPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) });
+
+        for (var i = 0; i < labels.Count; i++)
+        {
+            var button = CreateTab(labels[i].Text, labels[i].Value);
+            Grid.SetRow(button, i / columns);
+            Grid.SetColumn(button, i % columns);
+            TabPanel.Children.Add(button);
+        }
 
         VersionSourceText.Text = CurseForgeClient.IsConfigured
             ? $"版本来源：Modrinth（{versions.Count} 个版本）+ CurseForge（CF 匹配接入中）"
@@ -151,7 +166,7 @@ public partial class ModrinthDetailView : UserControl
         HighlightTabs();
     }
 
-    private void AddTab(string text, string? gameVersion)
+    private Button CreateTab(string text, string? gameVersion)
     {
         var content = new TextBlock
         {
@@ -163,8 +178,9 @@ public partial class ModrinthDetailView : UserControl
         var button = new Button
         {
             Style = (Style)FindResource("GhostButton"),
-            Padding = new Thickness(14, 7, 14, 7),
-            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(14, 4, 14, 4),
+            Height = 32,
+            Margin = new Thickness(0, 4, 8, 4),
             Tag = gameVersion,
             Content = content,
         };
@@ -176,7 +192,7 @@ public partial class ModrinthDetailView : UserControl
             ApplyFilter(gameVersion);
         };
 
-        TabPanel.Children.Add(button);
+        return button;
     }
 
     private void HighlightTabs()

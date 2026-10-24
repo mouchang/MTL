@@ -42,6 +42,22 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock Text="缓存" Style="{StaticResource H2}" />
+                        <Button x:Name="ClearCacheButton" Style="{StaticResource SecondaryButton}"
+                                Content="清理缓存" Height="30" Padding="14,0"
+                                HorizontalAlignment="Right" Click="ClearCache_Click" />
+                    </Grid>
+                    <TextBlock x:Name="CacheSizeText" Style="{StaticResource Caption}"
+                               Margin="0,6,0,0" Text="正在统计…" />
+                    <TextBlock x:Name="CachePathText" FontSize="11"
+                               Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource GlassCard}" Padding="22,18">
                 <StackPanel>
                     <TextBlock Text="关于" Style="{StaticResource H2}" />

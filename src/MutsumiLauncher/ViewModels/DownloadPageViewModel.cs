@@ -27,7 +27,8 @@ public sealed class VersionSection
 public sealed class DownloadPageViewModel : INotifyPropertyChanged
 {
     private const string ReleaseIcon = "/Assets/grass.png";
-    private const string SnapshotIcon = "/Assets/snapshot.png";
+    private const string SnapshotIcon = "/Assets/command.png";
+    private const string FoolsIcon = "/Assets/gold.png";
     private const string AncientIcon = "/Assets/dirt.png";
 
     private static readonly HashSet<string> AprilFools = new(StringComparer.OrdinalIgnoreCase)
@@ -143,7 +144,7 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
             Section("正式版", releases, ReleaseIcon),
             Section("预览版", snapshots, SnapshotIcon),
             Section("远古版", ancient, AncientIcon),
-            Section("愚人节版本", fools, SnapshotIcon),
+            Section("愚人节版本", fools, FoolsIcon),
         ];
     }
 

@@ -15,11 +15,28 @@ public partial class SettingsPage : UserControl
         {
             if (_loaded) return;
             _loaded = true;
+            LoadCacheInfo();
             await LoadJavaAsync();
         };
     }
 
     private async void RefreshJava_Click(object sender, RoutedEventArgs e) => await LoadJavaAsync();
+
+    private void LoadCacheInfo()
+    {
+        var size = CacheService.GetSize();
+        CacheSizeText.Text = $"当前缓存 {CacheService.FormatSize(size)}（版本清单 + 项目图标）";
+        CachePathText.Text = string.Join("  ·  ", CacheService.Roots);
+    }
+
+    private void ClearCache_Click(object sender, RoutedEventArgs e)
+    {
+        var (files, freed) = CacheService.Clear();
+        LoadCacheInfo();
+        CacheSizeText.Text = files == 0
+            ? "缓存已经是空的。"
+            : $"已清理 {files} 个文件，释放 {CacheService.FormatSize(freed)}。";
+    }
 
     private async Task LoadJavaAsync()
     {
