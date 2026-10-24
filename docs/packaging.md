@@ -28,3 +28,21 @@ dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 
 - `MutsumiLauncher-<ver>-setup-portable.exe`：便携安装（不写注册表、不建快捷方式），适合受限环境。
 
 输出都在 `dist/`。
+
+## 自研安装器（推荐，受限环境可用）
+
+项目 `src/MutsumiLauncher.Setup`，WPF + requireAdministrator：
+
+```bash
+dotnet publish src/MutsumiLauncher.Setup/MutsumiLauncher.Setup.csproj   -c Release -r win-x64 --self-contained true -o dist/setup-app
+
+copy dist\MutsumiLauncher-0.1.0-win-x64.zip dist\setup-app\payload.zip
+
+powershell -Command "Compress-Archive -Path dist\setup-app\* -DestinationPath dist\MutsumiLauncher-0.1.0-installer.zip -Force"
+```
+
+- 启动时弹 UAC（管理员权限），默认装到 `C:\Program Files\Mutsumi Launcher`；
+- 安装目录由用户选择；
+- 直接把 payload.zip 解压到目标目录，**不依赖 %TEMP%**，受限环境也能装；
+- 创建桌面/开始菜单快捷方式，写入「应用和功能」卸载项；
+- 支持静默：`MTLSetup.exe /S /DIR="D:\Games\MTL"`。
