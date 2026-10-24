@@ -11,14 +11,16 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:MtlSearchBox x:Name="SearchBox" Placeholder="搜索 Mod 名称 / 描述 / 标签"
+        <controls:MtlSearchBox x:Name="SearchBox" Placeholder="搜索 Mod 文件名"
                                TextChanged="SearchBox_TextChanged" />
 
         <WrapPanel Grid.Row="1" Margin="0,10,0,0">
-            <Button Style="{StaticResource SecondaryButton}" Content="打开文件夹" Width="130" Margin="0,0,10,0" />
-            <Button Style="{StaticResource SecondaryButton}" Content="从文件安装" Width="130" Margin="0,0,10,0" />
-            <Button Style="{StaticResource SecondaryButton}" Content="下载新 Mod" Width="130" Margin="0,0,10,0" />
-            <Button Style="{StaticResource SecondaryButton}" Content="全选" Width="110" />
+            <Button Style="{StaticResource SecondaryButton}" Content="打开文件夹" Width="130"
+                    Margin="0,0,10,0" Click="OpenFolder_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="从文件安装" Width="130"
+                    Margin="0,0,10,0" Click="InstallFromFile_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="刷新" Width="110"
+                    Click="Refresh_Click" />
         </WrapPanel>
 
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
@@ -30,11 +32,17 @@
 
                 <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
                     <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="all"
-                                 Content="全部 (8)" IsChecked="True" Checked="Filter_Checked" />
+                                 IsChecked="True" Checked="Filter_Checked" Margin="0,0,4,0">
+                        <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
+                    </RadioButton>
                     <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="enabled"
-                                 Content="启用 (7)" Checked="Filter_Checked" Margin="4,0,0,0" />
+                                 Checked="Filter_Checked" Margin="4,0,0,0">
+                        <TextBlock x:Name="EnabledFilterText" Text="启用 (0)" />
+                    </RadioButton>
                     <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="disabled"
-                                 Content="禁用 (1)" Checked="Filter_Checked" Margin="4,0,0,0" />
+                                 Checked="Filter_Checked" Margin="4,0,0,0">
+                        <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
+                    </RadioButton>
                 </StackPanel>
 
                 <ScrollViewer x:Name="ModScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -47,29 +55,37 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
+
                                         <Border Width="42" Height="42" CornerRadius="10"
                                                 Background="{Binding IconBrush}" VerticalAlignment="Top">
                                             <TextBlock Text="{Binding Initial}" Foreground="White"
                                                        FontSize="13" FontWeight="SemiBold"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
-                                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" FontSize="15"
-                                                           Foreground="{StaticResource Ink}" />
-                                                <TextBlock Text="{Binding EnglishName}" FontSize="12"
-                                                           Foreground="{StaticResource InkMute}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Version}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding Tags}" FontSize="11"
-                                                       Foreground="{StaticResource AccentDeep}" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding Description}" FontSize="12"
-                                                       Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
+
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="15"
+                                                       Foreground="{StaticResource Ink}"
                                                        TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <TextBlock Text="{Binding StateText}" FontSize="11"
+                                                           Foreground="{StaticResource AccentDeep}" />
+                                                <TextBlock Text="{Binding SizeText}" FontSize="11"
+                                                           Foreground="{StaticResource InkMute}"
+                                                           Margin="10,0,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <Button Style="{StaticResource GhostButton}" Content="{Binding ToggleText}"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Tag="{Binding}" Click="ToggleMod_Click" />
+                                            <Button Style="{StaticResource GhostButton}" Content="删除"
+                                                    Height="30" Padding="12,0"
+                                                    Tag="{Binding}" Click="DeleteMod_Click" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -78,9 +94,9 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <Button Grid.Row="1" Style="{StaticResource CircleButton}" Content="&#xE70E;"
-                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Margin="0,0,10,10" Click="ScrollTop_Click" ToolTip="回到顶部" />
+                <TextBlock x:Name="EmptyText" Grid.Row="1" Text="这个实例还没有安装 Mod。"
+                           Style="{StaticResource Caption}" HorizontalAlignment="Center"
+                           VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
         </Border>
     </Grid>

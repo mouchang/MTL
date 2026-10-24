@@ -21,7 +21,7 @@
                 <!-- 浮层自己的标题栏：标题 + 关闭（拖动整窗） -->
                 <Grid Grid.Row="0" Margin="26,12,26,0" Background="Transparent"
                       MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                    <TextBlock Text="版本设置 · 猫饼镇 beta 1.21.1" FontSize="16"
+                    <TextBlock x:Name="TitleText" Text="版本设置" FontSize="16"
                                Foreground="{StaticResource Ink}" VerticalAlignment="Center"
                                Margin="0,0,60,0" />
                     <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"

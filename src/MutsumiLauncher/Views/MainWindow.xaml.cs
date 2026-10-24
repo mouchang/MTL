@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -210,6 +211,13 @@ public partial class MainWindow : Window
     /// <summary>在主窗口内从底部滑出版本设置。</summary>
     public event Action? VersionSelectionChanged;
 
+    /// <summary>实例被重命名 / 删除后刷新启动页与版本列表。</summary>
+    private void RefreshInstances()
+    {
+        if (_pages.TryGetValue("launch", out var page) && page is LaunchPage launch) launch.RefreshVersions();
+        VersionSelectionChanged?.Invoke();
+    }
+
     public event Action<Account?>? AccountChanged;
 
     public void OpenAccountPicker()
@@ -255,7 +263,14 @@ public partial class MainWindow : Window
         {
             _settingsView = new VersionSettingsView();
             _settingsView.CloseRequested += (_, _) => CloseVersionSettings();
+            _settingsView.InstanceChanged += _ => RefreshInstances();
         }
+
+        var version = AppConfig.Current.SelectedVersion;
+        if (string.IsNullOrWhiteSpace(version) || !Directory.Exists(Path.Combine(GamePaths.VersionsDir, version)))
+            version = GameLauncher.InstalledVersions().FirstOrDefault() ?? string.Empty;
+
+        _settingsView.Load(version);
 
         SettingsHost.Content = _settingsView;
         SettingsHost.Visibility = Visibility.Visible;

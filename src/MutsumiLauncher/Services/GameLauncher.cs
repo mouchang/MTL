@@ -18,14 +18,7 @@ public sealed record LaunchOptions(string PlayerName, string Uuid, string Access
 /// <summary>准备并启动一个已安装版本：解压 natives、拼 classpath、替换参数、选 Java、拉资源索引。</summary>
 public sealed class GameLauncher
 {
-    private static readonly HttpClient Http = CreateClient();
-
-    private static HttpClient CreateClient()
-    {
-        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MutsumiLauncher/0.1.0");
-        return client;
-    }
+    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(5));
 
     public static IReadOnlyList<string> InstalledVersions()
     {

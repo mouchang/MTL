@@ -43,7 +43,7 @@ public partial class LaunchPage : UserControl
     }
 
     /// <summary>读取已安装版本，恢复上次选择。</summary>
-    private void RefreshVersions()
+    public void RefreshVersions()
     {
         _versions = GameLauncher.InstalledVersions();
         VersionText.Text = SelectedVersion() ?? "未安装版本";
@@ -120,8 +120,10 @@ public partial class LaunchPage : UserControl
         {
             var account = AccountService.Current ?? AccountService.EnsureDefault();
             var launcher = new GameLauncher();
+            var settings = InstanceSettings.Load(version);
             var options = new LaunchOptions(account.Name, account.Uuid, account.AccessToken,
-                account.IsMicrosoft, config.JavaPath, config.MemoryMb, config.VersionIsolation);
+                account.IsMicrosoft, settings.EffectiveJavaPath, settings.EffectiveMemoryMb,
+                settings.EffectiveIsolation);
             var result = await launcher.LaunchAsync(version, options);
             owner?.ShowToast(result.Message);
         }

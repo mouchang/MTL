@@ -11,9 +11,9 @@
                     <Image Source="/Assets/grass.png" Width="44" Height="44"
                            RenderOptions.BitmapScalingMode="NearestNeighbor" VerticalAlignment="Center" />
                     <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="猫饼镇 beta 1.21.1" FontSize="19" FontWeight="SemiBold"
+                        <TextBlock x:Name="NameText" Text="—" FontSize="19" FontWeight="SemiBold"
                                    Foreground="{StaticResource Ink}" />
-                        <TextBlock Text="正式版 1.21.1 · Fabric 0.19.5" Style="{StaticResource Caption}"
+                        <TextBlock x:Name="CaptionText" Text="正在读取…" Style="{StaticResource Caption}"
                                    Margin="0,3,0,0" />
                     </StackPanel>
                 </StackPanel>
@@ -21,41 +21,65 @@
 
             <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                 <StackPanel>
-                    <TextBlock Text="个性化" Style="{StaticResource H2}" />
+                    <TextBlock Text="实例信息" Style="{StaticResource H2}" />
 
                     <Grid Margin="0,14,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="76" />
+                            <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="图标" Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
-                            <ComboBoxItem Content="自动" />
-                            <ComboBoxItem Content="草方块" />
-                            <ComboBoxItem Content="泥土" />
-                            <ComboBoxItem Content="工作台" />
-                        </ComboBox>
+                        <TextBlock Text="路径" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="PathText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
                     </Grid>
 
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="76" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="分类" Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Column="1" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
-                            <ComboBoxItem Content="自动" />
-                            <ComboBoxItem Content="生存" />
-                            <ComboBoxItem Content="创造" />
-                            <ComboBoxItem Content="整合包" />
-                        </ComboBox>
+                        <TextBlock Text="占用空间" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="SizeText" Grid.Column="1" FontSize="13"
+                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="Mod 数量" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="ModText" Grid.Column="3" FontSize="13"
+                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
                     </Grid>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="修改版本名" Margin="0,0,10,0" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="修改版本描述" Margin="0,0,10,0" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="加入收藏夹" />
-                    </StackPanel>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="JavaText" Grid.Column="1" FontSize="12"
+                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="内存" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="MemoryText" Grid.Column="3" FontSize="13"
+                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="重命名实例" Style="{StaticResource H2}" />
+                    <TextBlock Text="改名会同步重命名 versions 下的目录、版本 JSON 和实例设置。"
+                               Style="{StaticResource Caption}" Margin="0,4,0,12" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="RenameBox" Style="{StaticResource MtlTextBox}" Height="36" />
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="保存名称"
+                                Width="110" Height="36" Margin="10,0,0,0" Click="Rename_Click" />
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -63,10 +87,16 @@
                 <StackPanel>
                     <TextBlock Text="快捷方式" Style="{StaticResource H2}" />
                     <WrapPanel Margin="0,14,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="版本文件夹" Width="150" Margin="0,0,10,10" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="存档文件夹" Width="150" Margin="0,0,10,10" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Mod 文件夹" Width="150" Margin="0,0,10,10" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="截图文件夹" Width="150" Margin="0,0,10,10" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="版本文件夹" Width="150"
+                                Margin="0,0,10,10" Click="OpenVersionFolder_Click" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Mod 文件夹" Width="150"
+                                Margin="0,0,10,10" Click="OpenModsFolder_Click" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="存档文件夹" Width="150"
+                                Margin="0,0,10,10" Click="OpenSavesFolder_Click" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="截图文件夹" Width="150"
+                                Margin="0,0,10,10" Click="OpenScreenshotsFolder_Click" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="日志文件夹" Width="150"
+                                Margin="0,0,10,10" Click="OpenLogsFolder_Click" />
                     </WrapPanel>
                 </StackPanel>
             </Border>
@@ -74,14 +104,10 @@
             <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                 <StackPanel>
                     <TextBlock Text="高级管理" Style="{StaticResource H2}" />
-                    <WrapPanel Margin="0,14,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="导出启动脚本"
-                                Width="150" Margin="0,0,10,10" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="补全文件"
-                                Width="150" Margin="0,0,10,10" />
-                        <Button Style="{StaticResource DangerButton}" Content="删除版本"
-                                Width="150" Margin="0,0,10,10" Click="DeleteVersion_Click" />
-                    </WrapPanel>
+                    <TextBlock Text="删除后实例目录会被整体移除，且不可恢复。" Style="{StaticResource Caption}"
+                               Margin="0,4,0,12" />
+                    <Button Style="{StaticResource DangerButton}" Content="删除实例" Width="150"
+                            HorizontalAlignment="Left" Click="DeleteVersion_Click" />
                 </StackPanel>
             </Border>
 

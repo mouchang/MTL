@@ -8,17 +8,47 @@ namespace MutsumiLauncher.Views;
 public partial class VersionSettingsView : UserControl
 {
     private readonly Dictionary<string, UserControl> _pages = new(StringComparer.Ordinal);
+    private string _version = string.Empty;
 
     public VersionSettingsView()
     {
         InitializeComponent();
 
-        _pages["overview"] = new OverviewPage();
+        var overview = new OverviewPage();
+        overview.Renamed += OnRenamed;
+        overview.Deleted += OnDeleted;
+
+        _pages["overview"] = overview;
         _pages["launch"] = new LaunchOptionsPage();
         _pages["mods"] = new ModManagePage();
         _pages["export"] = new ExportPage();
 
         ShowPage("overview");
+    }
+
+    /// <summary>实例被重命名或删除（参数为新名称，删除时为 null）。</summary>
+    public event Action<string?>? InstanceChanged;
+
+    public void Load(string version)
+    {
+        _version = version;
+        TitleText.Text = string.IsNullOrWhiteSpace(version) ? "版本设置" : $"版本设置 · {version}";
+
+        foreach (var page in _pages.Values.OfType<IInstancePage>())
+            page.SetInstance(version);
+    }
+
+    private void OnRenamed(string newName)
+    {
+        _version = newName;
+        TitleText.Text = $"版本设置 · {newName}";
+        InstanceChanged?.Invoke(newName);
+    }
+
+    private void OnDeleted()
+    {
+        InstanceChanged?.Invoke(null);
+        CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>点击浮层自带的关闭按钮时触发，由主窗口负责滑回动画。</summary>
