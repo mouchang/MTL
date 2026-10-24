@@ -33,6 +33,18 @@ SetCompressorDictSize 64
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
 Section "Install"
+  CreateDirectory "$INSTDIR"
+
+  ; 目录可写性检查：Program Files 这类位置需要管理员权限
+  ClearErrors
+  FileOpen $0 "$INSTDIR\.mtl-write-test" w
+  IfErrors 0 write_ok
+    MessageBox MB_ICONEXCLAMATION|MB_OK "无法写入安装目录：$INSTDIR$\r$\n$\r$\n这个位置需要管理员权限。请选择用户目录（默认位置），或关闭安装程序后右键选择以管理员身份运行。"
+    Abort
+  write_ok:
+  FileClose $0
+  Delete "$INSTDIR\.mtl-write-test"
+
   SetOutPath "$INSTDIR"
   File /r "..\dist\publish\*.*"
 
