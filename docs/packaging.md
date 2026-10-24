@@ -58,3 +58,24 @@ dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 
 注意：.NET 单文件首次运行会把 native 库解压到 `%TEMP%\.net\...`，
 如果系统 `%TEMP%` 不可写（例如被设成受限目录），启动会失败。
 把用户变量 `TEMP` / `TMP` 指向可写目录即可。
+
+## NSIS 安装器（推荐，electron-builder 同款方案）
+
+```powershell
+# 下载便携版 NSIS 3.11（含 makensis.exe）并解压
+Invoke-WebRequest "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip" -OutFile nsis.zip
+Expand-Archive nsis.zip -DestinationPath tools
+sis
+
+# 先发布自包含目录
+dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 `
+  --self-contained true -p:Version=0.1.0 -p:DebugType=None -o dist\publish
+
+# 编译安装器（输出 dist\MutsumiLauncher-0.1.0-setup.exe）
+tools
+sis
+sis-3.11\makensis.exe installer\MutsumiLauncher.nsi
+```
+
+特点：单 exe、自包含（不需要 .NET 运行时）、按用户安装到 `%LOCALAPPDATA%\Programs\Mutsumi Launcher`、
+自带卸载程序、开始菜单/桌面快捷方式；解压目标直接是安装目录，**不依赖 %TEMP%**。
