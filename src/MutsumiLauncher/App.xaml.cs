@@ -18,12 +18,37 @@ public partial class App : Application
             return;
         }
 
+        NormalizePath();
+
         base.OnStartup(e);
         AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         Exit += (_, _) => _singleInstance?.ReleaseMutex();
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             AppLog.Error(args.ExceptionObject as Exception ?? new Exception("Unknown unhandled exception"));
+    }
+
+    /// <summary>清理从 MSYS/Git 继承的 PATH，避免子进程加载到错误 DLL（0xc0000142）。</summary>
+    private static void NormalizePath()
+    {
+        try
+        {
+            var machine = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine);
+            var user = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User);
+            var combined = string.Join(';', new[] { machine, user }
+                .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            if (!string.IsNullOrWhiteSpace(combined))
+                Environment.SetEnvironmentVariable("PATH", combined, EnvironmentVariableTarget.Process);
+
+            // 清掉 MSYS 相关变量，避免影响孙进程
+            foreach (var name in new[] { "MSYSTEM", "MINGW_PREFIX", "MINGW_CHOST", "MSYS2_PATH_TYPE" })
+                Environment.SetEnvironmentVariable(name, null, EnvironmentVariableTarget.Process);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "normalize PATH");
+        }
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

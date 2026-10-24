@@ -54,13 +54,25 @@ public partial class MicrosoftLoginDialog : Window
             CodePanel.Visibility = Visibility.Visible;
             HintText.Text = "在浏览器里输入设备码并授权，完成后本窗口会自动关闭。";
 
-            // 默认方案：自动复制设备码 + 自动打开验证网站
+            // 与 PCL2 一致：先复制设备码，等窗口稳定后再打开网页
             var copied = TrySetClipboard(code.UserCode);
-            var opened = TryOpenBrowser(code.VerificationUri);
+            StatusText.Text = copied ? "设备码已复制，正在打开浏览器…" : "设备码复制失败，请手动复制。";
 
-            StatusText.Text =
-                (copied ? "设备码已自动复制到剪贴板。" : "自动复制失败，请点右边的「复制」。") + " " +
-                (opened ? "已自动打开浏览器。" : "浏览器打开失败，请点「打开」。");
+            await Task.Delay(2000, _cts.Token);
+
+            var openError = UrlLauncher.Open(code.VerificationUri);
+
+            if (openError is not null)
+            {
+                // 打不开就退而求其次：把链接也放进剪贴板
+                TrySetClipboard(code.VerificationUri);
+                StatusText.Text = "浏览器未能自动打开，验证链接已复制到剪贴板，请手动粘贴访问。";
+            }
+            else
+            {
+                StatusText.Text = (copied ? "设备码已复制。" : "请手动复制设备码。") +
+                                  " 已打开浏览器；如果没有弹出，请点右侧「打开」。";
+            }
 
             var msaToken = await MicrosoftAuth.WaitForTokenAsync(_clientId, code, _cts.Token);
 
@@ -101,19 +113,7 @@ public partial class MicrosoftLoginDialog : Window
         }
     }
 
-    private static bool TryOpenBrowser(string url)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            return true;
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "open browser");
-            return false;
-        }
-    }
+
 
     private void CopyCode_Click(object sender, RoutedEventArgs e)
     {
@@ -131,9 +131,10 @@ public partial class MicrosoftLoginDialog : Window
 
     private void OpenBrowser_Click(object sender, RoutedEventArgs e)
     {
-        StatusText.Text = TryOpenBrowser(LinkText.Text)
+        var error = UrlLauncher.Open(LinkText.Text);
+        StatusText.Text = error is null
             ? "已打开浏览器。"
-            : "浏览器打开失败，请手动访问链接。";
+            : $"打开失败：{error}";
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
