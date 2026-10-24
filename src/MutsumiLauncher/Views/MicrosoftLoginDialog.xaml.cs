@@ -96,6 +96,9 @@ public partial class MicrosoftLoginDialog : Window
             HintText.Text = ex.Message;
             HintText.Foreground = Brushes.Firebrick;
             CancelButton.Content = "关闭";
+
+            if (ex.Message.Contains("mce-reviewappid", StringComparison.OrdinalIgnoreCase))
+                AppRegButton.Visibility = Visibility.Visible;
         }
     }
 
@@ -135,6 +138,11 @@ public partial class MicrosoftLoginDialog : Window
         StatusText.Text = error is null
             ? "已打开浏览器。"
             : $"打开失败：{error}";
+    }
+
+    private void OpenAppReg_Click(object sender, RoutedEventArgs e)
+    {
+        UrlLauncher.Open("https://aka.ms/mce-reviewappid");
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

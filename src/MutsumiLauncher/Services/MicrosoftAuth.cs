@@ -160,7 +160,19 @@ public static class MicrosoftAuth
         var profileText = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
+        {
+            if ((int)response.StatusCode == 403 &&
+                profileText.Contains("Invalid app registration", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "微软账号已授权，但这个 Azure 应用还没有 Minecraft API 权限（Invalid app registration）。" +
+                    Environment.NewLine +
+                    "请到 https://aka.ms/mce-reviewappid 提交 clientId 申请，审核通过后再登录；" +
+                    "也可以先用离线账号。");
+            }
+
             throw new InvalidOperationException("该账号没有 Minecraft Java 版（或档案不可用）。");
+        }
 
         using var profileDoc = JsonDocument.Parse(profileText);
         var profile = profileDoc.RootElement;
