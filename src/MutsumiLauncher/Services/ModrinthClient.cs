@@ -10,7 +10,15 @@ public sealed class ModrinthSearchResponse
 {
     [JsonPropertyName("hits")]
     public List<ModrinthHit> Hits { get; set; } = [];
+
+    [JsonPropertyName("total_hits")]
+    public long TotalHits { get; set; }
+
+    [JsonPropertyName("offset")]
+    public int Offset { get; set; }
 }
+
+public sealed record ModrinthSearchResult(IReadOnlyList<ModrinthHit> Hits, long TotalHits);
 
 public sealed class ModrinthHit
 {
@@ -143,8 +151,8 @@ public sealed class ModrinthClient
         return string.IsNullOrWhiteSpace(fromConfig) ? null : fromConfig.Trim();
     }
 
-    public async Task<IReadOnlyList<ModrinthHit>> SearchAsync(string query, string projectType,
-        string? gameVersion, string? loader, string? category = null, int limit = 20,
+    public async Task<ModrinthSearchResult> SearchAsync(string query, string projectType,
+        string? gameVersion, string? loader, string? category = null, int limit = 20, int offset = 0,
         CancellationToken cancellationToken = default)
     {
         var facets = new List<string> { $"[\"project_type:{projectType}\"]" };
@@ -160,13 +168,13 @@ public sealed class ModrinthClient
 
         var facetsJson = "[" + string.Join(",", facets) + "]";
 
-        var url = $"{BaseUrl}/search?limit={limit}&index=relevance" +
+        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index=relevance" +
                   $"&query={Uri.EscapeDataString(query ?? string.Empty)}" +
                   $"&facets={Uri.EscapeDataString(facetsJson)}";
 
         var json = await Http.GetStringAsync(url, cancellationToken);
         var response = JsonSerializer.Deserialize<ModrinthSearchResponse>(json);
-        return response?.Hits ?? [];
+        return new ModrinthSearchResult(response?.Hits ?? [], response?.TotalHits ?? 0);
     }
 
     /// <summary>Modrinth 支持的全部游戏版本（用于搜索页版本下拉）。</summary>

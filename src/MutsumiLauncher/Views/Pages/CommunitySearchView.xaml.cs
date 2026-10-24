@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
 using MutsumiLauncher.Views;
@@ -11,8 +12,12 @@ public partial class CommunitySearchView : UserControl
 {
     private readonly ModrinthClient _client = new();
 
+    private const int PageSize = 20;
+
     private string _kind = "mod";
     private string _projectType = "mod";
+    private int _page;
+    private long _totalHits;
 
     /// <summary>点击结果行时请求上层打开详情页。</summary>
     public event Action<ModrinthItem, string?>? DetailRequested;
@@ -42,38 +47,110 @@ public partial class CommunitySearchView : UserControl
         InstallPackButton.Visibility = kind == "pack" ? Visibility.Visible : Visibility.Collapsed;
 
         SearchNameBox.Text = string.Empty;
+        _page = 0;
         _ = LoadVersionsAsync();
-        _ = RunSearchAsync();
+        _ = RunSearchAsync(0);
     }
 
-    private async Task RunSearchAsync()
+    private async Task RunSearchAsync(int page = 0)
     {
+        _page = Math.Max(0, page);
         Loading.IsActive = true;
         StatusText.Text = "正在搜索 Modrinth…";
 
         try
         {
-            var hits = await _client.SearchAsync(SearchNameBox.Text.Trim(), _projectType,
-                GameVersion(), Loader(), Category());
+            var result = await _client.SearchAsync(SearchNameBox.Text.Trim(), _projectType,
+                GameVersion(), Loader(), Category(), PageSize, _page * PageSize);
 
-            var items = hits.Select(h => new ModrinthItem { Hit = h }).ToList();
+            _totalHits = result.TotalHits;
+
+            var items = result.Hits.Select(h => new ModrinthItem { Hit = h }).ToList();
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
-            StatusText.Text = hits.Count == 0
+            StatusText.Text = result.Hits.Count == 0
                 ? "没有找到结果，换个关键词或条件试试。"
-                : $"找到 {hits.Count} 个结果（来自 Modrinth）";
+                : $"找到 {_totalHits:N0} 个结果（来自 Modrinth）";
+
+            BuildPageBar();
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "modrinth search");
             ResultsList.ItemsSource = null;
             StatusText.Text = "搜索失败：" + ex.Message;
+            PageBar.Visibility = Visibility.Collapsed;
         }
         finally
         {
             Loading.IsActive = false;
         }
+    }
+
+    private void BuildPageBar()
+    {
+        var totalPages = (int)Math.Ceiling(_totalHits / (double)PageSize);
+        if (totalPages <= 1)
+        {
+            PageBar.Visibility = Visibility.Collapsed;
+            PagePanel.Children.Clear();
+            return;
+        }
+
+        PageBar.Visibility = Visibility.Visible;
+        PageInfo.Text = $"第 {_page + 1} / {totalPages} 页 · 共 {_totalHits:N0} 个结果";
+        PagePanel.Children.Clear();
+
+        AddPageButton("上一页", Math.Max(0, _page - 1), enabled: _page > 0);
+
+        var start = Math.Max(0, _page - 3);
+        var end = Math.Min(totalPages - 1, start + 6);
+        start = Math.Max(0, end - 6);
+
+        for (var i = start; i <= end; i++)
+        {
+            var pageNumber = i;
+            var button = new Button
+            {
+                Style = (Style)FindResource("GhostButton"),
+                Content = new TextBlock
+                {
+                    Text = (pageNumber + 1).ToString(),
+                    FontSize = 12,
+                    Foreground = pageNumber == _page
+                        ? Brushes.White
+                        : (Brush)FindResource("InkSoft"),
+                },
+                Background = pageNumber == _page ? (Brush)FindResource("Accent") : Brushes.Transparent,
+                Padding = new Thickness(10, 4, 10, 4),
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            button.Click += (_, _) => _ = RunSearchAsync(pageNumber);
+            PagePanel.Children.Add(button);
+        }
+
+        AddPageButton("下一页", _page + 1, enabled: _page < totalPages - 1);
+    }
+
+    private void AddPageButton(string text, int page, bool enabled)
+    {
+        var button = new Button
+        {
+            Style = (Style)FindResource("GhostButton"),
+            Content = new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                Foreground = enabled ? (Brush)FindResource("InkSoft") : Brushes.Gray,
+            },
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 6, 0),
+            IsEnabled = enabled,
+        };
+
+        button.Click += (_, _) => _ = RunSearchAsync(page);
+        PagePanel.Children.Add(button);
     }
 
     /// <summary>版本下拉来源于 Modrinth 的 game_version 标签。</summary>
@@ -181,7 +258,7 @@ public partial class CommunitySearchView : UserControl
         return GamePaths.Root;
     }
 
-    private async void Search_Click(object sender, RoutedEventArgs e) => await RunSearchAsync();
+    private async void Search_Click(object sender, RoutedEventArgs e) => await RunSearchAsync(0);
 
     private async void ResetSearch_Click(object sender, RoutedEventArgs e)
     {
@@ -190,7 +267,7 @@ public partial class CommunitySearchView : UserControl
         if (LoaderCombo.Visibility == Visibility.Visible) LoaderCombo.SelectedIndex = 0;
         TypeCombo.SelectedIndex = 0;
 
-        await RunSearchAsync();
+        await RunSearchAsync(0);
     }
 
     private void OpenDetail_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)

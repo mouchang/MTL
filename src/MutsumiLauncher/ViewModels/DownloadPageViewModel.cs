@@ -128,16 +128,13 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
 
         Latest = new[] { latestRelease, latestSnapshot }.Where(v => v is not null).Cast<VersionEntry>().ToList();
 
-        var releases = manifest.Versions.Where(v => v.Type == "release").Take(15);
+        var releases = manifest.Versions.Where(v => v.Type == "release");
         var snapshots = manifest.Versions
-            .Where(v => v.Type == "snapshot" && !AprilFools.Contains(v.Id))
-            .Take(15);
+            .Where(v => v.Type == "snapshot" && !AprilFools.Contains(v.Id));
         var ancient = manifest.Versions
-            .Where(v => v.Type is "old_alpha" or "old_beta")
-            .Take(10);
+            .Where(v => v.Type is "old_alpha" or "old_beta");
         var fools = manifest.Versions
-            .Where(v => v.Type == "snapshot" && AprilFools.Contains(v.Id))
-            .Take(10);
+            .Where(v => v.Type == "snapshot" && AprilFools.Contains(v.Id));
 
         Sections =
         [
