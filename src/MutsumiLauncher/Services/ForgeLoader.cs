@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -154,6 +155,10 @@ public sealed class ForgeLoader
                     await DownloadAsync(NeoForgeInstallerUrl(NeoForgeOriginBase, loaderVersion), installer,
                         cancellationToken);
                 }
+
+                // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
+                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
+                await PatchInstallerHostsAsync(installer, cancellationToken);
             }
 
             // 3. 选 Java
@@ -295,6 +300,48 @@ public sealed class ForgeLoader
         }
 
         return 8;
+    }
+
+    /// <summary>
+    /// 把安装器 jar 内 JSON 里的 maven.neoforged.net 地址替换成 CDN，
+    /// 这样安装器自身下载依赖时也走 CDN（无需代理）。
+    /// </summary>
+    private static async Task PatchInstallerHostsAsync(string jarPath, CancellationToken cancellationToken)
+    {
+        using var archive = ZipFile.Open(jarPath, ZipArchiveMode.Update);
+
+        var targets = archive.Entries
+            .Where(entry => entry.FullName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var patchedCount = 0;
+
+        foreach (var entry in targets)
+        {
+            string text;
+            using (var stream = entry.Open())
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                text = await reader.ReadToEndAsync(cancellationToken);
+            }
+
+            if (!text.Contains("maven.neoforged.net", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var patched = text
+                .Replace("https://maven.neoforged.net", NeoForgeCdnBase, StringComparison.OrdinalIgnoreCase)
+                .Replace("http://maven.neoforged.net", NeoForgeCdnBase, StringComparison.OrdinalIgnoreCase);
+
+            var name = entry.FullName;
+            entry.Delete();
+
+            var created = archive.CreateEntry(name);
+            await using var output = created.Open();
+            await using var writer = new StreamWriter(output, new UTF8Encoding(false));
+            await writer.WriteAsync(patched);
+            patchedCount++;
+        }
+
+        AppLog.Info($"neoforge installer patched: {patchedCount} entries");
     }
 
     private static async Task<string> GetStringWithFallbackAsync(string primary, string fallback,
