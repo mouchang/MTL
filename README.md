@@ -1,8 +1,13 @@
 # Mutsumi Launcher
 
+[![GitHub](https://img.shields.io/badge/GitHub-mouchang%2FMTL-2E3E35?logo=github)](https://github.com/mouchang/MTL)
+[![License](https://img.shields.io/badge/license-MIT-4E9E72)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![WPF](https://img.shields.io/badge/UI-WPF-8FD8A8)](#)
+
 **MTL** · 一个面向 Minecraft 的桌面启动器（WPF / .NET 10）。
 
-> 当前进度：`0.1.0` 界面骨架。启动、下载、设置三个页面可交互，业务逻辑（版本清单、Java 探测、下载、启动）尚未接入。
+> 当前进度：`0.1.0`。已完成：真实版本清单、Java 探测、版本下载安装（含 assets）、启动游戏、离线账号、微软正版登录（需 Azure 应用先通过 Mojang 的应用审核）。
 
 ![启动页](docs/screenshots/launch.png)
 
