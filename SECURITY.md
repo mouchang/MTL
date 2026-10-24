@@ -6,7 +6,7 @@
 请**不要**直接开公开 Issue，通过下面任一方式私下联系：
 
 - GitHub：[@mouchang](https://github.com/mouchang)
--邮箱：1915084530@qq.com
+- 邮箱：1915084530@qq.com
 - 或在仓库的 **Security → Report a vulnerability** 里提交
 
 请尽量包含：复现步骤、影响范围、相关日志（去掉账号与 token）。
