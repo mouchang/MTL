@@ -55,9 +55,9 @@ public partial class CommunitySearchView : UserControl
             var hits = await _client.SearchAsync(SearchNameBox.Text.Trim(), _projectType,
                 GameVersion(), Loader(), Category());
 
-            ResultsList.ItemsSource = hits
-                .Select(h => new ModrinthItem { Hit = h })
-                .ToList();
+            var items = hits.Select(h => new ModrinthItem { Hit = h }).ToList();
+            ResultsList.ItemsSource = items;
+            _ = LoadIconsAsync(items);
 
             StatusText.Text = hits.Count == 0
                 ? "没有找到结果，换个关键词或条件试试。"
@@ -73,6 +73,29 @@ public partial class CommunitySearchView : UserControl
         {
             Loading.IsActive = false;
         }
+    }
+
+    private static async Task LoadIconsAsync(IReadOnlyList<ModrinthItem> items)
+    {
+        using var semaphore = new SemaphoreSlim(6);
+
+        var tasks = items
+            .Where(item => !string.IsNullOrWhiteSpace(item.IconUrl))
+            .Select(async item =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var path = await IconCache.EnsureAsync(item.IconUrl!, item.ProjectId);
+                    if (path is not null) item.IconPath = path;
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+        await Task.WhenAll(tasks);
     }
 
     private string? GameVersion() => (VersionCombo.SelectedItem as ComboBoxItem)?.Tag as string;

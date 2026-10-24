@@ -1,10 +1,13 @@
+using System.ComponentModel;
 using MutsumiLauncher.Services;
 
 namespace MutsumiLauncher.ViewModels;
 
 /// <summary>Modrinth 搜索结果的展示包装。</summary>
-public sealed class ModrinthItem
+public sealed class ModrinthItem : INotifyPropertyChanged
 {
+    private string? _iconPath;
+
     public required ModrinthHit Hit { get; init; }
 
     public string ProjectId => Hit.ProjectId;
@@ -19,7 +22,17 @@ public sealed class ModrinthItem
 
     public string? IconUrl => Hit.IconUrl;
 
-    public bool HasIcon => !string.IsNullOrWhiteSpace(Hit.IconUrl);
+    /// <summary>本地缓存后的图标路径；空时界面显示首字母占位。</summary>
+    public string? IconPath
+    {
+        get => _iconPath;
+        set
+        {
+            if (_iconPath == value) return;
+            _iconPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconPath)));
+        }
+    }
 
     public string Initial => string.IsNullOrEmpty(Hit.Title)
         ? "?"
@@ -42,4 +55,6 @@ public sealed class ModrinthItem
                 : $"{downloads} 次下载 · {categories} · Modrinth";
         }
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

@@ -81,16 +81,13 @@ public partial class ModrinthDetailView : UserControl
         DescriptionText.Text = item.Description;
         InitialText.Text = item.Initial;
 
-        if (item.HasIcon)
+        if (!string.IsNullOrWhiteSpace(item.IconUrl))
         {
-            try
+            var iconPath = await IconCache.EnsureAsync(item.IconUrl!, item.ProjectId);
+            if (iconPath is not null)
             {
-                IconImage.Source = new BitmapImage(new Uri(item.IconUrl!));
+                IconImage.Source = new BitmapImage(new Uri(iconPath));
                 IconBorder.Visibility = Visibility.Visible;
-            }
-            catch
-            {
-                // 图标加载失败时保留首字母占位
             }
         }
 
@@ -138,28 +135,18 @@ public partial class ModrinthDetailView : UserControl
     {
         TabPanel.Children.Clear();
 
-        var allVersions = _versions
+        var versions = _versions
             .SelectMany(v => v.GameVersions)
             .Distinct()
-            .ToList();
-
-        var releases = allVersions
-            .Where(v => !v.Contains("snapshot", StringComparison.OrdinalIgnoreCase)
-                        && !v.Contains("-pre", StringComparison.OrdinalIgnoreCase)
-                        && !v.Contains("-rc", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        var versions = (releases.Count > 0 ? releases : allVersions)
             .OrderByDescending(ParseGameVersion)
-            .Take(9)
             .ToList();
 
         AddTab("全部", null);
         foreach (var version in versions) AddTab(version, version);
 
         VersionSourceText.Text = CurseForgeClient.IsConfigured
-            ? "版本来源：Modrinth + CurseForge（CF 匹配接入中）"
-            : "版本来源：Modrinth（CurseForge 待配置 API Key）";
+            ? $"版本来源：Modrinth（{versions.Count} 个版本）+ CurseForge（CF 匹配接入中）"
+            : $"版本来源：Modrinth（{versions.Count} 个版本）· CurseForge 待配置 API Key";
 
         HighlightTabs();
     }

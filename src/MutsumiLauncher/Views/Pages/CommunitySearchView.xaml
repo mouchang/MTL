@@ -112,9 +112,8 @@
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />
                                         </Border>
-                                        <Border CornerRadius="10" ClipToBounds="True"
-                                                Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}">
-                                            <Image Source="{Binding IconUrl}" Stretch="UniformToFill"
+                                        <Border CornerRadius="10" ClipToBounds="True">
+                                            <Image Source="{Binding IconPath}" Stretch="UniformToFill"
                                                    RenderOptions.BitmapScalingMode="HighQuality" />
                                         </Border>
                                     </Grid>
