@@ -22,7 +22,9 @@
             <Button Style="{StaticResource SecondaryButton}" Content="从文件安装" Width="130"
                     Margin="0,0,10,0" Click="InstallFromFile_Click" />
             <Button Style="{StaticResource SecondaryButton}" Content="刷新" Width="110"
-                    Click="Refresh_Click" />
+                    Margin="0,0,10,0" Click="Refresh_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="检查更新" Width="120"
+                    Click="CheckUpdates_Click" />
         </WrapPanel>
 
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
@@ -89,6 +91,14 @@
 
                                         <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding UpdateText}" FontSize="11"
+                                                       Foreground="{StaticResource AccentDeep}"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0"
+                                                       Visibility="{Binding UpdateVisibility}" />
+                                            <Button Style="{StaticResource GhostButton}" Content="更新"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Visibility="{Binding UpdateVisibility}"
+                                                    Tag="{Binding}" Click="UpdateMod_Click" />
                                             <Button Style="{StaticResource GhostButton}" Content="{Binding ToggleText}"
                                                     Height="30" Padding="12,0" Margin="0,0,8,0"
                                                     Tag="{Binding}" Click="ToggleMod_Click" />

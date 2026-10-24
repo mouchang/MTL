@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -110,6 +111,114 @@ public partial class ModManagePage : UserControl, IInstancePage
         DisabledFilterText.Text = $"禁用 ({_items.Count - enabledCount})";
 
         ApplyFilter();
+    }
+
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this) as MainWindow;
+
+        if (string.IsNullOrWhiteSpace(_version))
+            return;
+
+        var info = InstanceService.GetInfo(_version);
+        if (info.Loader.Equals("原版", StringComparison.OrdinalIgnoreCase))
+        {
+            owner?.ShowToast("原版实例没有加载器，无法检查 Mod 更新。");
+            return;
+        }
+
+        var hashes = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in _items)
+        {
+            try
+            {
+                hashes[Sha1Of(item.FullPath)] = item;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "hash mod " + item.FileName);
+            }
+        }
+
+        if (hashes.Count == 0)
+        {
+            owner?.ShowToast("没有可检查的 Mod。");
+            return;
+        }
+
+        owner?.ShowToast("正在检查 Mod 更新…");
+
+        try
+        {
+            var updates = await new ModrinthClient().CheckUpdatesAsync(hashes.Keys.ToList(),
+                info.GameVersion, info.Loader.ToLowerInvariant());
+
+            var found = 0;
+
+            foreach (var (hash, version) in updates)
+            {
+                if (!hashes.TryGetValue(hash, out var item)) continue;
+
+                item.SetUpdate(version);
+                found++;
+            }
+
+            owner?.ShowToast(found == 0 ? "所有 Mod 都是最新的。" : $"发现 {found} 个可更新的 Mod。");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "check mod updates");
+            owner?.ShowToast("检查更新失败：" + ex.Message);
+        }
+    }
+
+    private async void UpdateMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ModFileItem item } || item.Update is not { } version)
+            return;
+
+        var file = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files.FirstOrDefault();
+        if (file is null)
+        {
+            (Window.GetWindow(this) as MainWindow)?.ShowToast("这个版本没有可下载的文件。");
+            return;
+        }
+
+        var owner = Window.GetWindow(this) as MainWindow;
+
+        try
+        {
+            await new ModrinthClient().DownloadAsync(file.Url, file.Filename, ModsDir,
+                file.Hashes?.Sha1);
+
+            // 文件名变化时删掉旧 jar，避免同时存在两个版本
+            if (!string.Equals(file.Filename, item.FileName, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (File.Exists(item.FullPath)) File.Delete(item.FullPath);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "delete old mod " + item.FileName);
+                }
+            }
+
+            owner?.ShowToast($"已更新 {item.DisplayName} → {version.VersionNumber}");
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "update mod " + item.FileName);
+            owner?.ShowToast("更新失败：" + ex.Message);
+        }
+    }
+
+    private static string Sha1Of(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
     }
 
     private void ApplyFilter()

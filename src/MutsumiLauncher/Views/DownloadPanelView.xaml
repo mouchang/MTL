@@ -30,6 +30,16 @@
                                             <TextBlock Text="{Binding Title}" FontSize="14"
                                                        Foreground="{StaticResource Ink}" />
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Content="取消" Style="{StaticResource GhostButton}"
+                                                        Height="24" Padding="10,0" FontSize="11"
+                                                        Margin="0,0,8,0" Tag="{Binding}"
+                                                        Visibility="{Binding CancelVisibility}"
+                                                        Click="CancelTask_Click" />
+                                                <Button Content="重试" Style="{StaticResource GhostButton}"
+                                                        Height="24" Padding="10,0" FontSize="11"
+                                                        Margin="0,0,8,0" Tag="{Binding}"
+                                                        Visibility="{Binding RetryVisibility}"
+                                                        Click="RetryTask_Click" />
                                                 <TextBlock Text="{Binding SpeedText}" FontSize="11"
                                                            Foreground="{StaticResource AccentDeep}"
                                                            VerticalAlignment="Center" Margin="0,0,8,0" />

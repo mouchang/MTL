@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 
 namespace MutsumiLauncher.Services;
 
@@ -58,8 +59,23 @@ public sealed class DownloadTask : INotifyPropertyChanged
             if (_isDone == value) return;
             _isDone = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDone)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CancelVisibility)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RetryVisibility)));
         }
     }
+
+    /// <summary>取消下载/安装。</summary>
+    public CancellationTokenSource Cancellation { get; } = new();
+
+    public CancellationToken Token => Cancellation.Token;
+
+    /// <summary>取消后可以重新执行的动作（由调用方设置）。</summary>
+    public Action? RetryAction { get; set; }
+
+    public Visibility CancelVisibility => _isDone ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility RetryVisibility =>
+        _isDone && RetryAction is not null ? Visibility.Visible : Visibility.Collapsed;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }
@@ -82,6 +98,35 @@ public static class DownloadCenter
         SpeedSamples[task.Id] = (DateTime.UtcNow, 0);
         Changed?.Invoke();
         return task;
+    }
+
+    public static void Cancel(DownloadTask task)
+    {
+        try
+        {
+            task.Cancellation.Cancel();
+            task.Status = "正在取消…";
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "cancel download task");
+        }
+    }
+
+    public static void Retry(DownloadTask task)
+    {
+        var action = task.RetryAction;
+        if (action is null) return;
+
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "retry download task");
+            task.Status = "重试失败：" + ex.Message;
+        }
     }
 
     public static void Report(DownloadTask task, string message, double? percent = null, long bytes = 0)

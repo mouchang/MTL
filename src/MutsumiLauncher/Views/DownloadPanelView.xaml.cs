@@ -35,6 +35,16 @@ public partial class DownloadPanelView : UserControl
             : $"进行中 {active} 项，其余为已完成。";
     }
 
+    private void CancelTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: DownloadTask task }) DownloadCenter.Cancel(task);
+    }
+
+    private void RetryTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: DownloadTask task }) DownloadCenter.Retry(task);
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Closed?.Invoke();
 
     public event Action? Closed;

@@ -343,8 +343,14 @@ public partial class CommunitySearchView : UserControl
 
         if (dialog.ShowDialog() != true) return;
 
+        await ImportPackAsync(dialog.FileName);
+    }
+
+    private async Task ImportPackAsync(string filePath)
+    {
         var owner = Window.GetWindow(this) as MainWindow;
-        var task = DownloadCenter.Begin($"导入整合包：{System.IO.Path.GetFileName(dialog.FileName)}");
+        var task = DownloadCenter.Begin($"导入整合包：{System.IO.Path.GetFileName(filePath)}");
+        task.RetryAction = () => _ = ImportPackAsync(filePath);
 
         try
         {
@@ -354,12 +360,18 @@ public partial class CommunitySearchView : UserControl
                 DownloadCenter.Report(task, p.Message, p.Percent);
             });
 
-            var instance = await ModpackImporter.ImportAsync(dialog.FileName, progress);
+            var instance = await ModpackImporter.ImportAsync(filePath, progress, task.Token);
 
             StatusText.Text = $"整合包已导入：{instance}";
             DownloadCenter.Complete(task, $"已导入 {instance}");
             owner?.ShowToast($"整合包已导入：{instance}");
             owner?.RefreshInstances();
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "已取消导入";
+            DownloadCenter.Complete(task, "已取消");
+            owner?.ShowToast("已取消导入");
         }
         catch (Exception ex)
         {

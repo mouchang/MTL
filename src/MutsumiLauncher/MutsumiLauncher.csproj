@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <Version>0.1.0</Version>
     <UseWPF>true</UseWPF>
     <RootNamespace>MutsumiLauncher</RootNamespace>
     <AssemblyName>MutsumiLauncher</AssemblyName>

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -231,6 +232,45 @@ public sealed class ModrinthClient
         var json = await Http.GetStringAsync(url, cancellationToken);
         var versions = JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
         return versions.FirstOrDefault();
+    }
+
+    /// <summary>用本地 jar 的 SHA-1 查询 Modrinth 上匹配当前游戏版本/加载器的更新。</summary>
+    public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesAsync(
+        IReadOnlyCollection<string> sha1Hashes, string? gameVersion, string? loader,
+        CancellationToken cancellationToken = default)
+    {
+        var hashes = sha1Hashes
+            .Where(hash => !string.IsNullOrWhiteSpace(hash))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (hashes.Count == 0) return [];
+
+        var payload = new Dictionary<string, object>
+        {
+            ["hashes"] = hashes,
+            ["algorithm"] = "sha1",
+        };
+
+        if (!string.IsNullOrWhiteSpace(gameVersion))
+            payload["game_versions"] = new[] { gameVersion };
+
+        if (!string.IsNullOrWhiteSpace(loader))
+            payload["loaders"] = new[] { loader };
+
+        using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8,
+            "application/json");
+
+        using var response = await Http.PostAsync($"{BaseUrl}/version_files/update", content,
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var result = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return result ?? [];
     }
 
     public async Task<string> DownloadAsync(string url, string fileName, string targetDirectory,

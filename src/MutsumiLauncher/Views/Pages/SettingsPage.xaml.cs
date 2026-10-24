@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -13,6 +14,7 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+        VersionText.Text = $"Mutsumi Launcher {UpdateService.CurrentVersion}";
         Loaded += async (_, _) =>
         {
             if (_loaded) return;
@@ -77,6 +79,62 @@ public partial class SettingsPage : UserControl
         var size = CacheService.GetSize();
         CacheSizeText.Text = $"当前缓存 {CacheService.FormatSize(size)}（版本清单 + 项目图标）";
         CachePathText.Text = string.Join("  ·  ", CacheService.Roots);
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatus.Text = "正在检查更新…";
+
+        try
+        {
+            var info = await UpdateService.CheckAsync();
+
+            if (!info.Available)
+            {
+                UpdateStatus.Text = $"已经是最新版本（{UpdateService.CurrentVersion}）";
+                return;
+            }
+
+            UpdateStatus.Text = $"发现新版本 {info.LatestVersion}";
+
+            var message = $"当前版本：{UpdateService.CurrentVersion}{Environment.NewLine}"
+                          + $"最新版本：{info.LatestVersion}{Environment.NewLine}{Environment.NewLine}"
+                          + "是否下载并安装？";
+
+            var confirmed = MessageDialog.Show(owner, "发现新版本", message,
+                "下载并安装", "稍后");
+
+            if (!confirmed) return;
+
+            var task = DownloadCenter.Begin($"下载更新 {info.LatestVersion}");
+            var progress = new Progress<InstallProgress>(p =>
+            {
+                UpdateStatus.Text = $"{p.Message} {p.Percent:0}%";
+                DownloadCenter.Report(task, p.Message, p.Percent);
+            });
+
+            var setup = await UpdateService.DownloadAsync(info, progress, task.Token);
+
+            DownloadCenter.Complete(task, "更新已下载，正在启动安装程序");
+            UpdateStatus.Text = "正在启动安装程序…";
+
+            UpdateService.InstallAndExit(setup);
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus.Text = "已取消更新";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+            AppLog.Error(ex, "auto update");
+        }
+        finally
+        {
+            CheckUpdateButton.IsEnabled = true;
+        }
     }
 
     private void ClearCache_Click(object sender, RoutedEventArgs e)

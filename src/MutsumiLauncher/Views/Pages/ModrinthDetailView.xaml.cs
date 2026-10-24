@@ -431,6 +431,7 @@ public partial class ModrinthDetailView : UserControl
         _installing = true;
         Loading.IsActive = true;
         var task = DownloadCenter.Begin($"安装 {row.Version.Name}", indeterminate: true);
+        task.RetryAction = () => InstallFile_Click(sender, new RoutedEventArgs());
 
         try
         {
@@ -457,10 +458,15 @@ public partial class ModrinthDetailView : UserControl
 
             var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
             await _client.DownloadAsync(row.File.Url, row.File.Filename, targetDirectory,
-                row.File.Hashes?.Sha1);
+                row.File.Hashes?.Sha1, task.Token);
 
             DownloadCenter.Complete(task, "已安装");
             _toast?.Invoke($"{row.Version.Name} 安装完成");
+        }
+        catch (OperationCanceledException)
+        {
+            DownloadCenter.Complete(task, "已取消安装");
+            _toast?.Invoke("已取消安装");
         }
         catch (Exception ex)
         {

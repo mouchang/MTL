@@ -78,9 +78,16 @@
 
             <Border Style="{StaticResource GlassCard}" Padding="22,18">
                 <StackPanel>
-                    <TextBlock Text="关于" Style="{StaticResource H2}" />
-                    <TextBlock Text="Mutsumi Launcher 0.1.0" Style="{StaticResource Body}" Margin="0,8,0,0" />
-                    <TextBlock Text="WPF · .NET 10 · 开源" Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                    <Grid>
+                        <TextBlock Text="关于" Style="{StaticResource H2}" />
+                        <Button x:Name="CheckUpdateButton" Style="{StaticResource SecondaryButton}"
+                                Content="检查更新" Height="30" Padding="14,0"
+                                HorizontalAlignment="Right" Click="CheckUpdate_Click" />
+                    </Grid>
+                    <TextBlock x:Name="VersionText" Text="Mutsumi Launcher" Style="{StaticResource Body}"
+                               Margin="0,8,0,0" />
+                    <TextBlock x:Name="UpdateStatus" Text="WPF · .NET 10 · 开源" Style="{StaticResource Caption}"
+                               Margin="0,2,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -395,6 +395,7 @@ public partial class VersionDetailView : UserControl
             ? $"安装 {_entry.Name}"
             : $"安装 {_entry.Name} + {LoaderName(_selectedLoader!)} {_selectedLoaderVersion}";
         var task = DownloadCenter.Begin(title);
+        task.RetryAction = () => StartDownload_Click(StartButton, new RoutedEventArgs());
 
         try
         {
@@ -409,7 +410,7 @@ public partial class VersionDetailView : UserControl
                 {
                     ProgressText.Text = $"先安装原版 {_entry.Name}…";
                     await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
-                        installAssets: false);
+                        installAssets: false, cancellationToken: task.Token);
                 }
 
                 // 加载器先装到临时版本目录，再按 PCL2 的方式合并成一个完整实例
@@ -419,13 +420,13 @@ public partial class VersionDetailView : UserControl
                 if (_selectedLoader == "fabric")
                 {
                     loaderId = await new FabricLoader().InstallAsync(_entry.Name, _selectedLoaderVersion,
-                        progress, tempLoaderId);
+                        progress, tempLoaderId, task.Token);
                 }
                 else
                 {
                     var kind = _selectedLoader == "forge" ? LoaderKind.Forge : LoaderKind.NeoForge;
                     loaderId = await new ForgeLoader().InstallAsync(kind, _entry.Name, _selectedLoaderVersion,
-                        progress, tempLoaderId);
+                        progress, tempLoaderId, task.Token);
                 }
 
                 var id = InstanceMerger.Merge(_entry.Name, loaderId, instanceName, progress);
@@ -458,7 +459,7 @@ public partial class VersionDetailView : UserControl
                         Directory.CreateDirectory(modsDir);
 
                         await _modrinth.DownloadAsync(file.Url, file.Filename, modsDir,
-                            file.Hashes?.Sha1);
+                            file.Hashes?.Sha1, task.Token);
                     }
                 }
 
@@ -471,12 +472,18 @@ public partial class VersionDetailView : UserControl
             }
 
             await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
-                instanceName: instanceName);
+                instanceName: instanceName, cancellationToken: task.Token);
             ProgressText.Text = $"{instanceName} 安装完成";
             HintText.Text = "可以在启动页切换到该版本并启动。";
             DownloadCenter.Complete(task, "安装完成");
             NotifyInstalled(instanceName);
             _toast?.Invoke($"{_entry.Name} 安装完成");
+        }
+        catch (OperationCanceledException)
+        {
+            ProgressText.Text = "已取消安装";
+            DownloadCenter.Complete(task, "已取消");
+            _toast?.Invoke("已取消安装");
         }
         catch (Exception ex)
         {
