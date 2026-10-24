@@ -199,6 +199,31 @@ public static class InstanceService
         try
         {
             Directory.CreateDirectory(path);
+        }
+        catch
+        {
+            // 目录不存在 / 无权限时仍然尝试打开
+        }
+
+        // 首选 explorer.exe：不依赖 shell 文件关联，权限受限环境也能用
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            })?.Dispose();
+
+            AppLog.Info($"open folder: {path}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "open folder via explorer");
+        }
+
+        try
+        {
             Process.Start(new ProcessStartInfo
             {
                 FileName = path,
@@ -209,7 +234,7 @@ public static class InstanceService
         }
         catch (Exception ex)
         {
-            AppLog.Error(ex, "open folder");
+            AppLog.Error(ex, "open folder via shell");
             return ex.Message;
         }
     }
