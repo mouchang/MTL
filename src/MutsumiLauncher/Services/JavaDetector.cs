@@ -68,7 +68,18 @@ public static class JavaDetector
             }
         }
 
-        // 5. Minecraft 自带运行时
+        // 5. 启动器自己下载的运行时
+        var ownRuntime = JavaRuntimeService.RuntimeRoot;
+        if (Directory.Exists(ownRuntime))
+        {
+            foreach (var exe in SafeEnumerateFiles(ownRuntime, "java.exe"))
+            {
+                if (exe.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                    Add(exe, "启动器运行时");
+            }
+        }
+
+        // 6. Minecraft 自带运行时
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         if (!string.IsNullOrWhiteSpace(appData))
         {

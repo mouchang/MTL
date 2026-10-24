@@ -23,6 +23,9 @@ public sealed class GameLauncher
     /// <summary>当前正在运行的游戏进程（供启动面板强制关闭）。</summary>
     public static Process? ActiveProcess { get; private set; }
 
+    /// <summary>最近一次游戏进程的退出码（供启动面板判断是否崩溃）。</summary>
+    public static int? LastExitCode { get; private set; }
+
     public static bool KillActive()
     {
         lock (ProcessLock)
@@ -144,7 +147,7 @@ public sealed class GameLauncher
         GameOptions.EnsureLanguage(gameDir);
 
         progress?.Report(new LaunchProgress(20, "选择 Java…"));
-        var java = await PickJavaAsync(detail, options.JavaPath);
+        var java = await PickJavaAsync(detail, options.JavaPath, progress);
         if (java is null) return new LaunchResult(false, "没有可用的 Java，请先安装或指定 Java 路径。", null);
 
         var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, options.PlayerName,
@@ -176,6 +179,8 @@ public sealed class GameLauncher
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
+        LastExitCode = null;
+
         lock (ProcessLock)
         {
             ActiveProcess = process;
@@ -183,6 +188,15 @@ public sealed class GameLauncher
 
         process.Exited += (_, _) =>
         {
+            try
+            {
+                LastExitCode = process.ExitCode;
+            }
+            catch
+            {
+                LastExitCode = null;
+            }
+
             lock (ProcessLock)
             {
                 if (ReferenceEquals(ActiveProcess, process)) ActiveProcess = null;
@@ -472,7 +486,8 @@ public sealed class GameLauncher
         return value;
     }
 
-    private static async Task<JavaRuntime?> PickJavaAsync(VersionDetail detail, string preferredPath)
+    private static async Task<JavaRuntime?> PickJavaAsync(VersionDetail detail, string preferredPath,
+        IProgress<LaunchProgress>? progress)
     {
         IReadOnlyList<JavaRuntime> runtimes;
         try
@@ -503,9 +518,29 @@ public sealed class GameLauncher
             }
         }
 
+        var required = RequiredJavaMajor(detail);
+
+        // 没有满足要求的 Java：自动下载一个
+        if (runtimes.Count == 0 || runtimes.All(r => r.Major < required))
+        {
+            try
+            {
+                var downloadProgress = progress is null
+                    ? null
+                    : new Progress<InstallProgress>(p =>
+                        progress.Report(new LaunchProgress(18 + p.Percent * 0.05, p.Message)));
+
+                var downloaded = await JavaRuntimeService.EnsureAsync(required, downloadProgress);
+                if (downloaded is not null) return downloaded;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "auto download java");
+            }
+        }
+
         if (runtimes.Count == 0) return null;
 
-        var required = RequiredJavaMajor(detail);
         var exact = runtimes.FirstOrDefault(r => r.Major == required);
         if (exact is not null) return exact;
 

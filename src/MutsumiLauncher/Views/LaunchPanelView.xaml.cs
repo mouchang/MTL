@@ -87,14 +87,27 @@ public partial class LaunchPanelView : UserControl
 
         var process = GameLauncher.ActiveProcess;
 
-        if (process is null || process.HasExited)
-        {
-            _running = false;
-            _timer.Stop();
+        if (process is not null && !process.HasExited) return;
 
-            // 游戏退出后自动收起面板
+        _running = false;
+        _timer.Stop();
+
+        var exitCode = GameLauncher.LastExitCode ?? 0;
+
+        if (exitCode == 0)
+        {
+            // 正常退出：自动收起面板
             Closed?.Invoke();
+            return;
         }
+
+        // 异常退出：保留面板并给出可读原因
+        var reason = CrashAnalyzer.Analyze(_logPath, exitCode);
+        SetFailed(reason);
+        StatusText.Text = "游戏异常退出";
+        SubtitleText.Text = $"退出代码 {exitCode}";
+        KillButton.IsEnabled = false;
+        LogButton.IsEnabled = !string.IsNullOrWhiteSpace(_logPath);
     }
 
     private void Kill_Click(object sender, RoutedEventArgs e)
