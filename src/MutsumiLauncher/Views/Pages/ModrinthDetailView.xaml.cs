@@ -291,10 +291,11 @@ public partial class ModrinthDetailView : UserControl
 
     private static string GameDir()
     {
-        var config = AppConfig.Current;
-        if (config.VersionIsolation && !string.IsNullOrWhiteSpace(config.SelectedVersion))
+        // 跟随「当前实例」的隔离设置（每个实例可以单独配置）
+        var selected = AppConfig.Current.SelectedVersion;
+        if (!string.IsNullOrWhiteSpace(selected))
         {
-            var dir = Path.Combine(GamePaths.VersionsDir, config.SelectedVersion);
+            var dir = InstanceService.GameDirFor(selected);
             if (Directory.Exists(dir)) return dir;
         }
 

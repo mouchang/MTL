@@ -96,9 +96,14 @@
                     <StackPanel>
                         <Grid>
                             <TextBlock Text="最新版本" Style="{StaticResource H1}" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="刷新"
-                                    HorizontalAlignment="Right" Height="30" Padding="14,0"
-                                    Click="Refresh_Click" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource SecondaryButton}" Content="导入整合包"
+                                        Height="30" Padding="14,0" Margin="0,0,8,0"
+                                        Click="ImportModpack_Click" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="刷新"
+                                        Height="30" Padding="14,0"
+                                        Click="Refresh_Click" />
+                            </StackPanel>
                         </Grid>
                         <TextBlock Text="{Binding Status}" Style="{StaticResource Caption}"
                                    Margin="0,6,0,0" TextWrapping="Wrap" />
