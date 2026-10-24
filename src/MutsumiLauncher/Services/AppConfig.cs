@@ -34,6 +34,12 @@ public sealed class AppConfig
     /// <summary>CurseForge API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。</summary>
     public string CurseForgeApiKey { get; set; } = string.Empty;
 
+    /// <summary>原版下载源：bmclapi（默认，国内加速）或 official。</summary>
+    public string VanillaMirror { get; set; } = "bmclapi";
+
+    /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
+    public string ModMirror { get; set; } = "mcim";
+
 
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 

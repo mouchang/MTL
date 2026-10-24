@@ -31,7 +31,7 @@ public static class IconCache
             var path = Path.Combine(CacheDir, safe + ".png");
             if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
 
-            var bytes = await Http.GetByteArrayAsync(url, cancellationToken);
+            var bytes = await Http.GetByteArrayAsync(DownloadMirror.ModFileUrl(url), cancellationToken);
             await File.WriteAllBytesAsync(path, bytes, cancellationToken);
             return path;
         }

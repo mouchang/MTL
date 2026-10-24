@@ -70,7 +70,7 @@ public static class AssetInstaller
 
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 var bytes = await Http.GetByteArrayAsync(
-                    $"https://resources.download.minecraft.net/{obj.Hash[..2]}/{obj.Hash}", cancellationToken);
+                    DownloadMirror.AssetObjectUrl(obj.Hash), cancellationToken);
                 await File.WriteAllBytesAsync(target, bytes, cancellationToken);
                 Interlocked.Add(ref bytesDone, bytes.Length);
             }

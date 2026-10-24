@@ -29,6 +29,8 @@ public sealed class VersionDetail
     [JsonPropertyName("minecraftArguments")] public string? MinecraftArguments { get; set; }
 
     [JsonPropertyName("javaVersion")] public JavaVersionInfo? JavaVersion { get; set; }
+
+    [JsonPropertyName("inheritsFrom")] public string? InheritsFrom { get; set; }
 }
 
 public sealed class JavaVersionInfo
@@ -48,6 +50,8 @@ public sealed class AssetIndex
 public sealed class Library
 {
     [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")] public string? Url { get; set; }
 
     [JsonPropertyName("downloads")] public LibraryDownloads? Downloads { get; set; }
 
@@ -97,7 +101,8 @@ public sealed class VersionInstaller
     }
 
     public async Task InstallAsync(string id, string versionUrl,
-        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default)
+        IProgress<InstallProgress>? progress = null, bool installAssets = true,
+        CancellationToken cancellationToken = default)
     {
         GamePaths.EnsureCreated();
 
@@ -105,7 +110,8 @@ public sealed class VersionInstaller
         Directory.CreateDirectory(versionDir);
 
         progress?.Report(new InstallProgress(1, $"获取 {id} 的版本信息…"));
-        var json = await Http.GetStringAsync(versionUrl, cancellationToken);
+        var json = await Http.GetStringAsync(
+            DownloadMirror.VersionJsonUrl(id, versionUrl), cancellationToken);
         var detail = JsonSerializer.Deserialize<VersionDetail>(json)
                      ?? throw new InvalidOperationException("版本 JSON 解析失败");
 
@@ -115,7 +121,9 @@ public sealed class VersionInstaller
         if (detail.Downloads.TryGetValue("client", out var client) && client.Url is not null)
         {
             progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
-            await DownloadAsync(client.Url, Path.Combine(versionDir, $"{id}.jar"), client.Sha1, cancellationToken);
+            var clientUrl = DownloadMirror.ClientUrl(id, client.Url);
+            await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{id}.jar"), client.Sha1,
+                cancellationToken);
         }
 
         var artifacts = detail.Libraries
@@ -138,10 +146,11 @@ public sealed class VersionInstaller
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
             if (File.Exists(target)) continue;
 
-            await DownloadAsync(artifact.Url!, target, artifact.Sha1, cancellationToken);
+            var libraryUrl = DownloadMirror.LibraryUrl(artifact.Url, artifact.Path);
+            await DownloadAsync(libraryUrl, target, artifact.Sha1, cancellationToken);
         }
 
-        if (detail.AssetIndex is { Url.Length: > 0 } assetIndex)
+        if (installAssets && detail.AssetIndex is { Url.Length: > 0 } assetIndex)
         {
             var mapped = progress is null
                 ? null

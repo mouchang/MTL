@@ -50,6 +50,9 @@ public sealed class GameLauncher
         var detail = JsonSerializer.Deserialize<VersionDetail>(await File.ReadAllTextAsync(jsonPath, cancellationToken))
                      ?? throw new InvalidOperationException("版本 JSON 解析失败");
 
+        if (!string.IsNullOrWhiteSpace(detail.InheritsFrom))
+            detail = MergeInherited(detail, detail.InheritsFrom);
+
         if (detail.AssetIndex is { Url.Length: > 0 } assetIndex)
         {
             progress?.Report(new LaunchProgress(3, "检查资源文件…"));
@@ -69,7 +72,14 @@ public sealed class GameLauncher
             if (File.Exists(path)) ExtractNatives(path, nativesDir);
         }
 
-        var classpath = BuildClasspath(detail, versionDir, id);
+        var jarPath = Path.Combine(versionDir, $"{id}.jar");
+        if (!File.Exists(jarPath) && !string.IsNullOrWhiteSpace(detail.InheritsFrom))
+        {
+            jarPath = Path.Combine(GamePaths.VersionsDir, detail.InheritsFrom,
+                $"{detail.InheritsFrom}.jar");
+        }
+
+        var classpath = BuildClasspath(detail, jarPath);
 
         var gameDir = options.VersionIsolation ? versionDir : GamePaths.Root;
         Directory.CreateDirectory(gameDir);
@@ -111,9 +121,9 @@ public sealed class GameLauncher
         return new LaunchResult(true, $"已启动 {id}（Java {java.Version}）", logPath);
     }
 
-    private static string BuildClasspath(VersionDetail detail, string versionDir, string id)
+    private static string BuildClasspath(VersionDetail detail, string jarPath)
     {
-        var entries = new List<string> { Path.Combine(versionDir, $"{id}.jar") };
+        var entries = new List<string> { jarPath };
 
         entries.AddRange(AllowedLibraries(detail)
             .Select(l => l.Downloads?.Artifact)
@@ -122,6 +132,48 @@ public sealed class GameLauncher
             .Where(File.Exists));
 
         return string.Join(';', entries);
+    }
+
+    /// <summary>Fabric/Forge 等 profile 通过 inheritsFrom 继承原版，这里合并成一份可启动的版本。</summary>
+    private static VersionDetail MergeInherited(VersionDetail child, string parentId)
+    {
+        var parentJson = Path.Combine(GamePaths.VersionsDir, parentId, $"{parentId}.json");
+        if (!File.Exists(parentJson))
+            throw new InvalidOperationException($"缺少基础版本 {parentId}，请先安装它。");
+
+        var parent = JsonSerializer.Deserialize<VersionDetail>(
+                         File.ReadAllText(parentJson))
+                     ?? throw new InvalidOperationException($"基础版本 {parentId} 解析失败");
+
+        var libraries = parent.Libraries
+            .Concat(child.Libraries)
+            .GroupBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Last())
+            .ToList();
+
+        return new VersionDetail
+        {
+            Id = child.Id,
+            Type = child.Type,
+            MainClass = child.MainClass,
+            Assets = parent.Assets,
+            AssetIndex = parent.AssetIndex,
+            Downloads = parent.Downloads,
+            Libraries = libraries,
+            Arguments = HasGameArguments(child.Arguments) ? child.Arguments : parent.Arguments,
+            MinecraftArguments = child.MinecraftArguments ?? parent.MinecraftArguments,
+            JavaVersion = parent.JavaVersion ?? child.JavaVersion,
+            InheritsFrom = parentId,
+        };
+    }
+
+    private static bool HasGameArguments(System.Text.Json.JsonElement? arguments)
+    {
+        if (arguments is not { ValueKind: System.Text.Json.JsonValueKind.Object } element) return false;
+
+        return element.TryGetProperty("game", out var game)
+               && game.ValueKind == System.Text.Json.JsonValueKind.Array
+               && game.GetArrayLength() > 0;
     }
 
     private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,

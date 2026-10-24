@@ -41,7 +41,7 @@ public sealed class MinecraftVersion
 /// <summary>Mojang 版本清单：网络优先，失败时回退到本地缓存。</summary>
 public sealed class VersionManifestService
 {
-    private const string ManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+    private const string OfficialManifest = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -77,7 +77,7 @@ public sealed class VersionManifestService
 
         try
         {
-            var json = await Http.GetStringAsync(ManifestUrl, cancellationToken);
+            var json = await FetchManifestAsync(cancellationToken);
             Directory.CreateDirectory(AppPaths.CacheDir);
             await File.WriteAllTextAsync(CachePath, json, cancellationToken);
             AppLog.Info($"version manifest fetched, {json.Length} bytes");
@@ -95,6 +95,29 @@ public sealed class VersionManifestService
 
             throw;
         }
+    }
+
+    /// <summary>优先镜像（BMCLAPI），失败再回退官方源。</summary>
+    private static async Task<string> FetchManifestAsync(CancellationToken cancellationToken)
+    {
+        var urls = new List<string> { DownloadMirror.ManifestUrl };
+        if (DownloadMirror.ManifestUrl != OfficialManifest) urls.Add(OfficialManifest);
+
+        Exception? last = null;
+        foreach (var url in urls)
+        {
+            try
+            {
+                return await Http.GetStringAsync(url, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"manifest {url}");
+            }
+        }
+
+        throw last ?? new InvalidOperationException("无法获取版本清单");
     }
 
     private static VersionManifest Parse(string json)
