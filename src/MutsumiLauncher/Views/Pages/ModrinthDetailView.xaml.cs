@@ -16,6 +16,24 @@ public sealed class ModrinthFileRow
 
     public string Title => Version.Name;
 
+    public string LoaderInitial => Version.Loaders.FirstOrDefault()?.ToLowerInvariant() switch
+    {
+        "fabric" => "F",
+        "forge" => "Fg",
+        "neoforge" => "N",
+        "quilt" => "Q",
+        _ => "?",
+    };
+
+    public System.Windows.Media.Brush LoaderBrush => Version.Loaders.FirstOrDefault()?.ToLowerInvariant() switch
+    {
+        "fabric" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4E, 0x9E, 0x72)),
+        "forge" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC9, 0x7B, 0x4A)),
+        "neoforge" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x6F, 0xA8, 0xDC)),
+        "quilt" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9B, 0x7B, 0xC9)),
+        _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x8F, 0x9E, 0x94)),
+    };
+
     public string Subtitle
     {
         get
@@ -138,6 +156,10 @@ public partial class ModrinthDetailView : UserControl
 
         AddTab("全部", null);
         foreach (var version in versions) AddTab(version, version);
+
+        VersionSourceText.Text = CurseForgeClient.IsConfigured
+            ? "版本来源：Modrinth + CurseForge（CF 匹配接入中）"
+            : "版本来源：Modrinth（CurseForge 待配置 API Key）";
 
         HighlightTabs();
     }

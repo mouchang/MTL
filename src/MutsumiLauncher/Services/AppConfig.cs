@@ -31,6 +31,9 @@ public sealed class AppConfig
     /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
     public string ModrinthToken { get; set; } = string.Empty;
 
+    /// <summary>CurseForge API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。</summary>
+    public string CurseForgeApiKey { get; set; } = string.Empty;
+
 
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 

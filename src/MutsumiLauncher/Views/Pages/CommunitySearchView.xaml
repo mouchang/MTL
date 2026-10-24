@@ -39,6 +39,7 @@
                     <TextBlock Text="来源" Style="{StaticResource FieldLabel}" Grid.Column="4" Margin="8,0,0,0" />
                     <ComboBox Grid.Column="5" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
                         <ComboBoxItem Content="Modrinth" />
+                        <ComboBoxItem Content="CurseForge（待接入）" IsEnabled="False" />
                     </ComboBox>
 
                     <TextBlock Text="版本" Style="{StaticResource FieldLabel}" Grid.Row="1" Margin="0,10,0,0" />

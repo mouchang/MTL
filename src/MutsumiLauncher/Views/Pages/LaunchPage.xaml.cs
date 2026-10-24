@@ -70,7 +70,7 @@ public partial class LaunchPage : UserControl
         }
         else
         {
-            AvatarImage.Source = new BitmapImage(new Uri("pack://application:,,,/Assets/avatar.png"));
+            AvatarImage.Source = new BitmapImage(new Uri("pack://application:,,,/Assets/steve-head.png"));
         }
     }
 
