@@ -55,7 +55,9 @@ public static class ModpackImporter
                            ?? throw new InvalidOperationException($"版本清单里没有 Minecraft {minecraft}。");
 
         var vanillaJson = Path.Combine(GamePaths.VersionsDir, minecraft, $"{minecraft}.json");
-        if (!File.Exists(vanillaJson))
+        var vanillaWasMissing = !File.Exists(vanillaJson);
+
+        if (vanillaWasMissing)
         {
             progress?.Report(new InstallProgress(5, $"安装原版 {minecraft}…"));
             var vanillaProgress = Map(progress, 5, 40);
@@ -66,23 +68,45 @@ public static class ModpackImporter
         var instanceName = UniqueName(SafeName(string.IsNullOrWhiteSpace(name) ? "整合包" : name!));
 
         string installed;
-        if (!string.IsNullOrWhiteSpace(fabric))
+        if (!string.IsNullOrWhiteSpace(fabric) || !string.IsNullOrWhiteSpace(forge)
+            || !string.IsNullOrWhiteSpace(neoforge))
         {
-            progress?.Report(new InstallProgress(42, $"安装 Fabric {fabric}…"));
-            installed = await new FabricLoader().InstallAsync(minecraft, fabric!, Map(progress, 42, 60),
-                instanceName, cancellationToken);
-        }
-        else if (!string.IsNullOrWhiteSpace(forge))
-        {
-            progress?.Report(new InstallProgress(42, $"安装 Forge {forge}…"));
-            installed = await new ForgeLoader().InstallAsync(LoaderKind.Forge, minecraft, forge!,
-                Map(progress, 42, 60), instanceName, cancellationToken);
-        }
-        else if (!string.IsNullOrWhiteSpace(neoforge))
-        {
-            progress?.Report(new InstallProgress(42, $"安装 NeoForge {neoforge}…"));
-            installed = await new ForgeLoader().InstallAsync(LoaderKind.NeoForge, minecraft, neoforge!,
-                Map(progress, 42, 60), instanceName, cancellationToken);
+            var tempLoaderId = "mtl-merge-" + Guid.NewGuid().ToString("N")[..8];
+            string loaderId;
+
+            if (!string.IsNullOrWhiteSpace(fabric))
+            {
+                progress?.Report(new InstallProgress(42, $"安装 Fabric {fabric}…"));
+                loaderId = await new FabricLoader().InstallAsync(minecraft, fabric!,
+                    Map(progress, 42, 60), tempLoaderId, cancellationToken);
+            }
+            else if (!string.IsNullOrWhiteSpace(forge))
+            {
+                progress?.Report(new InstallProgress(42, $"安装 Forge {forge}…"));
+                loaderId = await new ForgeLoader().InstallAsync(LoaderKind.Forge, minecraft, forge!,
+                    Map(progress, 42, 60), tempLoaderId, cancellationToken);
+            }
+            else
+            {
+                progress?.Report(new InstallProgress(42, $"安装 NeoForge {neoforge}…"));
+                loaderId = await new ForgeLoader().InstallAsync(LoaderKind.NeoForge, minecraft, neoforge!,
+                    Map(progress, 42, 60), tempLoaderId, cancellationToken);
+            }
+
+            installed = InstanceMerger.Merge(minecraft, loaderId, instanceName, Map(progress, 60, 62));
+
+            if (vanillaWasMissing && !instanceName.Equals(minecraft, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var vanillaDir = Path.Combine(GamePaths.VersionsDir, minecraft);
+                    if (Directory.Exists(vanillaDir)) Directory.Delete(vanillaDir, recursive: true);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "delete temp vanilla");
+                }
+            }
         }
         else
         {

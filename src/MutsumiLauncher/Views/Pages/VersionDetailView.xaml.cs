@@ -403,27 +403,45 @@ public partial class VersionDetailView : UserControl
             if (!string.IsNullOrEmpty(_selectedLoaderVersion))
             {
                 var vanillaJson = Path.Combine(GamePaths.VersionsDir, _entry.Name, $"{_entry.Name}.json");
-                if (!File.Exists(vanillaJson))
+                var vanillaWasMissing = !File.Exists(vanillaJson);
+
+                if (vanillaWasMissing)
                 {
                     ProgressText.Text = $"先安装原版 {_entry.Name}…";
-
-                    // 原版必须装到 versions/<游戏版本>，加载器版本靠 inheritsFrom 引用它；
-                    // 自定义实例名只用于加载器实例，不能给原版用。
                     await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
                         installAssets: false);
                 }
 
-                string id;
+                // 加载器先装到临时版本目录，再按 PCL2 的方式合并成一个完整实例
+                var tempLoaderId = "mtl-merge-" + Guid.NewGuid().ToString("N")[..8];
+                string loaderId;
+
                 if (_selectedLoader == "fabric")
                 {
-                    id = await new FabricLoader().InstallAsync(_entry.Name, _selectedLoaderVersion, progress,
-                        instanceName);
+                    loaderId = await new FabricLoader().InstallAsync(_entry.Name, _selectedLoaderVersion,
+                        progress, tempLoaderId);
                 }
                 else
                 {
                     var kind = _selectedLoader == "forge" ? LoaderKind.Forge : LoaderKind.NeoForge;
-                    id = await new ForgeLoader().InstallAsync(kind, _entry.Name, _selectedLoaderVersion,
-                        progress, instanceName);
+                    loaderId = await new ForgeLoader().InstallAsync(kind, _entry.Name, _selectedLoaderVersion,
+                        progress, tempLoaderId);
+                }
+
+                var id = InstanceMerger.Merge(_entry.Name, loaderId, instanceName, progress);
+
+                // 原版只是这次合并的临时依赖，合并完就删掉，避免版本列表里出现两个条目
+                if (vanillaWasMissing && !instanceName.Equals(_entry.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var vanillaDir = Path.Combine(GamePaths.VersionsDir, _entry.Name);
+                        if (Directory.Exists(vanillaDir)) Directory.Delete(vanillaDir, recursive: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Error(ex, "delete temp vanilla");
+                    }
                 }
 
                 if (_selectedLoader == "fabric" && _selectedFabricApi is not null)
