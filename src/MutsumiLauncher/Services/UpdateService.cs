@@ -47,6 +47,9 @@ public static class UpdateService
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return new UpdateInfo(false, CurrentVersion, null, null);
 
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new InvalidOperationException("更新源鉴权失败（Worker 的 GITHUB_TOKEN 无效或已撤销）。");
+
             if (response.StatusCode is System.Net.HttpStatusCode.Forbidden
                 or System.Net.HttpStatusCode.TooManyRequests)
                 throw new InvalidOperationException("GitHub 请求受限（403/429），请稍后再试。");
