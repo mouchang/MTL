@@ -17,6 +17,10 @@ public partial class VersionDetailView : UserControl
     private string? _selectedLoaderVersion;
 
     private readonly Dictionary<string, bool> _loaded = new(StringComparer.Ordinal);
+    private readonly ModrinthClient _modrinth = new();
+    private readonly List<Button> _fabricApiChips = [];
+    private ModrinthVersion? _selectedFabricApi;
+    private bool _fabricApiLoaded;
     private readonly Dictionary<string, List<Button>> _chips = new(StringComparer.Ordinal);
 
     public VersionDetailView()
@@ -38,6 +42,11 @@ public partial class VersionDetailView : UserControl
 
         _selectedLoader = null;
         _selectedLoaderVersion = null;
+        _selectedFabricApi = null;
+        _fabricApiLoaded = false;
+        _fabricApiChips.Clear();
+        FabricApiVersions.Children.Clear();
+        FabricApiSection.Visibility = Visibility.Collapsed;
         _loaded.Clear();
         _chips.Clear();
 
@@ -254,6 +263,11 @@ public partial class VersionDetailView : UserControl
 
         StartButton.Content = "开始下载";
         HintText.Text = $"已选择 {LoaderName(kind)} {version}，点击「开始下载」。";
+
+        if (kind == "fabric")
+            _ = LoadFabricApiAsync();
+        else
+            FabricApiSection.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>安装完成后把新实例设为当前版本，并刷新启动页。</summary>
@@ -265,6 +279,82 @@ public partial class VersionDetailView : UserControl
 
         if (Window.GetWindow(this) is MainWindow main)
             main.RefreshInstances();
+    }
+
+    private async Task LoadFabricApiAsync()
+    {
+        FabricApiSection.Visibility = Visibility.Visible;
+
+        if (_fabricApiLoaded) return;
+        _fabricApiLoaded = true;
+
+        FabricApiHint.Text = "正在获取 Fabric API 版本…";
+        FabricApiVersions.Children.Clear();
+        _fabricApiChips.Clear();
+
+        try
+        {
+            var versions = await _modrinth.GetVersionsAsync("fabric-api");
+            var mc = _entry?.Name ?? string.Empty;
+
+            var matching = versions
+                .Where(v => v.GameVersions.Contains(mc))
+                .Where(v => v.Loaders.Contains("fabric", StringComparer.OrdinalIgnoreCase))
+                .OrderByDescending(v => v.DatePublished)
+                .Take(30)
+                .ToList();
+
+            AddFabricApiChip(null, "不安装");
+
+            foreach (var version in matching)
+                AddFabricApiChip(version, version.VersionNumber);
+
+            if (matching.Count > 0)
+                SelectFabricApi(matching[0], _fabricApiChips.Count > 1 ? _fabricApiChips[1] : null);
+            else
+                FabricApiHint.Text = "这个游戏版本没有可用的 Fabric API，将只安装加载器。";
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "load fabric api");
+            FabricApiHint.Text = "获取 Fabric API 版本失败：" + ex.Message;
+        }
+    }
+
+    private void AddFabricApiChip(ModrinthVersion? version, string label)
+    {
+        var chip = new Button
+        {
+            Style = (Style)FindResource("GhostButton"),
+            Content = new TextBlock { Text = label, FontSize = 12, Foreground = (Brush)FindResource("InkSoft") },
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 6, 6),
+        };
+
+        chip.Click += (_, _) => SelectFabricApi(version, chip);
+        FabricApiVersions.Children.Add(chip);
+        _fabricApiChips.Add(chip);
+    }
+
+    private void SelectFabricApi(ModrinthVersion? version, Button? chip)
+    {
+        _selectedFabricApi = version;
+
+        foreach (var item in _fabricApiChips)
+        {
+            var selected = chip is not null ? item == chip : false;
+            item.Background = selected ? (Brush)FindResource("Accent") : Brushes.Transparent;
+
+            if (item.Content is TextBlock text)
+            {
+                text.Foreground = selected ? Brushes.White : (Brush)FindResource("InkSoft");
+                text.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+            }
+        }
+
+        FabricApiHint.Text = version is null
+            ? "Fabric API：不安装"
+            : $"Fabric API：已选 {version.VersionNumber}";
     }
 
     private void UnsupportedLoader_Click(object sender, RoutedEventArgs e)
@@ -331,6 +421,24 @@ public partial class VersionDetailView : UserControl
                     var kind = _selectedLoader == "forge" ? LoaderKind.Forge : LoaderKind.NeoForge;
                     id = await new ForgeLoader().InstallAsync(kind, _entry.Name, _selectedLoaderVersion,
                         progress, instanceName);
+                }
+
+                if (_selectedLoader == "fabric" && _selectedFabricApi is not null)
+                {
+                    var file = _selectedFabricApi.Files.FirstOrDefault(f => f.Primary)
+                               ?? _selectedFabricApi.Files.FirstOrDefault();
+
+                    if (file is not null)
+                    {
+                        ProgressText.Text = "下载 Fabric API…";
+                        DownloadCenter.Report(task, "下载 Fabric API…", 96);
+
+                        var modsDir = Path.Combine(InstanceService.GameDirFor(id), "mods");
+                        Directory.CreateDirectory(modsDir);
+
+                        await _modrinth.DownloadAsync(file.Url, file.Filename, modsDir,
+                            file.Hashes?.Sha1);
+                    }
                 }
 
                 ProgressText.Text = $"已安装 {id}";

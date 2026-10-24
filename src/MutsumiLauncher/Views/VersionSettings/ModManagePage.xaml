@@ -25,15 +25,19 @@
                     Click="Refresh_Click" />
         </WrapPanel>
 
-        <TextBlock x:Name="NoLoaderHint" Grid.Row="2" Text="此版本不支持安装 Mod（原版没有加载器）"
-                   Style="{StaticResource Caption}" Margin="0,10,0,0" Visibility="Collapsed" />
-
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
+
+                <Border x:Name="NoLoaderHint" Background="#FFF4E5E5" CornerRadius="10" Padding="14,12"
+                        Margin="0,0,0,10" Visibility="Collapsed">
+                    <TextBlock Text="此版本不支持安装 Mod（原版没有加载器）"
+                               FontSize="15" FontWeight="SemiBold" Foreground="#FFB03A2E"
+                               TextWrapping="Wrap" />
+                </Border>
 
                 <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
                     <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="all"

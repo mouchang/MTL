@@ -76,6 +76,25 @@
                                       VerticalScrollBarVisibility="Disabled" Height="104">
                             <Grid x:Name="TabPanel" Height="80" HorizontalAlignment="Left" />
                         </ScrollViewer>
+                        <StackPanel x:Name="LoaderRow" Orientation="Horizontal" Margin="2,10,0,0">
+                            <TextBlock Text="加载器" Style="{StaticResource FieldLabel}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <RadioButton x:Name="LoaderAllRadio" Style="{StaticResource SegmentItem}"
+                                         GroupName="LoaderFilter" Content="全部" Tag=""
+                                         IsChecked="True" Margin="0,0,4,0" Checked="LoaderFilter_Checked" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="LoaderFilter"
+                                         Content="Fabric" Tag="fabric" Margin="0,0,4,0"
+                                         Checked="LoaderFilter_Checked" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="LoaderFilter"
+                                         Content="Forge" Tag="forge" Margin="0,0,4,0"
+                                         Checked="LoaderFilter_Checked" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="LoaderFilter"
+                                         Content="NeoForge" Tag="neoforge" Margin="0,0,4,0"
+                                         Checked="LoaderFilter_Checked" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="LoaderFilter"
+                                         Content="Quilt" Tag="quilt" Checked="LoaderFilter_Checked" />
+                        </StackPanel>
+
                         <TextBlock x:Name="VersionSourceText" Style="{StaticResource Caption}"
                                    Margin="2,8,0,0" />
                     </StackPanel>

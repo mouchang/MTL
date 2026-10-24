@@ -79,6 +79,14 @@
                         <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto">
                             <WrapPanel x:Name="FabricVersions" />
                         </ScrollViewer>
+
+                        <StackPanel x:Name="FabricApiSection" Visibility="Collapsed" Margin="0,8,0,0">
+                            <TextBlock x:Name="FabricApiHint" Style="{StaticResource Caption}"
+                                       Margin="0,0,0,6" Text="Fabric API 版本：" />
+                            <ScrollViewer MaxHeight="104" VerticalScrollBarVisibility="Auto">
+                                <WrapPanel x:Name="FabricApiVersions" />
+                            </ScrollViewer>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

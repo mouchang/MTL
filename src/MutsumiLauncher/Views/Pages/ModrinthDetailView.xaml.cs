@@ -76,6 +76,7 @@ public partial class ModrinthDetailView : UserControl
     private string? _currentGameVersion;
     private string? _targetInstance;
     private bool _installing;
+    private string _loaderFilter = string.Empty;
     private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Action? _onBack;
     private Action<string>? _toast;
@@ -129,7 +130,10 @@ public partial class ModrinthDetailView : UserControl
             {
                 _selectedGameVersion = initialGameVersion;
                 HighlightTabs();
-                ApplyFilter(initialGameVersion);
+                LoaderRow.Visibility = item.Hit.ProjectType == "mod" ? Visibility.Visible : Visibility.Collapsed;
+
+        ApplyFilter(initialGameVersion ?? null);
+        SelectLoaderForInstance(targetInstance);
             }
             else
             {
@@ -246,6 +250,8 @@ public partial class ModrinthDetailView : UserControl
     {
         var versions = _versions
             .Where(v => gameVersion is null || v.GameVersions.Contains(gameVersion))
+            .Where(v => _loaderFilter.Length == 0
+                        || v.Loaders.Contains(_loaderFilter, StringComparer.OrdinalIgnoreCase))
             .OrderByDescending(v => v.DatePublished)
             .ToList();
 
@@ -351,6 +357,50 @@ public partial class ModrinthDetailView : UserControl
         finally
         {
             Loading.IsActive = false;
+        }
+    }
+
+    private void LoaderFilter_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag }) return;
+
+        _loaderFilter = tag;
+        ApplyFilter(_selectedGameVersion);
+    }
+
+    /// <summary>跳转过来时按实例的加载器自动选中。</summary>
+    private void SelectLoaderForInstance(string? instance)
+    {
+        if (string.IsNullOrWhiteSpace(instance) || _item?.Hit.ProjectType != "mod") return;
+
+        try
+        {
+            var loader = InstanceService.GetInfo(instance).Loader switch
+            {
+                "Fabric" => "fabric",
+                "Forge" => "forge",
+                "NeoForge" => "neoforge",
+                _ => string.Empty,
+            };
+
+            if (loader.Length == 0) return;
+
+            RadioButton? target = null;
+
+            foreach (var child in LoaderRow.Children)
+            {
+                if (child is RadioButton { Tag: string tag } radio && tag == loader)
+                {
+                    target = radio;
+                    break;
+                }
+            }
+
+            if (target is not null) target.IsChecked = true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "select loader filter");
         }
     }
 

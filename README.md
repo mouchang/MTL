@@ -107,6 +107,8 @@ MutsumiLauncher/
 - **Mod 管理**：扫描实例 mods 目录，支持启用/禁用（改后缀）、删除、从文件安装、打开文件夹。
 - **实例名称**：版本详情页可自定义实例名称（安装到 `versions/<实例名称>`），默认取版本号；选择加载器后自动建议 `26.3-Fabric-0.20.1` 这类不冲突的名字，重名会拒绝安装。
 - **NeoForge CDN**：NeoForge 官方 maven 国内直连不通，安装器与内部下载地址会改写为 `https://mtl.dpdns.org/maven.neoforged.net/...`，失败自动回退官方。
+- **Fabric API 选择**：选定 Fabric 加载器版本后，会额外列出该游戏版本可用的 Fabric API 版本（默认最新，可选「不安装」），安装时一起下到实例 mods。
+- **加载器筛选**：Mod 详情页版本列表下方可按加载器（Fabric/Forge/NeoForge/Quilt）过滤；从版本设置跳转时会自动选中对应加载器。
 - **加载器安装**：Fabric / Forge / NeoForge 均可展开选择版本、选中高亮、三者互斥（其余行禁用并显示「与所选加载器不互通」）。Fabric 走 meta profile；Forge/NeoForge 下载官方 installer 在临时目录执行 `--installClient`，再合并 `versions/` 与 `libraries/`。NeoForge 官方 maven 在国内直连不通，需要代理或镜像。
 - **下载详情页**：原版版本列表和社区搜索结果都改为「点条目打开详情」，详情从右侧滑入（280ms）。原版详情展示版本信息、加载器（Forge / NeoForge / Fabric / OptiFine）与「开始下载」；Modrinth 详情展示项目图标、信息（下载量 / 分类 / 更新时间）、**全部受支持游戏版本**的标签（两行、横向滚动、带下方导航条、不限数量）、带加载器徽标的文件列表与逐个安装，另有「转到 Modrinth」「复制名称」。项目图标会下载到本地 `icons/` 缓存；版本来源目前是 Modrinth，CurseForge 客户端已留好骨架（配置 `CurseForgeApiKey` / `MTL_CURSEFORGE_KEY` 后即可并入）。
 - **图标**：图标下载到本地 `icons/` 缓存并校验图片头，镜像失败时自动回退官方 CDN；原版条目使用官方材质渲染（正式版=草方块、远古版=泥土、预览版=命令方块、愚人节=金块），社区条目使用项目真实图标（本地缓存，失败回退首字母），详情页文件行带加载器徽标。
