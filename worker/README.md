@@ -49,3 +49,16 @@ NeoForge CDN 已经硬编码为 `https://mtl.dpdns.org/maven.neoforged.net`，�
 curl https://mtl.dpdns.org/gh/latest
 curl -I https://mtl.dpdns.org/maven.neoforged.net/releases/net/neoforged/neoforge/21.1.66/neoforge-21.1.66-installer.jar
 ```
+
+## 路由冲突排查
+
+如果 `https://mtl.dpdns.org/gh/latest` 返回 `403 forbidden`，但
+`/maven.neoforged.net/...` 正常，说明请求仍然落在**旧的 maven Worker** 上：
+
+- 旧 Worker 如果绑定的是 **Custom Domain `mtl.dpdns.org`**，Custom Domain 的优先级高于 Routes，
+  新 Worker 的 `/gh/*` 路由不会生效；
+- 解决方式（二选一）：
+  1. 把旧 Worker 改成 Route 绑定：`mtl.dpdns.org/maven.neoforged.net/*`，
+     新 Worker 绑定 Route：`mtl.dpdns.org/gh/*`（更具体的路径优先）；
+  2. 直接用一个 Worker 同时处理三类请求（本目录 `worker.js` 就是合并版），
+     替换旧 Worker 代码后重新部署。
