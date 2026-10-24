@@ -11,7 +11,20 @@ public sealed record UpdateInfo(bool Available, string LatestVersion, string? Se
 /// <summary>检查 GitHub Releases 上的新版本，并下载 NSIS 安装器。</summary>
 public static class UpdateService
 {
-    private const string LatestReleaseApi = "https://api.github.com/repos/mouchang/MTL/releases/latest";
+    /// <summary>更新源代理（例如 Cloudflare Worker 的 https://mtl.dpdns.org/gh）。</summary>
+    private static string? ProxyBase
+    {
+        get
+        {
+            var fromEnv = Environment.GetEnvironmentVariable("MTL_UPDATE_PROXY");
+            var value = string.IsNullOrWhiteSpace(fromEnv) ? AppConfig.Current.UpdateProxy : fromEnv;
+            return string.IsNullOrWhiteSpace(value) ? null : value.TrimEnd('/');
+        }
+    }
+
+    private static string ReleaseApi => ProxyBase is { } proxy
+        ? proxy + "/latest"
+        : $"https://api.github.com/repos/{AppConfig.Current.UpdateRepo}/releases/latest";
 
     public static string CurrentVersion
     {
@@ -29,7 +42,7 @@ public static class UpdateService
             using var http = HttpUtil.Create(TimeSpan.FromSeconds(30));
             http.DefaultRequestHeaders.UserAgent.ParseAdd($"MutsumiLauncher/{CurrentVersion}");
 
-            using var response = await http.GetAsync(LatestReleaseApi, cancellationToken);
+            using var response = await http.GetAsync(ReleaseApi, cancellationToken);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return new UpdateInfo(false, CurrentVersion, null, null);
@@ -70,6 +83,9 @@ public static class UpdateService
                     setupUrl = asset.TryGetProperty("browser_download_url", out var urlElement)
                         ? urlElement.GetString()
                         : null;
+
+                    if (setupUrl is not null && ProxyBase is { } proxyBase)
+                        setupUrl = $"{proxyBase}/download?url={Uri.EscapeDataString(setupUrl)}";
 
                     break;
                 }

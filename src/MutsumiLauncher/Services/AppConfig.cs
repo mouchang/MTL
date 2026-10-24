@@ -34,6 +34,12 @@ public sealed class AppConfig
     /// <summary>CurseForge API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。</summary>
     public string CurseForgeApiKey { get; set; } = string.Empty;
 
+    /// <summary>更新检查仓库（owner/repo）。</summary>
+    public string UpdateRepo { get; set; } = "mouchang/MTL";
+
+    /// <summary>可选的更新代理（Cloudflare Worker），为空时直连 GitHub API。</summary>
+    public string UpdateProxy { get; set; } = string.Empty;
+
     /// <summary>原版下载源：bmclapi（默认，国内加速）或 official。</summary>
     public string VanillaMirror { get; set; } = "bmclapi";
 
