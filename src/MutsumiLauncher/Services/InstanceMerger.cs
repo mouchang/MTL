@@ -43,6 +43,9 @@ public static class InstanceMerger
         vanilla.Remove("_comment_");
         vanilla["id"] = instanceName;
 
+        // 记录合并前的原版版本，供「安装新 Mod」等场景还原游戏版本
+        vanilla["mtlBaseVersion"] = vanillaId;
+
         File.WriteAllText(Path.Combine(targetDir, $"{instanceName}.json"),
             vanilla.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 

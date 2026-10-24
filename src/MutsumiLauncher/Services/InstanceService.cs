@@ -9,6 +9,7 @@ public sealed record InstanceInfo(
     string Name,
     string VersionId,
     string? InheritsFrom,
+    string GameVersion,
     string Loader,
     string Path,
     long SizeBytes,
@@ -32,6 +33,7 @@ public static class InstanceService
 
         var versionId = name;
         string? inheritsFrom = null;
+        string? baseVersion = null;
         var loader = "原版";
 
         try
@@ -48,6 +50,10 @@ public static class InstanceService
                     && inherits.ValueKind == JsonValueKind.String)
                     inheritsFrom = inherits.GetString();
 
+                if (root.TryGetProperty("mtlBaseVersion", out var baseElement)
+                    && baseElement.ValueKind == JsonValueKind.String)
+                    baseVersion = baseElement.GetString();
+
                 var mainClass = root.TryGetProperty("mainClass", out var main)
                     ? main.GetString() ?? string.Empty
                     : string.Empty;
@@ -60,8 +66,8 @@ public static class InstanceService
             AppLog.Error(ex, "read instance json");
         }
 
-        return new InstanceInfo(name, versionId, inheritsFrom, loader, dir, DirectorySize(dir),
-            CountMods(name));
+        return new InstanceInfo(name, versionId, inheritsFrom,
+            baseVersion ?? inheritsFrom ?? versionId, loader, dir, DirectorySize(dir), CountMods(name));
     }
 
     private static string DetectLoader(string name, string mainClass)

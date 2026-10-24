@@ -54,9 +54,7 @@ public partial class OverviewPage : UserControl, IInstancePage
         }
 
         NameText.Text = info.Name;
-        CaptionText.Text = info.InheritsFrom is null
-            ? $"{info.Loader} · 基础版本 {info.VersionId}"
-            : $"{info.Loader} · 基于 {info.InheritsFrom}";
+        CaptionText.Text = $"{info.Loader} · 基础版本 {info.GameVersion}";
 
         PathText.Text = info.Path;
         SizeText.Text = InstanceService.FormatSize(info.SizeBytes);

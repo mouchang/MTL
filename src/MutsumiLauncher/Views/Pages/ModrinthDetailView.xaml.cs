@@ -77,6 +77,7 @@ public partial class ModrinthDetailView : UserControl
     private string? _targetInstance;
     private bool _installing;
     private string _loaderFilter = string.Empty;
+    private readonly Stack<(ModrinthItem Item, string? GameVersion)> _history = new();
     private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Action? _onBack;
     private Action<string>? _toast;
@@ -352,7 +353,11 @@ public partial class ModrinthDetailView : UserControl
             };
 
             var item = new ModrinthItem { Hit = hit };
-            await LoadAsync(item, _currentGameVersion, _onBack!, _toast!);
+
+            // 记录当前详情页，返回时回到这里而不是搜索结果
+            if (_item is not null) _history.Push((_item, _currentGameVersion));
+
+            await LoadAsync(item, _currentGameVersion, _onBack!, _toast!, _targetInstance);
         }
         catch (Exception ex)
         {
@@ -499,7 +504,17 @@ public partial class ModrinthDetailView : UserControl
         return GamePaths.Root;
     }
 
-    private void Back_Click(object sender, RoutedEventArgs e) => _onBack?.Invoke();
+    private async void Back_Click(object sender, RoutedEventArgs e)
+    {
+        if (_history.Count > 0)
+        {
+            var previous = _history.Pop();
+            await LoadAsync(previous.Item, previous.GameVersion, _onBack!, _toast!, _targetInstance);
+            return;
+        }
+
+        _onBack?.Invoke();
+    }
 
     private void OpenModrinth_Click(object sender, RoutedEventArgs e)
     {

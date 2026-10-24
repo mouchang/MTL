@@ -135,6 +135,12 @@ public static class GamePaths
         try
         {
             Directory.CreateDirectory(path);
+
+            // 目录存在不代表可写（例如装在 Program Files 里、由管理员创建过）
+            var probe = Path.Combine(path, ".mtl-write-test");
+            File.WriteAllText(probe, "ok");
+            File.Delete(probe);
+
             return true;
         }
         catch

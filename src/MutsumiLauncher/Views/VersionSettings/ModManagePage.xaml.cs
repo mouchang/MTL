@@ -157,7 +157,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (string.IsNullOrWhiteSpace(_version)) return;
 
         var info = InstanceService.GetInfo(_version);
-        var gameVersion = info.InheritsFrom ?? info.VersionId;
+        var gameVersion = info.GameVersion;
 
         var loader = info.Loader switch
         {
