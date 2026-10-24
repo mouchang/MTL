@@ -29,38 +29,6 @@ public partial class DownloadPage : UserControl
         _ = _viewModel?.LoadAsync();
     }
 
-    private async void ImportModpack_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "选择整合包",
-            Filter = "Modrinth 整合包 (*.mrpack)|*.mrpack|整合包 / 压缩包 (*.zip)|*.zip|所有文件 (*.*)|*.*",
-        };
-
-        if (dialog.ShowDialog() != true) return;
-
-        var owner = Window.GetWindow(this) as MainWindow;
-        var task = DownloadCenter.Begin($"导入整合包：{System.IO.Path.GetFileName(dialog.FileName)}");
-
-        try
-        {
-            var progress = new Progress<InstallProgress>(p =>
-                DownloadCenter.Report(task, p.Message, p.Percent));
-
-            var instance = await ModpackImporter.ImportAsync(dialog.FileName, progress);
-
-            DownloadCenter.Complete(task, $"已导入 {instance}");
-            owner?.ShowToast($"整合包已导入：{instance}");
-            owner?.RefreshInstances();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "import modpack");
-            DownloadCenter.Complete(task, "失败：" + ex.Message);
-            owner?.ShowToast("导入失败：" + ex.Message);
-        }
-    }
-
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         _ = _viewModel?.LoadAsync(forceRefresh: true);

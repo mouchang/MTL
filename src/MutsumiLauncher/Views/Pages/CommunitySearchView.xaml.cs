@@ -276,8 +276,40 @@ public partial class CommunitySearchView : UserControl
             DetailRequested?.Invoke(item, GameVersion());
     }
 
-    private void InstallPack_Click(object sender, RoutedEventArgs e)
+    private async void InstallPack_Click(object sender, RoutedEventArgs e)
     {
-        (Window.GetWindow(this) as MainWindow)?.ShowToast("整合包自动安装还在做，目前可以从搜索结果里下载 .mrpack。");
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择整合包",
+            Filter = "Modrinth 整合包 (*.mrpack)|*.mrpack|所有文件 (*.*)|*.*",
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        var owner = Window.GetWindow(this) as MainWindow;
+        var task = DownloadCenter.Begin($"导入整合包：{System.IO.Path.GetFileName(dialog.FileName)}");
+
+        try
+        {
+            var progress = new Progress<InstallProgress>(p =>
+            {
+                StatusText.Text = p.Message;
+                DownloadCenter.Report(task, p.Message, p.Percent);
+            });
+
+            var instance = await ModpackImporter.ImportAsync(dialog.FileName, progress);
+
+            StatusText.Text = $"整合包已导入：{instance}";
+            DownloadCenter.Complete(task, $"已导入 {instance}");
+            owner?.ShowToast($"整合包已导入：{instance}");
+            owner?.RefreshInstances();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "import modpack");
+            StatusText.Text = "导入失败：" + ex.Message;
+            DownloadCenter.Complete(task, "失败：" + ex.Message);
+            owner?.ShowToast("导入失败：" + ex.Message);
+        }
     }
 }
