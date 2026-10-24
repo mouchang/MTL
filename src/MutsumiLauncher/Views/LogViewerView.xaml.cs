@@ -71,9 +71,8 @@ public partial class LogViewerView : UserControl
     {
         if (string.IsNullOrWhiteSpace(_instance)) return;
 
-        var error = InstanceService.OpenFolder(GameLogService.LogDirFor(_instance));
-        if (error is not null)
-            (Window.GetWindow(this) as MainWindow)?.ShowToast("打开失败：" + error);
+        (Window.GetWindow(this) as MainWindow)
+            ?.OpenFolderBrowser(GameLogService.LogDirFor(_instance), "日志文件夹");
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)
