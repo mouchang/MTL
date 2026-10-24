@@ -1,0 +1,15 @@
+name = "mtl-proxy"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# 绑定到自己的域名（Cloudflare 上要有 mtl.dpdns.org 这个 zone）
+[[routes]]
+pattern = "mtl.dpdns.org/*"
+zone_name = "mtl.dpdns.org"
+
+[vars]
+REPO = "mouchang/MTL"
+ALLOWED_HOSTS = "maven.neoforged.net,maven.minecraftforge.net,files.minecraftforge.net,maven.fabricmc.net"
+
+# GITHUB_TOKEN 不要写在这里，用：
+#   npx wrangler secret put GITHUB_TOKEN
