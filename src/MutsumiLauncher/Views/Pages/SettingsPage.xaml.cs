@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MutsumiLauncher.Services;
 
 namespace MutsumiLauncher.Views.Pages;
@@ -15,12 +17,60 @@ public partial class SettingsPage : UserControl
         {
             if (_loaded) return;
             _loaded = true;
+            LoadSourceInfo();
             LoadCacheInfo();
             await LoadJavaAsync();
         };
     }
 
     private async void RefreshJava_Click(object sender, RoutedEventArgs e) => await LoadJavaAsync();
+
+    private void LoadSourceInfo()
+    {
+        var config = AppConfig.Current;
+        var vanilla = config.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
+            ? "官方源"
+            : "镜像（BMCLAPI）";
+        var mod = config.ModMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
+            ? "官方源"
+            : "镜像（MCIM）";
+
+        SourceSummary.Text = $"原版资源：{vanilla}  ·  社区资源：{mod}";
+    }
+
+    private void OpenSource_Click(object sender, RoutedEventArgs e)
+    {
+        var view = new DownloadSourceView();
+        view.Load(CloseSource, LoadSourceInfo);
+
+        SettingsScroll.Visibility = Visibility.Collapsed;
+        SourceHost.Content = view;
+        SourceHost.Visibility = Visibility.Visible;
+
+        var slide = new DoubleAnimation(90, 0, TimeSpan.FromMilliseconds(280))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        SourceSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        SourceHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+    }
+
+    private void CloseSource()
+    {
+        var slide = new DoubleAnimation(0, 90, TimeSpan.FromMilliseconds(200))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+        };
+        slide.Completed += (_, _) =>
+        {
+            SourceHost.Visibility = Visibility.Collapsed;
+            SourceHost.Content = null;
+            SettingsScroll.Visibility = Visibility.Visible;
+        };
+
+        SourceSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        SourceHost.BeginAnimation(OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)));
+    }
 
     private void LoadCacheInfo()
     {

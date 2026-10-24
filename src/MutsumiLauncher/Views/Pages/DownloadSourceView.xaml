@@ -1,0 +1,115 @@
+<UserControl x:Class="MutsumiLauncher.Views.Pages.DownloadSourceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}">
+
+    <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <Button Style="{StaticResource GhostButton}" Padding="8,4" Click="Back_Click">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                               Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" />
+                    <TextBlock Text="返回" FontSize="13" Foreground="{StaticResource InkSoft}"
+                               Margin="6,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <TextBlock Text="设置 / 下载源" Style="{StaticResource Caption}" VerticalAlignment="Center"
+                       Margin="10,0,0,0" />
+        </StackPanel>
+
+        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="原版资源" Style="{StaticResource H2}" />
+                <TextBlock Text="版本清单、版本 JSON、客户端、依赖库、资源文件。" Style="{StaticResource Caption}"
+                           Margin="0,4,0,10" />
+
+                <Button x:Name="VanillaOfficial" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="VanillaOfficial_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="官方源" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="Mojang（piston-meta / launcher.mojang.com），国内可能较慢"
+                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="VanillaOfficialCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
+                <Button x:Name="VanillaMirror" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="VanillaMirror_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="镜像源（BMCLAPI）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="bmclapi2.bangbang93.com，国内加速，推荐" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="VanillaMirrorCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="社区资源" Style="{StaticResource H2}" />
+                <TextBlock Text="Modrinth 的搜索接口、项目文件与图标。" Style="{StaticResource Caption}"
+                           Margin="0,4,0,10" />
+
+                <Button x:Name="ModOfficial" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ModOfficial_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="官方源" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="api.modrinth.com / cdn.modrinth.com" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ModOfficialCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
+                <Button x:Name="ModMirror" Style="{StaticResource GhostButton}" Padding="14,12"
+                        HorizontalContentAlignment="Stretch" Click="ModMirror_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="镜像源（MCIM）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="mod.mcimirror.top，国内加速，推荐" FontSize="11"
+                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ModMirrorCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                   Text="切换后立即生效，新的下载请求会使用所选源；已经下载好的文件不会重新下载。" />
+    </StackPanel>
+</UserControl>

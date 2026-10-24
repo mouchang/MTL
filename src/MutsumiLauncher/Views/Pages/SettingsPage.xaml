@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <Grid>
+    <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
         <StackPanel Width="760" HorizontalAlignment="Left" Margin="24,4,24,24">
             <TextBlock Text="设置" Style="{StaticResource H1}" Margin="4,0,0,10" />
 
@@ -45,6 +47,22 @@
             <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
                 <StackPanel>
                     <Grid>
+                        <TextBlock Text="下载源" Style="{StaticResource H2}" />
+                        <TextBlock Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                   Foreground="{StaticResource InkMute}" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock x:Name="SourceSummary" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                               Text="正在读取…" />
+                    <Button Style="{StaticResource SecondaryButton}" Content="更改下载源"
+                            Height="32" Padding="16,0" Margin="0,10,0,0"
+                            HorizontalAlignment="Left" Click="OpenSource_Click" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+                <StackPanel>
+                    <Grid>
                         <TextBlock Text="缓存" Style="{StaticResource H2}" />
                         <Button x:Name="ClearCacheButton" Style="{StaticResource SecondaryButton}"
                                 Content="清理缓存" Height="30" Padding="14,0"
@@ -67,4 +85,14 @@
             </Border>
         </StackPanel>
     </ScrollViewer>
+
+    <!-- 下载源子界面：从右侧滑入 -->
+    <ContentControl x:Name="SourceHost" Visibility="Collapsed" Opacity="0"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top"
+                    Panel.ZIndex="10">
+        <ContentControl.RenderTransform>
+            <TranslateTransform x:Name="SourceSlide" X="0" />
+        </ContentControl.RenderTransform>
+    </ContentControl>
+    </Grid>
 </UserControl>
