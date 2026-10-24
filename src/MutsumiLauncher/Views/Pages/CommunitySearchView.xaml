@@ -3,6 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:MutsumiLauncher.Controls"
              FontFamily="{StaticResource UiFont}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -27,6 +30,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="名称" Style="{StaticResource FieldLabel}" />
@@ -34,37 +38,39 @@
                                            Placeholder="输入名称" />
                     <TextBlock Text="来源" Style="{StaticResource FieldLabel}" Grid.Column="4" Margin="8,0,0,0" />
                     <ComboBox Grid.Column="5" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
-                        <ComboBoxItem Content="全部" />
                         <ComboBoxItem Content="Modrinth" />
-                        <ComboBoxItem Content="CurseForge" />
                     </ComboBox>
 
                     <TextBlock Text="版本" Style="{StaticResource FieldLabel}" Grid.Row="1" Margin="0,10,0,0" />
                     <ComboBox x:Name="VersionCombo" Grid.Row="1" Grid.Column="1"
                               Style="{StaticResource MtlComboBox}" Margin="0,10,0,0" SelectedIndex="0">
-                        <ComboBoxItem Content="全部（也可自行输入）" />
-                        <ComboBoxItem Content="26.2" />
-                        <ComboBoxItem Content="1.21.1" />
-                        <ComboBoxItem Content="1.20.1" />
-                        <ComboBoxItem Content="1.16.5" />
+                        <ComboBoxItem Content="全部（也可自行输入）" Tag="" />
+                        <ComboBoxItem Content="26.2" Tag="26.2" />
+                        <ComboBoxItem Content="1.21.1" Tag="1.21.1" />
+                        <ComboBoxItem Content="1.20.1" Tag="1.20.1" />
+                        <ComboBoxItem Content="1.16.5" Tag="1.16.5" />
                     </ComboBox>
                     <ComboBox x:Name="LoaderCombo" Grid.Row="1" Grid.Column="3"
                               Style="{StaticResource MtlComboBox}" Margin="0,10,0,0"
                               SelectedIndex="0" Visibility="Collapsed">
-                        <ComboBoxItem Content="任意 Mod 加载器" />
-                        <ComboBoxItem Content="Fabric" />
-                        <ComboBoxItem Content="NeoForge" />
-                        <ComboBoxItem Content="Forge" />
-                        <ComboBoxItem Content="Quilt" />
+                        <ComboBoxItem Content="任意 Mod 加载器" Tag="" />
+                        <ComboBoxItem Content="Fabric" Tag="fabric" />
+                        <ComboBoxItem Content="NeoForge" Tag="neoforge" />
+                        <ComboBoxItem Content="Forge" Tag="forge" />
+                        <ComboBoxItem Content="Quilt" Tag="quilt" />
                     </ComboBox>
                     <TextBlock Text="类型" Style="{StaticResource FieldLabel}" Grid.Row="1" Grid.Column="4"
                                Margin="8,10,0,0" />
                     <ComboBox x:Name="TypeCombo" Grid.Row="1" Grid.Column="5" Style="{StaticResource MtlComboBox}"
                               Margin="0,10,0,0" SelectedIndex="0">
-                        <ComboBoxItem Content="全部" />
-                        <ComboBoxItem Content="轻量" />
-                        <ComboBoxItem Content="大型" />
-                        <ComboBoxItem Content="优化" />
+                        <ComboBoxItem Content="全部" Tag="" />
+                        <ComboBoxItem Content="优化" Tag="optimization" />
+                        <ComboBoxItem Content="冒险" Tag="adventure" />
+                        <ComboBoxItem Content="科技" Tag="technology" />
+                        <ComboBoxItem Content="魔法" Tag="magic" />
+                        <ComboBoxItem Content="装饰" Tag="decoration" />
+                        <ComboBoxItem Content="实用" Tag="utility" />
+                        <ComboBoxItem Content="世界生成" Tag="worldgen" />
                     </ComboBox>
 
                     <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal"
@@ -77,6 +83,9 @@
                                 Content="安装已有整合包" Width="150" Margin="10,0,0,0"
                                 Visibility="Collapsed" Click="InstallPack_Click" />
                     </StackPanel>
+
+                    <TextBlock x:Name="StatusText" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="5"
+                               Style="{StaticResource Caption}" Margin="0,10,0,0" Text="" />
                 </Grid>
             </StackPanel>
         </Border>
@@ -91,32 +100,42 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Border Width="42" Height="42" CornerRadius="10"
-                                            Background="{Binding IconBrush}" VerticalAlignment="Top">
-                                        <TextBlock Text="{Binding Initial}" Foreground="White"
-                                                   FontSize="13" FontWeight="SemiBold"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
+
+                                    <Grid Width="42" Height="42" VerticalAlignment="Top">
+                                        <Border CornerRadius="10" Background="#E6F2E8">
+                                            <TextBlock Text="{Binding Initial}" FontSize="14"
+                                                       Foreground="{StaticResource AccentDeep}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <Border CornerRadius="10" ClipToBounds="True"
+                                                Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}">
+                                            <Image Source="{Binding IconUrl}" Stretch="UniformToFill"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                    </Grid>
+
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Name}" FontSize="15"
+                                            <TextBlock Text="{Binding Title}" FontSize="15"
                                                        Foreground="{StaticResource Ink}" />
-                                            <TextBlock Text="{Binding EnglishName}" FontSize="12"
-                                                       Foreground="{StaticResource InkMute}"
-                                                       Margin="8,0,0,0" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding Version}" FontSize="11"
+                                            <TextBlock Text="{Binding Author}" FontSize="12"
                                                        Foreground="{StaticResource InkMute}"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Tags}" FontSize="11"
-                                                   Foreground="{StaticResource AccentDeep}" Margin="0,2,0,0" />
                                         <TextBlock Text="{Binding Description}" FontSize="12"
                                                    Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Meta}" FontSize="11"
                                                    Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
                                     </StackPanel>
+
+                                    <Button Grid.Column="2" Style="{StaticResource SecondaryButton}"
+                                            Content="安装" Height="28" FontSize="12" Padding="12,0"
+                                            VerticalAlignment="Center" Tag="{Binding}"
+                                            Click="Install_Click" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

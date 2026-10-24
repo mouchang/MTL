@@ -1,5 +1,7 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
 using MutsumiLauncher.Views;
 
@@ -7,18 +9,22 @@ namespace MutsumiLauncher.Views.Pages;
 
 public partial class CommunitySearchView : UserControl
 {
+    private readonly ModrinthClient _client = new();
+
     private string _kind = "mod";
-    private IReadOnlyList<ModItem> _source = ModSamples.SearchResults;
+    private string _projectType = "mod";
 
     public CommunitySearchView()
     {
         InitializeComponent();
     }
 
-    /// <summary>按分类切换标题、搜索占位与数据源。</summary>
+    /// <summary>按分类切换标题、搜索占位与筛选条件，并立即拉一次 Modrinth。</summary>
     public void Configure(string kind, string title)
     {
         _kind = kind;
+        _projectType = ProjectTypeOf(kind);
+
         TitleText.Text = title;
         SearchNameBox.Placeholder = kind switch
         {
@@ -29,40 +35,135 @@ public partial class CommunitySearchView : UserControl
             _ => "输入 Mod 名称",
         };
 
-        // Mod 分类多一个加载器下拉；整合包分类多一个“安装已有整合包”按钮
         LoaderCombo.Visibility = kind == "mod" ? Visibility.Visible : Visibility.Collapsed;
         InstallPackButton.Visibility = kind == "pack" ? Visibility.Visible : Visibility.Collapsed;
 
-        _source = CommunitySamples.ForKind(kind);
         SearchNameBox.Text = string.Empty;
-        ResultsList.ItemsSource = _source;
+        _ = RunSearchAsync();
     }
 
-    private async void Search_Click(object sender, RoutedEventArgs e)
+    private async Task RunSearchAsync()
     {
         Loading.IsActive = true;
-        await Task.Delay(400);
+        StatusText.Text = "正在搜索 Modrinth…";
 
-        var query = SearchNameBox.Text.Trim();
-        ResultsList.ItemsSource = query.Length == 0
-            ? _source
-            : _source
-                .Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                            || m.EnglishName.Contains(query, StringComparison.OrdinalIgnoreCase))
+        try
+        {
+            var hits = await _client.SearchAsync(SearchNameBox.Text.Trim(), _projectType,
+                GameVersion(), Loader(), Category());
+
+            ResultsList.ItemsSource = hits
+                .Select(h => new ModrinthItem { Hit = h })
                 .ToList();
 
-        Loading.IsActive = false;
+            StatusText.Text = hits.Count == 0
+                ? "没有找到结果，换个关键词或条件试试。"
+                : $"找到 {hits.Count} 个结果（来自 Modrinth）";
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "modrinth search");
+            ResultsList.ItemsSource = null;
+            StatusText.Text = "搜索失败：" + ex.Message;
+        }
+        finally
+        {
+            Loading.IsActive = false;
+        }
+    }
+
+    private string? GameVersion() => (VersionCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+
+    private string? Loader() =>
+        _kind == "mod" ? (LoaderCombo.SelectedItem as ComboBoxItem)?.Tag as string : null;
+
+    private string? Category() => (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+
+    private static string ProjectTypeOf(string kind) => kind switch
+    {
+        "pack" => "modpack",
+        "datapack" => "datapack",
+        "resourcepack" => "resourcepack",
+        "shader" => "shader",
+        _ => "mod",
+    };
+
+    private static string FolderFor(string projectType) => projectType switch
+    {
+        "resourcepack" => "resourcepacks",
+        "shader" => "shaderpacks",
+        "datapack" => "datapacks",
+        "modpack" => "modpacks",
+        _ => "mods",
+    };
+
+    /// <summary>开了版本隔离就装进 versions/&lt;版本&gt;，否则装到游戏根目录。</summary>
+    private static string GameDir()
+    {
+        var config = AppConfig.Current;
+        if (config.VersionIsolation && !string.IsNullOrWhiteSpace(config.SelectedVersion))
+        {
+            var dir = Path.Combine(GamePaths.VersionsDir, config.SelectedVersion);
+            if (Directory.Exists(dir)) return dir;
+        }
+
+        return GamePaths.Root;
+    }
+
+    private async void Search_Click(object sender, RoutedEventArgs e) => await RunSearchAsync();
+
+    private async void ResetSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchNameBox.Text = string.Empty;
+        VersionCombo.SelectedIndex = 0;
+        if (LoaderCombo.Visibility == Visibility.Visible) LoaderCombo.SelectedIndex = 0;
+        TypeCombo.SelectedIndex = 0;
+
+        await RunSearchAsync();
+    }
+
+    private async void Install_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ModrinthItem item }) return;
+
+        Loading.IsActive = true;
+        StatusText.Text = $"正在获取 {item.Title} 的文件…";
+
+        try
+        {
+            var version = await _client.GetLatestVersionAsync(item.ProjectId, GameVersion(), Loader());
+            if (version is null)
+            {
+                StatusText.Text = "没有找到匹配当前版本 / 加载器的文件，换个条件再试。";
+                return;
+            }
+
+            var file = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files.FirstOrDefault();
+            if (file is null)
+            {
+                StatusText.Text = "这个项目没有可下载的文件。";
+                return;
+            }
+
+            var directory = Path.Combine(GameDir(), FolderFor(item.ProjectType));
+            var saved = await _client.DownloadAsync(file.Url, file.Filename, directory, file.Hashes?.Sha1);
+
+            StatusText.Text = $"已安装 {item.Title} → {saved}";
+            (Window.GetWindow(this) as MainWindow)?.ShowToast($"{item.Title} 安装完成");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "modrinth install");
+            StatusText.Text = "安装失败：" + ex.Message;
+        }
+        finally
+        {
+            Loading.IsActive = false;
+        }
     }
 
     private void InstallPack_Click(object sender, RoutedEventArgs e)
     {
-        (Window.GetWindow(this) as MainWindow)?.ShowToast("安装已有整合包：文件选择与解析还没接上。");
-    }
-
-    private void ResetSearch_Click(object sender, RoutedEventArgs e)
-    {
-        SearchNameBox.Text = string.Empty;
-        ResultsList.ItemsSource = _source;
-        Loading.IsActive = false;
+        (Window.GetWindow(this) as MainWindow)?.ShowToast("整合包自动安装还在做，目前可以从搜索结果里下载 .mrpack。");
     }
 }

@@ -88,6 +88,7 @@ MutsumiLauncher/
 
 - **版本清单**：启动时从 `piston-meta.mojang.com` 拉取 `version_manifest_v2.json`，按类型拆成正式版 / 预览版 / 远古版 / 愚人节版本，并高亮最新正式版与预览版；数据缓存到本地（6 小时内直接读缓存），网络失败时回退缓存，再失败则显示内置示例并在卡片上提示。右侧「刷新」可强制重新拉取。
 
+- **社区资源（Modrinth）**：下载页 mod / 整合包 / 数据包 / 资源包 / 光影包 的搜索走 Modrinth 开放 API，支持按游戏版本、加载器、类型筛选；结果可直接「安装」，按项目类型落到 `mods` / `resourcepacks` / `shaderpacks` / `datapacks`（开启版本隔离时装进 `versions/<版本>/`），文件带 SHA-1 校验。整合包目前下载 `.mrpack`，自动安装待做。Personal Access Token 可选：环境变量 `MTL_MODRINTH_TOKEN` 优先，其次本地 `config.json` 的 `ModrinthToken`（不会入库）。
 - **Java 探测**：启动器扫描 `JAVA_HOME`、`PATH`、注册表（JavaSoft）、常见安装目录（Adoptium / Microsoft / Zulu / Corretto 等）以及 `.minecraft
 untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java -version`；结果去重后按主版本倒序展示。设置页可查看与重新检测，版本设置里的 Java 下拉直接使用这份列表。
 
@@ -128,6 +129,8 @@ untime`，优先读 JDK 自带 `release` 文件解析版本，失败再跑 `java
 - [x] 离线账号管理（添加 / 切换 / 删除，离线 UUID）
 - [x] 微软正版登录（设备码 OAuth → Xbox Live → XSTS → Minecraft 服务，需自备 clientId）
 - [x] 皮肤头像（微软账号拉皮肤裁正脸，离线默认史蒂夫）
+- [x] Modrinth 搜索与安装（mod / 资源包 / 光影 / 数据包）
+- [ ] 整合包 `.mrpack` 自动解析安装
 - [ ] 游戏启动与进程管理
 - [ ] 资源下载、校验与断点续传
 - [ ] 实例（版本隔离）管理

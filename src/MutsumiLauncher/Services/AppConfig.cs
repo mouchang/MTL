@@ -28,6 +28,9 @@ public sealed class AppConfig
     /// <summary>微软登录用的 Azure 应用 clientId（也可用环境变量 MTL_MS_CLIENT_ID）。</summary>
     public string MicrosoftClientId { get; set; } = string.Empty;
 
+    /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
+    public string ModrinthToken { get; set; } = string.Empty;
+
 
     private static readonly string ConfigPath = Path.Combine(AppPaths.DataRoot, "config.json");
 
