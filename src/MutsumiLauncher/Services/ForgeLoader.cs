@@ -60,9 +60,9 @@ public sealed class ForgeLoader
     private static async Task<IReadOnlyList<string>> GetNeoForgeVersionsAsync(string gameVersion,
         CancellationToken cancellationToken)
     {
-        var json = await GetStringWithFallbackAsync(
-            NeoForgeVersionListUrl(NeoForgeCdnBase),
-            NeoForgeVersionListUrl(NeoForgeOriginBase), cancellationToken);
+        // 版本列表属于「获取数据」，直连官方即可
+        var json = await Http.GetStringAsync(NeoForgeVersionListUrl(NeoForgeOriginBase),
+            cancellationToken);
 
         using var document = JsonDocument.Parse(json);
         var prefix = NeoForgePrefix(gameVersion);

@@ -87,6 +87,7 @@ MutsumiLauncher/
 ## 已接入真实数据
 
 - **断点续传**：客户端/依赖/资源下载中断后保留 `.tmp`，下次自动用 Range 续传，不再从头下。
+- **下载走 CDN，数据直连**：只有文件下载（客户端 jar、依赖库、资源对象、Mod 文件、加载器安装器）会走反代前缀；版本清单、版本 JSON、Modrinth API、图标、Fabric/Forge 版本列表、账号登录全部直连。同一 host 下按路径区分，某个下载返回 403/404 时自动回退直连。
 - **全接口 CDN**：设置 → 下载源可填反代前缀（默认 `https://mtl.dpdns.org`），原版 / Modrinth CDN / Fabric / Forge / NeoForge 的下载地址会改写成「前缀/原host/路径」；某个 host 返回 403/404 时自动回退直连并记住。**账号登录、微软/ Mojang API、Modrinth API 以及带 Authorization 的请求永远直连**，不经过 CDN。
 - **下载速度**：下载任务面板实时显示 MB/s（按字节增量计算），客户端与依赖库下载过程中持续刷新。
 - **默认中文**：安装完成与每次启动都会把 `options.txt` 的 `lang` 设为 `zh_cn`，新下载的实例同样生效。

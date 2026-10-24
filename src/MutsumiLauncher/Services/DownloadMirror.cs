@@ -63,7 +63,31 @@ public static class DownloadMirror
         if (uri.Host.Equals(new Uri(baseUrl).Host, StringComparison.OrdinalIgnoreCase)) return false;
         if (NoCdnHosts.Contains(uri.Host)) return false;
 
-        return CdnHosts.Contains(uri.Host);
+        var path = uri.AbsolutePath;
+
+        return uri.Host.ToLowerInvariant() switch
+        {
+            // 只 CDN Modrinth 的文件，图标（/data/<id>/<hash>.png）和 API 都直连
+            "cdn.modrinth.com" => path.Contains("/versions/", StringComparison.OrdinalIgnoreCase),
+
+            // BMCLAPI：清单 /mc/... 与版本 JSON /version/<id>/json 直连；client、maven、assets 走 CDN
+            "bmclapi2.bangbang93.com" or "bmclapi.bangbang93.com" =>
+                !path.StartsWith("/mc/", StringComparison.OrdinalIgnoreCase)
+                && !(path.StartsWith("/version/", StringComparison.OrdinalIgnoreCase)
+                     && path.EndsWith("/json", StringComparison.OrdinalIgnoreCase)),
+
+            // maven 只 CDN jar，metadata / 版本列表直连
+            "maven.neoforged.net" or "maven.minecraftforge.net" or "maven.fabricmc.net" =>
+                path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase),
+
+            "piston-data.mojang.com" or "libraries.minecraft.net"
+                or "resources.download.minecraft.net" => true,
+
+            // 版本清单所在的 host 一律直连
+            "piston-meta.mojang.com" or "launcher.mojang.com" => false,
+
+            _ => false,
+        };
     }
 
     public static Uri BuildCdnUri(Uri uri, string baseUrl)
