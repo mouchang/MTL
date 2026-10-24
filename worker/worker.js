@@ -44,15 +44,21 @@ async function handleLatestRelease(request, env, ctx) {
 
   const repo = env.REPO || "mouchang/MTL";
 
+  async function request(withToken) {
+    const headers = {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "MTL-Update-Worker",
+    };
+    if (withToken && env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
+    return fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers });
+  }
+
   let upstream;
   try {
-    upstream = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "MTL-Update-Worker",
-      },
-    });
+    upstream = await request(true);
+
+    // token 没配置或已失效时，退回匿名请求（公开仓库每天 60 次/每个出口 IP）
+    if (upstream.status === 401) upstream = await request(false);
   } catch (error) {
     return new Response(`upstream error: ${error.message}`, { status: 502 });
   }
