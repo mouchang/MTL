@@ -127,15 +127,25 @@ public static class ResourceService
         }
         else
         {
-            IEnumerable<ResourceHit> sorted = sort switch
+            var sorted = sort switch
             {
                 ResourceSort.Updated => modrinthHits.Concat(curseForgeHits)
-                    .OrderByDescending(hit => hit.Updated),
-                ResourceSort.Relevance => Interleave(modrinthHits, curseForgeHits),
-                _ => modrinthHits.Concat(curseForgeHits).OrderByDescending(hit => hit.Hit.Downloads),
+                    .OrderByDescending(hit => hit.Updated).ToList(),
+                ResourceSort.Relevance => Interleave(modrinthHits, curseForgeHits).ToList(),
+                _ => modrinthHits.Concat(curseForgeHits)
+                    .OrderByDescending(hit => hit.Hit.Downloads).ToList(),
             };
 
-            hits = sorted.Skip(page * pageSize).Take(pageSize).ToList();
+            // 「同一资源两边各出现一次」：把同一个项目的两条结果编成一组，
+            // 让它们挨在一起（不然同一个 Mod 会散落在列表两端，看着像重复结果）
+            var groups = GroupHits(sorted);
+
+            if (sort == ResourceSort.Updated)
+                groups = groups.OrderByDescending(group => group.Max(hit => hit.Updated)).ToList();
+            else if (sort == ResourceSort.Downloads)
+                groups = groups.OrderByDescending(group => group.Max(hit => hit.Hit.Downloads)).ToList();
+
+            hits = TakePage(groups, page, pageSize);
         }
 
         var total = aggregate
@@ -274,6 +284,79 @@ public static class ResourceService
             return $"https://www.curseforge.com/minecraft/mc-mods/{project.Slug}";
 
         return $"https://modrinth.com/project/{project.Slug}";
+    }
+
+    /// <summary>
+    /// 按「项目」分组：slug 相同（或名字规范化后相同）视为同一个资源。
+    /// 组内固定 Modrinth 在前、CurseForge 在后，方便对照两边的版本。
+    /// </summary>
+    private static List<List<ResourceHit>> GroupHits(IEnumerable<ResourceHit> hits)
+    {
+        var groups = new List<List<ResourceHit>>();
+        var index = new Dictionary<string, List<ResourceHit>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var hit in hits)
+        {
+            var key = AggregateKey(hit);
+
+            if (index.TryGetValue(key, out var existing))
+            {
+                // 同一平台重复出现（接口偶发）就不再重复展示
+                if (existing.Any(other => other.Platform == hit.Platform
+                                          && other.Hit.ProjectId == hit.Hit.ProjectId))
+                    continue;
+
+                existing.Add(hit);
+                continue;
+            }
+
+            var group = new List<ResourceHit> { hit };
+            index[key] = group;
+            groups.Add(group);
+        }
+
+        foreach (var group in groups) group.Sort((left, right) => left.Platform.CompareTo(right.Platform));
+
+        return groups;
+    }
+
+    private static string AggregateKey(ResourceHit hit)
+    {
+        var slug = NormalizeKey(hit.Hit.Slug);
+        return slug.Length > 0 ? slug : NormalizeKey(hit.Hit.Title);
+    }
+
+    /// <summary>统一成小写字母数字：industrial-craft / Industrial Craft → industrialcraft。</summary>
+    private static string NormalizeKey(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? string.Empty
+            : new string(text.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
+    /// <summary>按组分页，尽量不让同一资源的两个来源被切到两页。</summary>
+    private static List<ResourceHit> TakePage(IEnumerable<List<ResourceHit>> groups, int page, int pageSize)
+    {
+        var result = new List<ResourceHit>();
+        var target = page * pageSize;
+        var index = 0;
+
+        foreach (var group in groups)
+        {
+            if (index + group.Count <= target)
+            {
+                index += group.Count;
+                continue;
+            }
+
+            foreach (var hit in group)
+            {
+                if (index >= target && result.Count < pageSize) result.Add(hit);
+                index++;
+            }
+
+            if (result.Count >= pageSize) break;
+        }
+
+        return result;
     }
 
     private static List<ResourceHit> Interleave(IReadOnlyList<ResourceHit> first,
