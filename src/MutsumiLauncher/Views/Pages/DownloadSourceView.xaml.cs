@@ -52,7 +52,7 @@ public partial class DownloadSourceView : UserControl
 
     private void VanillaOfficial_Click(object sender, RoutedEventArgs e) => SetVanilla("official");
 
-    private void VanillaMirror_Click(object sender, RoutedEventArgs e) => SetVanilla("bmclapi");
+    private void VanillaMirror_Click(object sender, RoutedEventArgs e) => SetVanilla("mirror");
 
     private void ModOfficial_Click(object sender, RoutedEventArgs e) => SetMod("official");
 

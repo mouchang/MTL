@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows.Media;
 using MutsumiLauncher.Services;
 
 namespace MutsumiLauncher.ViewModels;
@@ -10,7 +11,16 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
     public required ModrinthHit Hit { get; init; }
 
+    /// <summary>来源：modrinth / curseforge。</summary>
+    public string Source { get; init; } = "modrinth";
+
     public string ProjectId => Hit.ProjectId;
+
+    public string SourceLabel => Source == "curseforge" ? "CurseForge" : "Modrinth";
+
+    public Brush SourceBrush => Source == "curseforge"
+        ? new SolidColorBrush(Color.FromRgb(0xE0, 0x7B, 0x2F))
+        : new SolidColorBrush(Color.FromRgb(0x4E, 0x9E, 0x72));
 
     public string Title => Hit.Title;
 
@@ -51,8 +61,8 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
             var categories = string.Join(" · ", Hit.Categories.Take(3));
             return string.IsNullOrEmpty(categories)
-                ? $"{downloads} 次下载 · Modrinth"
-                : $"{downloads} 次下载 · {categories} · Modrinth";
+                ? $"{downloads} 次下载 · {SourceLabel}"
+                : $"{downloads} 次下载 · {categories} · {SourceLabel}";
         }
     }
 

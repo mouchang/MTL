@@ -33,11 +33,14 @@ public sealed class AppConfig
     /// <summary>可选的更新代理（Cloudflare Worker），为空时直连 GitHub API。</summary>
     public string UpdateProxy { get; set; } = "https://releases.mtl.dpdns.org/gh";
 
-    /// <summary>原版下载源：bmclapi（默认，国内加速）或 official。</summary>
-    public string VanillaMirror { get; set; } = "bmclapi";
+    /// <summary>原版下载源：mirror（默认，MC 光速镜像）或 official。</summary>
+    public string VanillaMirror { get; set; } = "mirror";
 
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "mcim";
+
+    /// <summary>CurseForge 官方 API Key（暂未启用，默认走 MCIM 镜像）。</summary>
+    public string CurseForgeApiKey { get; set; } = string.Empty;
 
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";

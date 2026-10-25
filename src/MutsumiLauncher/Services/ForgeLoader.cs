@@ -139,7 +139,7 @@ public sealed class ForgeLoader
             if (kind == LoaderKind.Forge)
             {
                 var forgeUrl =
-                    $"https://bmclapi2.bangbang93.com/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer";
+                    $"{DownloadMirror.MirrorBase}/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer";
                 await DownloadAsync(forgeUrl, installer, cancellationToken);
             }
             else

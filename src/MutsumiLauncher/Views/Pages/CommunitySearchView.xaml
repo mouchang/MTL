@@ -37,8 +37,11 @@
                     <controls:MtlSearchBox x:Name="SearchNameBox" Grid.Column="1" Grid.ColumnSpan="3"
                                            Placeholder="输入名称" />
                     <TextBlock Text="来源" Style="{StaticResource FieldLabel}" Grid.Column="4" Margin="8,0,0,0" />
-                    <ComboBox Grid.Column="5" Style="{StaticResource MtlComboBox}" SelectedIndex="0">
-                        <ComboBoxItem Content="Modrinth" />
+                    <ComboBox x:Name="SourceCombo" Grid.Column="5" Style="{StaticResource MtlComboBox}"
+                              SelectedIndex="0">
+                        <ComboBoxItem Content="聚合" Tag="all" />
+                        <ComboBoxItem Content="Modrinth" Tag="modrinth" />
+                        <ComboBoxItem Content="CurseForge" Tag="curseforge" />
                     </ComboBox>
 
                     <TextBlock Text="版本" Style="{StaticResource FieldLabel}" Grid.Row="1" Margin="0,10,0,0" />
@@ -125,6 +128,11 @@
                                             <TextBlock Text="{Binding Author}" FontSize="12"
                                                        Foreground="{StaticResource InkMute}"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" />
+                                            <Border Background="#14FFFFFF" CornerRadius="6" Padding="6,1"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding SourceLabel}" FontSize="10"
+                                                           Foreground="{Binding SourceBrush}" />
+                                            </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding Description}" FontSize="12"
                                                    Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"

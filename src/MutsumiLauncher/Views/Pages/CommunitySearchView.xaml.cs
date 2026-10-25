@@ -11,6 +11,7 @@ namespace MutsumiLauncher.Views.Pages;
 public partial class CommunitySearchView : UserControl
 {
     private readonly ModrinthClient _client = new();
+    private readonly CurseForgeClient _curseForge = new();
 
     private const int PageSize = 20;
 
@@ -113,28 +114,104 @@ public partial class CommunitySearchView : UserControl
     {
         _page = Math.Max(0, page);
         Loading.IsActive = true;
-        StatusText.Text = "正在搜索 Modrinth…";
+
+        var query = SearchNameBox.Text.Trim();
+        var source = Source();
 
         try
         {
-            var result = await _client.SearchAsync(SearchNameBox.Text.Trim(), _projectType,
-                GameVersion(), Loader(), Category(), PageSize, _page * PageSize);
+            var modrinthItems = new List<ModrinthItem>();
+            var curseForgeItems = new List<ModrinthItem>();
+            long modrinthTotal = 0;
+            long curseForgeTotal = 0;
+            var curseForgeAvailable = CurseForgeClient.Available;
 
-            _totalHits = result.TotalHits;
+            if (source is "all" or "modrinth")
+            {
+                StatusText.Text = source == "all"
+                    ? "正在同时搜索 Modrinth 与 CurseForge…"
+                    : "正在搜索 Modrinth…";
 
-            var items = result.Hits.Select(h => new ModrinthItem { Hit = h }).ToList();
+                var result = await _client.SearchAsync(query, _projectType, GameVersion(), Loader(),
+                    Category(), PageSize, _page * PageSize);
+
+                modrinthTotal = result.TotalHits;
+                modrinthItems = result.Hits
+                    .Select(hit => new ModrinthItem { Hit = hit, Source = "modrinth" })
+                    .ToList();
+            }
+
+            if (source is "all" or "curseforge")
+            {
+                if (!curseForgeAvailable)
+                {
+                    if (source == "curseforge")
+                    {
+                        ResultsList.ItemsSource = null;
+                        StatusText.Text = "CurseForge 不可用：请开启社区镜像，或配置 CurseForge API Key。";
+                        PageBar.Visibility = Visibility.Collapsed;
+                        return;
+                    }
+                }
+                else
+                {
+                    StatusText.Text = source == "all"
+                        ? "正在同时搜索 Modrinth 与 CurseForge…"
+                        : "正在搜索 CurseForge…";
+
+                    var result = await _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
+                        LoaderType(), _page, PageSize);
+
+                    curseForgeTotal = result.Total;
+                    curseForgeItems = result.Mods.Select(mod => new ModrinthItem
+                    {
+                        Source = "curseforge",
+                        Hit = new ModrinthHit
+                        {
+                            ProjectId = mod.Id.ToString(),
+                            Slug = mod.Slug,
+                            Title = mod.Name,
+                            Description = mod.Summary,
+                            Author = mod.Author,
+                            Downloads = mod.Downloads,
+                            IconUrl = mod.IconUrl,
+                            ProjectType = _projectType,
+                        },
+                    }).ToList();
+                }
+            }
+
+            var items = source switch
+            {
+                "modrinth" => modrinthItems,
+                "curseforge" => curseForgeItems,
+                _ => Interleave(modrinthItems, curseForgeItems),
+            };
+
+            _totalHits = source switch
+            {
+                "modrinth" => modrinthTotal,
+                "curseforge" => curseForgeTotal,
+                _ => modrinthTotal + curseForgeTotal,
+            };
+
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
-            StatusText.Text = result.Hits.Count == 0
+            StatusText.Text = items.Count == 0
                 ? "没有找到结果，换个关键词或条件试试。"
-                : $"找到 {_totalHits:N0} 个结果（来自 Modrinth）";
+                : source switch
+                {
+                    "curseforge" => $"找到 {_totalHits:N0} 个结果（来自 CurseForge）",
+                    "all" => $"找到 {_totalHits:N0} 个结果（Modrinth {modrinthTotal:N0} · CurseForge {curseForgeTotal:N0}）",
+                    _ => $"找到 {_totalHits:N0} 个结果（来自 Modrinth）",
+                };
 
             BuildPageBar();
         }
         catch (Exception ex)
         {
-            AppLog.Error(ex, "modrinth search");
+            AppLog.Error(ex, "community search");
             ResultsList.ItemsSource = null;
             StatusText.Text = "搜索失败：" + ex.Message;
             PageBar.Visibility = Visibility.Collapsed;
@@ -143,6 +220,22 @@ public partial class CommunitySearchView : UserControl
         {
             Loading.IsActive = false;
         }
+    }
+
+    /// <summary>聚合模式：两个来源交替排列，同一条目会在两边各出现一次。</summary>
+    private static List<ModrinthItem> Interleave(IReadOnlyList<ModrinthItem> first,
+        IReadOnlyList<ModrinthItem> second)
+    {
+        var result = new List<ModrinthItem>(first.Count + second.Count);
+        var max = Math.Max(first.Count, second.Count);
+
+        for (var i = 0; i < max; i++)
+        {
+            if (i < first.Count) result.Add(first[i]);
+            if (i < second.Count) result.Add(second[i]);
+        }
+
+        return result;
     }
 
     private void BuildPageBar()
@@ -332,6 +425,27 @@ public partial class CommunitySearchView : UserControl
         if (sender is FrameworkElement { Tag: ModrinthItem item })
             DetailRequested?.Invoke(item, GameVersion());
     }
+
+    private string Source() =>
+        (SourceCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
+
+    private static int ClassIdOf(string kind) => kind switch
+    {
+        "pack" => 4471,
+        "datapack" => 6945,
+        "resourcepack" => 12,
+        "shader" => 6552,
+        _ => 6,
+    };
+
+    private int? LoaderType() => Loader() switch
+    {
+        "fabric" => 4,
+        "quilt" => 5,
+        "neoforge" => 6,
+        "forge" => 1,
+        _ => null,
+    };
 
     private async void InstallPack_Click(object sender, RoutedEventArgs e)
     {

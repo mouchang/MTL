@@ -33,7 +33,7 @@ public partial class SettingsPage : UserControl
         var config = AppConfig.Current;
         var vanilla = config.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
             ? "官方源"
-            : "镜像（BMCLAPI）";
+            : "镜像（MC 光速镜像）";
         var mod = config.ModMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
             ? "官方源"
             : "镜像（MCIM）";
