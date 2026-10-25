@@ -5,13 +5,15 @@
 
 ## [1.0.1] - 2026-10-25
 
-**MTL alpha v1.0.1 build 1**
+**MTL alpha v1.0.1 build 2**
 
 - 原版资源使用 BMCLAPI（bmclapi2.bangbang93.com），Forge 安装器同样走 BMCLAPI
 - 社区资源默认「聚合」：并行搜索 Modrinth + CurseForge，同一资源两边各出现一次并标注来源，结果按下载量降序
 - CurseForge 固定走 MCIM 镜像，详情/版本/前置/安装与 Modrinth 共用同一套界面
 - 内置 VC++ 运行库，启动失败写 `startup-error.log`
 - 清理旧安装器、占位数据与无用资源
+- 社区文件校验失败时自动回退官方 CDN（Modrinth / 整合包）
+- 聚合结果跨页全局按下载量排序，不再按来源分页堆积
 
 ## [Unreleased]
 

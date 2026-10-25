@@ -9,7 +9,7 @@
 
 **MTL** · 一个面向 Minecraft 的 Windows 桌面启动器，WPF + .NET 10，**零第三方 NuGet 依赖**。
 
-> 当前版本：**MTL alpha v1.0.1 build 1**（`1.0.1`） · [下载安装包](https://github.com/mouchang/MTL/releases/latest)
+> 当前版本：**MTL alpha v1.0.1 build 2**（`1.0.1`） · [下载安装包](https://github.com/mouchang/MTL/releases/latest)
 
 ![启动页](docs/screenshots/launch.png)
 
