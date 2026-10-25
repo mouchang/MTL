@@ -159,25 +159,34 @@ public partial class CommunitySearchView : UserControl
                         ? "正在同时搜索 Modrinth 与 CurseForge…"
                         : "正在搜索 CurseForge…";
 
-                    var result = await _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
-                        LoaderType(), _page, PageSize);
-
-                    curseForgeTotal = result.Total;
-                    curseForgeItems = result.Mods.Select(mod => new ModrinthItem
+                    try
                     {
-                        Source = "curseforge",
-                        Hit = new ModrinthHit
+                        var result = await _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
+                            LoaderType(), _page, PageSize);
+
+                        curseForgeTotal = result.Total;
+                        curseForgeItems = result.Mods.Select(mod => new ModrinthItem
                         {
-                            ProjectId = mod.Id.ToString(),
-                            Slug = mod.Slug,
-                            Title = mod.Name,
-                            Description = mod.Summary,
-                            Author = mod.Author,
-                            Downloads = mod.Downloads,
-                            IconUrl = mod.IconUrl,
-                            ProjectType = _projectType,
-                        },
-                    }).ToList();
+                            Source = "curseforge",
+                            Hit = new ModrinthHit
+                            {
+                                ProjectId = mod.Id.ToString(),
+                                Slug = mod.Slug,
+                                Title = mod.Name,
+                                Description = mod.Summary,
+                                Author = mod.Author,
+                                Downloads = mod.Downloads,
+                                IconUrl = mod.IconUrl,
+                                ProjectType = _projectType,
+                            },
+                        }).ToList();
+                    }
+                    catch (Exception ex) when (source == "all")
+                    {
+                        // 聚合模式下 CurseForge 挂了不影响 Modrinth 结果
+                        AppLog.Error(ex, "curseforge search in aggregate");
+                        curseForgeTotal = 0;
+                    }
                 }
             }
 
@@ -194,6 +203,11 @@ public partial class CommunitySearchView : UserControl
                 "curseforge" => curseForgeTotal,
                 _ => modrinthTotal + curseForgeTotal,
             };
+
+            // 统一按下载量从高到低排序；聚合模式下同一资源会以两个来源各出现一次
+            items = items
+                .OrderByDescending(item => item.Hit.Downloads)
+                .ToList();
 
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);

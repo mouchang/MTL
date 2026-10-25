@@ -45,12 +45,13 @@ public static class DownloadMirror
 
     public static string ModrinthApiBase => UseMcim ? $"{McimBase}/modrinth/v2" : OfficialModrinthApi;
 
-    /// <summary>CurseForge：先统一走 MCIM 镜像，官方 API 需要 Key，后续再切。</summary>
-    public static string CurseForgeApiBase => UseMcim
-        ? $"{McimBase}/curseforge/v1"
-        : "https://api.curseforge.com/v1";
+    /// <summary>
+    /// CurseForge：默认统一走 MCIM 镜像（与 Modrinth 的下载源设置无关），
+    /// 保证切到「官方 Modrinth 源」时社区聚合仍然能拿到 CF 数据。
+    /// </summary>
+    public static string CurseForgeApiBase => $"{McimBase}/curseforge/v1";
 
-    public static bool CurseForgeViaMirror => UseMcim;
+    public static bool CurseForgeViaMirror => true;
 
     /// <summary>Modrinth CDN 文件走 MCIM。</summary>
     public static string ModFileUrl(string url)

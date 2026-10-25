@@ -17,6 +17,8 @@
 
 ### 修复
 - 原版镜像回退 BMCLAPI（MC 光速镜像国内不可达）
+- 社区聚合固定显示 Modrinth + CurseForge 两份结果，并按下载量降序排列
+- CurseForge 镜像不再受 Modrinth 下载源设置影响
 
 ### 计划中
 - 微软登录（等待 Mojang 应用审核）
