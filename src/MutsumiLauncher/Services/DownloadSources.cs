@@ -269,7 +269,7 @@ public static class DownloadSources
     {
         if (string.IsNullOrWhiteSpace(url)) return url;
 
-        return url
+        var replaced = url
             .Replace("https://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
             .Replace("http://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
             .Replace("https://edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
@@ -278,6 +278,31 @@ public static class DownloadSources
             .Replace("http://mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
             .Replace("https://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
             .Replace("http://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase);
+
+        if (replaced.Equals(url, StringComparison.OrdinalIgnoreCase)) return url;
+
+        // MCIM 不认 URL 编码后的文件名（fabric-api-0.116.17%2B1.21.1.jar 这种），
+        // 必须传解码后的名字（PCL2 同样处理）
+        try
+        {
+            var uri = new Uri(replaced);
+            var path = uri.AbsolutePath;
+            var slash = path.LastIndexOf('/');
+            if (slash < 0 || slash >= path.Length - 1) return replaced;
+
+            var name = path[(slash + 1)..];
+            var decoded = Uri.UnescapeDataString(name);
+
+            // 解码后带空格 / 井号之类就别动了，保持编码形态
+            if (decoded.Any(char.IsWhiteSpace) || decoded.Contains('#') || decoded.Contains('?'))
+                return replaced;
+
+            return uri.GetLeftPart(UriPartial.Authority) + path[..(slash + 1)] + decoded;
+        }
+        catch
+        {
+            return replaced;
+        }
     }
 
     private static string HostOf(string url)

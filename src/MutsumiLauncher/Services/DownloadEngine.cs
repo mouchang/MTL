@@ -31,10 +31,6 @@ public static class DownloadEngine
     private static readonly SemaphoreSlim Slots = new(MaxThreads, MaxThreads);
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(30));
 
-    /// <summary>国内镜像走直连：auto 模式下系统代理常常和 BMCLAPI / MCIM 握手失败。</summary>
-    private static readonly HttpClient DirectHttp =
-        HttpUtil.Create(TimeSpan.FromMinutes(30), forceDirect: true);
-
     /// <summary>全局限速（所有下载线程共用一份预算）。</summary>
     public static SpeedLimiter Limiter { get; } = new();
 
@@ -42,9 +38,17 @@ public static class DownloadEngine
     private static void ApplySpeedLimit()
         => Limiter.Configure(Math.Max(0, AppConfig.Current.MaxDownloadSpeedKbps) * 1024L);
 
-    private static bool IsDomesticMirror(string url)
-        => url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
-           || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
+    /// <summary>连接级失败（超时 / DNS / 拒绝）过的域名，短时间内排到最后，避免每个文件都白等一遍。</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> HostCooldown =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly TimeSpan Cooldown = TimeSpan.FromMinutes(2);
+
+    private static void CoolDown(string host)
+        => HostCooldown[host] = DateTime.UtcNow.Add(Cooldown).Ticks;
+
+    private static bool IsCooling(string host)
+        => HostCooldown.TryGetValue(host, out var until) && until > DateTime.UtcNow.Ticks;
 
     private static readonly HashSet<string> NoSplitHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -113,8 +117,10 @@ public static class DownloadEngine
             {
                 // 所有源都失败过一次：把所有源重新启用，降级为「单线程 + 不续传」再试一轮。
                 // 一部分源在多线程下会返回坏数据、或者 Range 行为异常，单线程能救回来（PCL2 同款策略）。
-                AppLog.Info($"all sources failed, retrying single-thread: {Path.GetFileName(targetPath)}");
-                pool.BeginFallbackRound();
+                // 镜像站（MCIM）是边下边缓存的，第一次经常只给半截文件，等一下再试往往就好了。
+                var round = pool.BeginFallbackRound();
+                AppLog.Info($"all sources failed, retry round {round}: {Path.GetFileName(targetPath)}");
+                await Task.Delay(600, cancellationToken);
             }
         }
     }
@@ -163,9 +169,8 @@ public static class DownloadEngine
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, endpoint.TimeoutSeconds)));
 
-        var client = HttpUtil.Mode == "auto" && IsDomesticMirror(endpoint.Url) ? DirectHttp : Http;
-
-        return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        // HttpUtil 已按域名排好「直连 / 代理」顺序，这里只负责发请求
+        return await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
     }
 
     private static async Task<int> ReadWithTimeoutAsync(Stream stream, byte[] buffer,
@@ -205,6 +210,12 @@ public static class DownloadEngine
                 using var request = new HttpRequestMessage(HttpMethod.Get, endpoint.Url);
                 using var response = await SendAsync(request, endpoint, cancellationToken);
                 response.EnsureSuccessStatusCode();
+
+                // 服务器声明的长度和已知大小对不上：多半是镜像还没缓存完，直接换源，别白下
+                var declared = response.Content.Headers.ContentLength;
+                if (expectedSize is > 0 && declared is > 0 && declared != expectedSize)
+                    throw new InvalidDataException(
+                        $"内容长度不符：{declared}/{expectedSize}（{Path.GetFileName(targetPath)}）");
 
                 var total = response.Content.Headers.ContentLength ?? expectedSize ?? 0;
                 var received = 0L;
@@ -487,7 +498,7 @@ public static class DownloadEngine
         private readonly object _lock = new();
         private readonly List<Source> _sources;
         private int _cursor;
-        private bool _fallbackRound;
+        private int _fallbackRounds;
 
         public SourcePool(IReadOnlyList<DownloadEndpoint> endpoints)
         {
@@ -499,7 +510,7 @@ public static class DownloadEngine
         {
             get
             {
-                lock (_lock) return _fallbackRound;
+                lock (_lock) return _fallbackRounds > 0;
             }
         }
 
@@ -508,23 +519,29 @@ public static class DownloadEngine
         {
             get
             {
-                lock (_lock) return !_fallbackRound && _sources.Count > 0;
+                lock (_lock) return _fallbackRounds < MaxFallbackRounds && _sources.Count > 0;
             }
         }
 
-        /// <summary>进入兜底轮：所有源重新启用，并且只允许单线程下载。</summary>
-        public void BeginFallbackRound()
+        /// <summary>最多重来几轮（每轮都是全体源重新启用）。</summary>
+        private const int MaxFallbackRounds = 2;
+
+        /// <summary>进入兜底轮：所有源重新启用，并且只允许单线程下载。返回当前是第几轮。</summary>
+        public int BeginFallbackRound()
         {
             lock (_lock)
             {
-                _fallbackRound = true;
+                _fallbackRounds++;
                 _cursor = 0;
 
                 foreach (var source in _sources)
                 {
                     source.Disabled = false;
                     source.FailCount = 0;
+                    source.CorruptCount = 0;
                 }
+
+                return _fallbackRounds;
             }
         }
 
@@ -548,20 +565,26 @@ public static class DownloadEngine
         {
             lock (_lock)
             {
-                for (var i = 0; i < _sources.Count; i++)
-                {
-                    var source = _sources[(_cursor + i) % _sources.Count];
-
-                    if (source.Disabled) continue;
-                    if (needSplit && (source.RangeBroken || NoSplitHosts.Contains(source.Host)))
-                        continue;
-
-                    _cursor = (_cursor + i + 1) % _sources.Count;
-                    return source.Endpoint;
-                }
-
-                return null;
+                // 先找没在冷却中的源，全都在冷却才退回去硬试
+                return Find(needSplit, skipCooling: true) ?? Find(needSplit, skipCooling: false);
             }
+        }
+
+        private DownloadEndpoint? Find(bool needSplit, bool skipCooling)
+        {
+            for (var i = 0; i < _sources.Count; i++)
+            {
+                var source = _sources[(_cursor + i) % _sources.Count];
+
+                if (source.Disabled) continue;
+                if (needSplit && (source.RangeBroken || NoSplitHosts.Contains(source.Host))) continue;
+                if (skipCooling && IsCooling(source.Host)) continue;
+
+                _cursor = (_cursor + i + 1) % _sources.Count;
+                return source.Endpoint;
+            }
+
+            return null;
         }
 
         public void Fail(DownloadEndpoint endpoint, Exception? exception = null)
@@ -573,8 +596,24 @@ public static class DownloadEngine
 
                 source.FailCount++;
 
+                // 镜像站（尤其是 MCIM）边下边缓存，第一次经常只返回半截内容，
+                // 这种情况先重试，别一次就把源打死
+                if (exception is InvalidDataException)
+                {
+                    source.CorruptCount++;
+                    if (source.CorruptCount >= 2) source.Disabled = true;
+                    return;
+                }
+
                 if (source.FailCount >= 3 || IsPermanentFailure(source, exception))
                     source.Disabled = true;
+
+                // 连不上的域名（超时 / DNS / 重置）冷却一会儿，后面的文件先别试它
+                if (exception is TaskCanceledException or TimeoutException
+                    || exception is HttpRequestException { StatusCode: null })
+                {
+                    CoolDown(source.Host);
+                }
             }
         }
 
@@ -588,10 +627,6 @@ public static class DownloadEngine
             {
                 case null:
                     return false;
-
-                case InvalidDataException:
-                    // 校验失败 / 长度不符：这个源给出的内容不可信
-                    return true;
 
                 case HttpRequestException http:
                 {
@@ -635,6 +670,9 @@ public static class DownloadEngine
             public string Host { get; }
 
             public int FailCount { get; set; }
+
+            /// <summary>返回了内容但校验 / 长度不对的次数。</summary>
+            public int CorruptCount { get; set; }
 
             public bool RangeBroken { get; set; }
 

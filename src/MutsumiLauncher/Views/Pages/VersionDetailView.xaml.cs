@@ -534,7 +534,7 @@ public partial class VersionDetailView : UserControl
                         Directory.CreateDirectory(modsDir);
 
                         await _modrinth.DownloadAsync(file.Url, file.Filename, modsDir,
-                            file.Hashes?.Sha1, task.Token);
+                            file.Hashes?.Sha1, file.Size > 0 ? file.Size : null, task.Token);
                     }
                 }
 

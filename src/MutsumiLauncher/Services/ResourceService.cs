@@ -238,6 +238,7 @@ public static class ResourceService
                         Url = file.DownloadUrl,
                         Filename = file.FileName,
                         Primary = true,
+                        Size = file.Length,
                         Hashes = new ModrinthHashes { Sha1 = file.Sha1 },
                     },
                 ],
@@ -270,8 +271,9 @@ public static class ResourceService
         var target = Path.Combine(targetDirectory, file.Filename);
         var endpoints = DownloadSources.ModFile(file.Url);
 
-        await DownloadEngine.DownloadAsync(endpoints, target, file.Hashes?.Sha1, null, null,
-            cancellationToken);
+        // 接口已经给了文件大小，直接传给下载引擎，省掉一次 HEAD 探测（不通的源一次探测就要 15 秒）
+        await DownloadEngine.DownloadAsync(endpoints, target, file.Hashes?.Sha1,
+            file.Size > 0 ? file.Size : null, null, cancellationToken);
 
         return target;
     }

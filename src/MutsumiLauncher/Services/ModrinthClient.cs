@@ -122,6 +122,8 @@ public sealed class ModrinthFile
 
     [JsonPropertyName("primary")] public bool Primary { get; set; }
 
+    [JsonPropertyName("size")] public long Size { get; set; }
+
     [JsonPropertyName("hashes")] public ModrinthHashes? Hashes { get; set; }
 }
 
@@ -324,14 +326,14 @@ public sealed class ModrinthClient
     }
 
     public async Task<string> DownloadAsync(string url, string fileName, string targetDirectory,
-        string? sha1 = null, CancellationToken cancellationToken = default)
+        string? sha1 = null, long? size = null, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(targetDirectory);
 
         var target = Path.Combine(targetDirectory, fileName);
         var endpoints = DownloadSources.ModFile(url);
 
-        await DownloadEngine.DownloadAsync(endpoints, target, sha1, null, null, cancellationToken);
+        await DownloadEngine.DownloadAsync(endpoints, target, sha1, size, null, cancellationToken);
 
         AppLog.Info($"modrinth download: {fileName} -> {target}");
         return target;

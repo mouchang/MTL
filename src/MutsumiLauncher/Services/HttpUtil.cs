@@ -4,7 +4,11 @@ using System.Net.Sockets;
 
 namespace MutsumiLauncher.Services;
 
-/// <summary>统一的 HttpClient 工厂：默认直连（不走系统代理），可切换系统代理或自定义代理。</summary>
+/// <summary>
+/// 统一的 HttpClient 工厂。
+/// 每条请求都会在「直连」和「代理」（有代理时）之间自动兜底：
+/// 国内镜像域名优先直连，其余域名按设置出牌，第一条路失败自动换另一条。
+/// </summary>
 public static class HttpUtil
 {
     public static string DefaultUserAgent => $"MutsumiLauncher/{AppInfo.Version} (github.com/mouchang/MTL)";
@@ -13,6 +17,12 @@ public static class HttpUtil
     private static bool? _systemProxyReachable;
 
     public static string Mode => (AppConfig.Current.NetworkMode ?? "auto").Trim().ToLowerInvariant();
+
+    /// <summary>国内镜像域名：一律优先直连，不要绕代理。</summary>
+    private static bool IsDomestic(string url) =>
+        url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>探测本机系统代理是否真的可用（端口能连上）。结果缓存到进程结束。</summary>
     public static bool SystemProxyReachable()
@@ -50,46 +60,37 @@ public static class HttpUtil
         }
     }
 
-    /// <param name="forceDirect">跳过代理直接连接（国内镜像域名走代理反而容易 SSL 握手失败）。</param>
+    /// <param name="forceDirect">忽略设置强制直连（诊断用）。</param>
     public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
         bool forceDirect = false)
     {
         var config = AppConfig.Current;
+        var mode = forceDirect ? "direct" : Mode;
 
-        var handler = new SocketsHttpHandler
-        {
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            AutomaticDecompression = DecompressionMethods.All,
-        };
+        var direct = NewHandler();
+        SocketsHttpHandler? proxy = null;
 
-        var usingProxy = false;
-
-        switch (forceDirect ? "direct" : Mode)
+        switch (mode)
         {
             case "auto" when SystemProxyReachable():
             case "system":
-                handler.UseProxy = true;
-                handler.Proxy = WebRequest.GetSystemWebProxy();
-                usingProxy = true;
+                proxy = NewHandler();
+                proxy.UseProxy = true;
+                proxy.Proxy = WebRequest.GetSystemWebProxy();
                 break;
 
             case "custom" when !string.IsNullOrWhiteSpace(config.ProxyHost):
-                handler.UseProxy = true;
-                handler.Proxy = new WebProxy(config.ProxyHost.Trim(),
+                proxy = NewHandler();
+                proxy.UseProxy = true;
+                proxy.Proxy = new WebProxy(config.ProxyHost.Trim(),
                     config.ProxyPort <= 0 ? 7890 : config.ProxyPort);
-                usingProxy = true;
-                break;
-
-            default:
-                // 直连：镜像源在国内可直连，避免系统代理关掉后所有请求失败
-                handler.UseProxy = false;
                 break;
         }
 
-        HttpMessageHandler pipeline = usingProxy ? new DirectFallbackHandler(handler) : handler;
-
-        var client = new HttpClient(pipeline) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
+        var client = new HttpClient(new RouteHandler(mode, direct, proxy))
+        {
+            Timeout = timeout ?? TimeSpan.FromMinutes(2),
+        };
 
         userAgent ??= DefaultUserAgent;
         if (!string.IsNullOrWhiteSpace(userAgent))
@@ -98,42 +99,110 @@ public static class HttpUtil
         return client;
     }
 
-    /// <summary>代理请求遇到 SSL / 连接错误时，自动改用直连重试一次。</summary>
-    private sealed class DirectFallbackHandler : DelegatingHandler
+    private static SocketsHttpHandler NewHandler() => new()
     {
-        private static readonly HttpClient Direct = new(new SocketsHttpHandler
-        {
-            UseProxy = false,
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            AutomaticDecompression = DecompressionMethods.All,
-        })
-        {
-            Timeout = TimeSpan.FromMinutes(5),
-        };
+        ConnectTimeout = TimeSpan.FromSeconds(15),
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        AutomaticDecompression = DecompressionMethods.All,
+    };
 
-        public DirectFallbackHandler(HttpMessageHandler inner) : base(inner)
+    /// <summary>单次尝试的上限：一条路卡死时不要拖垮整个请求，好歹给另一条路一次机会。</summary>
+    private static readonly TimeSpan AttemptTimeout = TimeSpan.FromSeconds(25);
+
+    /// <summary>按顺序尝试直连 / 代理，前者失败自动换后者。</summary>
+    private sealed class RouteHandler : HttpMessageHandler
+    {
+        private readonly string _mode;
+        private readonly HttpClient _direct;
+        private readonly HttpClient? _proxy;
+
+        public RouteHandler(string mode, SocketsHttpHandler direct, SocketsHttpHandler? proxy)
         {
+            _mode = mode;
+            _direct = new HttpClient(direct, disposeHandler: false)
+            {
+                Timeout = Timeout.InfiniteTimeSpan,
+            };
+
+            _proxy = proxy is null
+                ? null
+                : new HttpClient(proxy, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan };
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            var url = request.RequestUri?.ToString() ?? string.Empty;
+            var routes = BuildRoutes(url);
+
             byte[]? body = request.Content is null
                 ? null
                 : await request.Content.ReadAsByteArrayAsync(cancellationToken);
 
-            try
-            {
-                using var first = Clone(request, body);
-                return await base.SendAsync(first, cancellationToken);
-            }
-            catch (HttpRequestException ex)
-            {
-                AppLog.Error(ex, $"proxy request failed, retry direct: {request.RequestUri}");
+            Exception? last = null;
 
-                using var retry = Clone(request, body);
-                return await Direct.SendAsync(retry, cancellationToken);
+            foreach (var route in routes)
+            {
+                var clone = Clone(request, body);
+                var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(AttemptTimeout);
+
+                try
+                {
+                    var response = await route.SendAsync(clone, HttpCompletionOption.ResponseHeadersRead,
+                        timeout.Token);
+
+                    // 成功后不能释放 timeout：ResponseHeadersRead 的后续读取还挂着这个 token
+                    return response;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    timeout.Dispose();
+                    clone.Dispose();
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    timeout.Dispose();
+                    clone.Dispose();
+                    last = ex;
+
+                    AppLog.Info($"网络失败，换下一条路（{(ReferenceEquals(route, _proxy) ? "代理" : "直连")}）：{url} -> {ex.Message}");
+                }
             }
+
+            throw new HttpRequestException($"请求失败（直连 / 代理都试过了）：{last?.Message}", last);
+        }
+
+        private List<HttpClient> BuildRoutes(string url)
+        {
+            var routes = new List<HttpClient>(2);
+
+            if (_proxy is null)
+            {
+                routes.Add(_direct);
+                return routes;
+            }
+
+            if (IsDomestic(url))
+            {
+                // 国内镜像：先直连，真不行再考虑代理
+                routes.Add(_direct);
+                routes.Add(_proxy);
+                return routes;
+            }
+
+            if (_mode is "auto" or "system" or "custom")
+            {
+                // 有代理可用时先走代理（这类域名在国内基本直连不通）
+                routes.Add(_proxy);
+                routes.Add(_direct);
+                return routes;
+            }
+
+            routes.Add(_direct);
+            routes.Add(_proxy);
+            return routes;
         }
 
         private static HttpRequestMessage Clone(HttpRequestMessage source, byte[]? body)

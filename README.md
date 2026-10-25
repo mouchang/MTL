@@ -18,8 +18,8 @@
 ### 安装
 - 原版 / Fabric / Forge / NeoForge / OptiFine，支持选择任意游戏版本
 - 下载源自动选择（官方 / BMCLAPI 测速）+ 手动切换，失败自动回退；版本清单与文件下载分开设置
+- 直连 / 代理自动兜底：一条路不通自动换另一条，国内镜像（BMCLAPI / MCIM）始终优先直连
 - 依赖库 / 资源 / 社区文件都有镜像映射（BMCLAPI maven+libraries、MCIM），加载器 maven 镜像优先
-- 社区文件官方 CDN 优先、MCIM 回退
 - **PCL2 式下载引擎**：全局线程池、Range 多段并发、源失败切换、流式 SHA-1 校验
 - 社区文件官方 CDN 优先、MCIM 回退（与 PCL2 默认一致）
 - SHA-1 校验、多任务下载与实时速度
