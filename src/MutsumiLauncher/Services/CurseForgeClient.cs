@@ -72,6 +72,8 @@ public sealed class CurseForgeClient
             $"classId={classId}",
             $"index={page * pageSize}",
             $"pageSize={pageSize}",
+            "sortField=6",   // TotalDownloads
+            "sortOrder=desc",
         };
 
         if (!string.IsNullOrWhiteSpace(query))
