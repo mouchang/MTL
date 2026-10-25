@@ -181,10 +181,14 @@ public static class DownloadSources
         if (string.IsNullOrWhiteSpace(url)) return url;
 
         return url
-            .Replace("cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase);
+            .Replace("https://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("https://edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("https://mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("https://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
+            .Replace("http://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<DownloadEndpoint> Order(DownloadEndpoint official, DownloadEndpoint mirror)

@@ -1,4 +1,6 @@
+using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 
 namespace MutsumiLauncher.Services;
@@ -38,6 +40,12 @@ public sealed record CurseForgeModDetail(
     string WebsiteUrl);
 
 public sealed record CurseForgeSearchResult(IReadOnlyList<CurseForgeMod> Mods, long Total);
+
+public sealed record CurseForgeFingerprintMatch(
+    int ModId,
+    int FileId,
+    string FileName,
+    string DisplayName);
 
 /// <summary>
 /// CurseForge 客户端。默认走 MCIM 镜像（无需 Key）；关闭社区镜像并配置 Key 后才会请求官方 API。
@@ -193,6 +201,129 @@ public sealed class CurseForgeClient
         }
 
         return files;
+    }
+
+    /// <summary>用本地 jar 的指纹反查 CurseForge 上的文件，用于检查更新。</summary>
+    public async Task<IReadOnlyList<CurseForgeFingerprintMatch>> MatchFingerprintsAsync(
+        IReadOnlyList<uint> fingerprints, CancellationToken cancellationToken = default)
+    {
+        if (fingerprints.Count == 0) return [];
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            fingerprints = fingerprints.Select(value => (long)value).ToArray(),
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{DownloadSources.CurseForgeApiBase}/fingerprints")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
+
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var document = JsonDocument.Parse(json);
+
+        var matches = new List<CurseForgeFingerprintMatch>();
+
+        if (document.RootElement.TryGetProperty("data", out var data)
+            && data.TryGetProperty("exactMatches", out var exact)
+            && exact.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var match in exact.EnumerateArray())
+            {
+                var modId = Int(match, "id");
+                if (modId == 0) continue;
+
+                if (!match.TryGetProperty("file", out var file)
+                    || file.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                matches.Add(new CurseForgeFingerprintMatch(
+                    modId,
+                    Int(file, "id"),
+                    Text(file, "fileName"),
+                    Text(file, "displayName")));
+            }
+        }
+
+        return matches;
+    }
+
+    /// <summary>CurseForge 文件指纹（MurmurHash2，seed=1，忽略空白字符）。</summary>
+    public static uint ComputeFingerprint(string path)
+    {
+        using var stream = File.OpenRead(path);
+        var length = CountFingerprintBytes(stream);
+
+        stream.Position = 0;
+
+        const uint m = 0x5bd1e995;
+        const int r = 24;
+
+        var h = 1u ^ length;
+        var buffer = new byte[81920];
+        var block = new byte[4];
+        var filled = 0;
+        int read;
+
+        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            for (var i = 0; i < read; i++)
+            {
+                var value = buffer[i];
+                if (value is 0x09 or 0x0A or 0x0D or 0x20) continue;
+
+                block[filled++] = value;
+                if (filled < 4) continue;
+
+                var k = BitConverter.ToUInt32(block, 0);
+                k *= m;
+                k ^= k >> r;
+                k *= m;
+
+                h *= m;
+                h ^= k;
+                filled = 0;
+            }
+        }
+
+        if (filled > 0)
+        {
+            uint tail = 0;
+            for (var i = 0; i < filled; i++) tail |= (uint)block[i] << (8 * i);
+
+            h ^= tail;
+            h *= m;
+        }
+
+        h ^= h >> 13;
+        h *= m;
+        h ^= h >> 15;
+
+        return h;
+    }
+
+    private static uint CountFingerprintBytes(Stream stream)
+    {
+        var buffer = new byte[81920];
+        uint count = 0;
+        int read;
+
+        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            for (var i = 0; i < read; i++)
+            {
+                var value = buffer[i];
+                if (value is not (0x09 or 0x0A or 0x0D or 0x20)) count++;
+            }
+        }
+
+        return count;
     }
 
     private static bool IsLoaderName(string value) =>

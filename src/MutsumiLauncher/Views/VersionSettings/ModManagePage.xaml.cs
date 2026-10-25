@@ -117,8 +117,7 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         var owner = Window.GetWindow(this) as MainWindow;
 
-        if (string.IsNullOrWhiteSpace(_version))
-            return;
+        if (string.IsNullOrWhiteSpace(_version)) return;
 
         var info = InstanceService.GetInfo(_version);
         if (info.Loader.Equals("原版", StringComparison.OrdinalIgnoreCase))
@@ -127,51 +126,127 @@ public partial class ModManagePage : UserControl, IInstancePage
             return;
         }
 
-        var hashes = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
+        var sha1Map = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
+        var fingerprintMap = new Dictionary<uint, ModFileItem>();
 
-        foreach (var item in _items)
+        await Task.Run(() =>
         {
-            try
+            foreach (var item in _items)
             {
-                hashes[Sha1Of(item.FullPath)] = item;
+                try
+                {
+                    sha1Map[Sha1Of(item.FullPath)] = item;
+                    fingerprintMap[CurseForgeClient.ComputeFingerprint(item.FullPath)] = item;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "hash mod " + item.FileName);
+                }
             }
-            catch (Exception ex)
-            {
-                AppLog.Error(ex, "hash mod " + item.FileName);
-            }
-        }
+        });
 
-        if (hashes.Count == 0)
+        if (sha1Map.Count == 0)
         {
             owner?.ShowToast("没有可检查的 Mod。");
             return;
         }
 
         owner?.ShowToast("正在检查 Mod 更新…");
+        var found = 0;
 
+        // Modrinth：SHA-1 反查
         try
         {
-            var updates = await new ModrinthClient().CheckUpdatesAsync(hashes.Keys.ToList(),
+            var updates = await new ModrinthClient().CheckUpdatesAsync(sha1Map.Keys.ToList(),
                 info.GameVersion, info.Loader.ToLowerInvariant());
-
-            var found = 0;
 
             foreach (var (hash, version) in updates)
             {
-                if (!hashes.TryGetValue(hash, out var item)) continue;
-
-                item.SetUpdate(version);
-                found++;
+                if (sha1Map.TryGetValue(hash, out var item) && MarkUpdate(item, version)) found++;
             }
-
-            owner?.ShowToast(found == 0 ? "所有 Mod 都是最新的。" : $"发现 {found} 个可更新的 Mod。");
         }
         catch (Exception ex)
         {
-            AppLog.Error(ex, "check mod updates");
-            owner?.ShowToast("检查更新失败：" + ex.Message);
+            AppLog.Error(ex, "modrinth update check");
         }
+
+        // CurseForge：指纹反查 + 最新文件
+        try
+        {
+            var matches = await new CurseForgeClient().MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
+
+            foreach (var match in matches)
+            {
+                if (!fingerprintMap.TryGetValue(FindFingerprint(fingerprintMap, match), out var item))
+                    continue;
+
+                var files = await new CurseForgeClient().GetFilesAsync(match.ModId,
+                    info.GameVersion, LoaderType(info.Loader));
+
+                var latest = files.FirstOrDefault(file => file.Id != match.FileId);
+                if (latest is null) continue;
+
+                var version = new ModrinthVersion
+                {
+                    Name = latest.DisplayName,
+                    VersionNumber = latest.DisplayName,
+                    VersionType = latest.ReleaseType,
+                    DatePublished = latest.FileDate,
+                    GameVersions = latest.GameVersions.ToList(),
+                    Loaders = latest.Loaders.ToList(),
+                    Files =
+                    [
+                        new ModrinthFile
+                        {
+                            Url = latest.DownloadUrl,
+                            Filename = latest.FileName,
+                            Primary = true,
+                            Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
+                        },
+                    ],
+                };
+
+                if (MarkUpdate(item, version)) found++;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge update check");
+        }
+
+        owner?.ShowToast(found == 0 ? "所有 Mod 都是最新的。" : $"发现 {found} 个可更新的 Mod。");
     }
+
+    private static bool MarkUpdate(ModFileItem item, ModrinthVersion version)
+    {
+        var current = item.Update;
+
+        if (current is not null && current.DatePublished >= version.DatePublished)
+            return false;
+
+        item.SetUpdate(version);
+        return true;
+    }
+
+    private static uint FindFingerprint(Dictionary<uint, ModFileItem> map, CurseForgeFingerprintMatch match)
+    {
+        foreach (var (fingerprint, item) in map)
+        {
+            if (item.FileName.Equals(match.FileName, StringComparison.OrdinalIgnoreCase))
+                return fingerprint;
+        }
+
+        return 0;
+    }
+
+    private static int? LoaderType(string loader) => loader.ToLowerInvariant() switch
+    {
+        "fabric" => 4,
+        "quilt" => 5,
+        "neoforge" => 6,
+        "forge" => 1,
+        _ => null,
+    };
 
     private async void UpdateMod_Click(object sender, RoutedEventArgs e)
     {
@@ -189,8 +264,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         try
         {
-            await new ModrinthClient().DownloadAsync(file.Url, file.Filename, ModsDir,
-                file.Hashes?.Sha1);
+            await ResourceService.DownloadAsync(file, ModsDir);
 
             // 文件名变化时删掉旧 jar，避免同时存在两个版本
             if (!string.Equals(file.Filename, item.FileName, StringComparison.OrdinalIgnoreCase))
