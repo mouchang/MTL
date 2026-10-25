@@ -53,6 +53,18 @@ public static class DownloadMirror
 
     public static bool CurseForgeViaMirror => true;
 
+    /// <summary>强制把 Modrinth / CurseForge 文件地址映射到 MCIM（用于官方失败后的回退）。</summary>
+    public static string McimModFileUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return url;
+
+        return url
+            .Replace("cdn.modrinth.com", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("edge.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("mediafilez.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("media.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Modrinth CDN 文件走 MCIM。</summary>
     public static string ModFileUrl(string url)
     {

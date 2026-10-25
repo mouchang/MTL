@@ -235,11 +235,12 @@ public static class ModpackImporter
     {
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
-        var mirrored = DownloadMirror.ModFileUrl(officialUrl);
-        var urls = new List<string>();
+        var urls = new List<string> { officialUrl };
 
-        if (!string.IsNullOrWhiteSpace(mirrored)) urls.Add(mirrored);
-        if (!urls.Contains(officialUrl, StringComparer.OrdinalIgnoreCase)) urls.Add(officialUrl);
+        var mirrored = DownloadMirror.McimModFileUrl(officialUrl);
+        if (!string.IsNullOrWhiteSpace(mirrored)
+            && !urls.Contains(mirrored, StringComparer.OrdinalIgnoreCase))
+            urls.Add(mirrored);
 
         await DownloadEngine.DownloadAsync(urls, targetPath, sha1, null, null, cancellationToken);
     }

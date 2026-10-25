@@ -279,12 +279,12 @@ public sealed class ModrinthClient
         Directory.CreateDirectory(targetDirectory);
 
         var target = Path.Combine(targetDirectory, fileName);
-        var mirrored = DownloadMirror.ModFileUrl(url);
+        var urls = new List<string> { url };
 
-        var urls = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(mirrored)) urls.Add(mirrored);
-        if (!urls.Contains(url, StringComparer.OrdinalIgnoreCase)) urls.Add(url);
+        var mirrored = DownloadMirror.McimModFileUrl(url);
+        if (!string.IsNullOrWhiteSpace(mirrored)
+            && !urls.Contains(mirrored, StringComparer.OrdinalIgnoreCase))
+            urls.Add(mirrored);
 
         await DownloadEngine.DownloadAsync(urls, target, sha1, null, null, cancellationToken);
 
