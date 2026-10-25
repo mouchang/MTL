@@ -286,6 +286,10 @@ public static class ResourceService
         return $"https://modrinth.com/project/{project.Slug}";
     }
 
+    /// <summary>把一页结果按项目分组，供界面把同一资源的多个来源合成一张卡片。</summary>
+    public static IReadOnlyList<IReadOnlyList<ResourceHit>> GroupResults(IEnumerable<ResourceHit> hits)
+        => GroupHits(hits).Select(group => (IReadOnlyList<ResourceHit>)group).ToList();
+
     /// <summary>
     /// 按「项目」分组：slug 相同（或名字规范化后相同）视为同一个资源。
     /// 组内固定 Modrinth 在前、CurseForge 在后，方便对照两边的版本。

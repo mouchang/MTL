@@ -1,7 +1,9 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
 using MutsumiLauncher.Views;
@@ -123,12 +125,19 @@ public partial class CommunitySearchView : UserControl
 
             _totalHits = result.Total;
 
-            var items = result.Hits
-                .Select(hit => new ModrinthItem { Hit = hit.Hit, Platform = hit.Platform })
+            // 同一个资源在 Modrinth / CurseForge 的两条结果合并成一张卡片（顶部来源标签切换）
+            var items = ResourceService.GroupResults(result.Hits)
+                .Select(group => new SearchResultCard(group))
                 .ToList();
 
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
+
+            ResultsList.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                });
 
             // 中文查询会被翻译成英文，告诉用户实际搜的是什么
             var translated = SearchAliases.Translate(SearchNameBox.Text.Trim());
@@ -274,11 +283,12 @@ public partial class CommunitySearchView : UserControl
         }
     }
 
-    private static async Task LoadIconsAsync(IReadOnlyList<ModrinthItem> items)
+    private static async Task LoadIconsAsync(IReadOnlyList<SearchResultCard> cards)
     {
         using var semaphore = new SemaphoreSlim(6);
 
-        var tasks = items
+        var tasks = cards
+            .SelectMany(card => card.Items)
             .Where(item => !string.IsNullOrWhiteSpace(item.IconUrl))
             .Select(async item =>
             {
@@ -347,10 +357,52 @@ public partial class CommunitySearchView : UserControl
         await RunSearchAsync(0);
     }
 
-    private void OpenDetail_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void OpenDetail_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: ModrinthItem item })
-            DetailRequested?.Invoke(item, GameVersion());
+        if (sender is FrameworkElement { Tag: SearchResultCard card })
+            DetailRequested?.Invoke(card.Current, GameVersion());
+    }
+
+    /// <summary>点来源标签：切换这张卡片用哪个平台的数据（不动列表顺序，也不重新请求）。</summary>
+    private void SourceChip_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string platform, DataContext: SearchResultCard card }
+            || !Enum.TryParse<ResourcePlatform>(platform, ignoreCase: true, out var target))
+            return;
+
+        // 切换前先判断是不是真的有变化，没变化就别弹
+        var changed = card.Current.Platform != target;
+        card.Select(target);
+        if (changed) Pop(sender as FrameworkElement);
+
+        // 别让外层「点整行开详情」也跟着触发
+        e.Handled = true;
+    }
+
+    /// <summary>标签选中时的弹性反馈：模板里的 Transform 会被冻结，这里现造一个可变实例。</summary>
+    private static void Pop(FrameworkElement? chip)
+    {
+        if (chip is null) return;
+
+        var scale = new ScaleTransform(1, 1);
+        chip.RenderTransformOrigin = new Point(0.5, 0.5);
+        chip.RenderTransform = scale;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(1, 1.16, TimeSpan.FromMilliseconds(90))
+            {
+                AutoReverse = true,
+                EasingFunction = ease,
+            });
+
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(1, 1.16, TimeSpan.FromMilliseconds(90))
+            {
+                AutoReverse = true,
+                EasingFunction = ease,
+            });
     }
 
     private ResourceSort SortOption() =>

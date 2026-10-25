@@ -108,7 +108,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF"
-                                    Background="Transparent" PreviewMouseLeftButtonUp="OpenDetail_Click"
+                                    Background="Transparent" MouseLeftButtonUp="OpenDetail_Click"
                                     Tag="{Binding}" Cursor="Hand">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -132,21 +132,236 @@
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Title}" FontSize="15"
-                                                       Foreground="{StaticResource Ink}" />
+                                                       Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Author}" FontSize="12"
                                                        Foreground="{StaticResource InkMute}"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" />
-                                            <Border Background="#14FFFFFF" CornerRadius="6" Padding="6,1"
-                                                    Margin="8,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding SourceLabel}" FontSize="10"
-                                                           Foreground="{Binding SourceBrush}" />
+                                            <!-- 来源：Modrinth -->
+                                            <Border Tag="Modrinth" Cursor="Hand" CornerRadius="8"
+                                                    Margin="10,0,0,0" VerticalAlignment="Center"
+                                                    Background="#14FFFFFF" MouseLeftButtonUp="SourceChip_Click"
+                                                    Visibility="{Binding HasModrinth, Converter={StaticResource BoolToVis}}">
+
+                                                <Grid>
+                                                    <Border CornerRadius="8" Background="{StaticResource Accent}" Opacity="0">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                    </Border>
+
+                                                    <Grid Margin="8,1">
+                                                        <TextBlock Text="Modrinth" FontSize="10"
+                                                                   Foreground="#3F7F5C" HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="Modrinth" FontSize="10" Foreground="White"
+                                                                   Opacity="0" HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </Grid>
+                                            </Border>
+                                            <!-- 来源：CurseForge -->
+                                            <Border Tag="CurseForge" Cursor="Hand" CornerRadius="8"
+                                                    Margin="10,0,0,0" VerticalAlignment="Center"
+                                                    Background="#14FFFFFF" MouseLeftButtonUp="SourceChip_Click"
+                                                    Visibility="{Binding HasCurseForge, Converter={StaticResource BoolToVis}}">
+
+                                                <Grid>
+                                                    <Border CornerRadius="8" Background="{StaticResource Accent}" Opacity="0">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                    </Border>
+
+                                                    <Grid Margin="8,1">
+                                                        <TextBlock Text="CurseForge" FontSize="10"
+                                                                   Foreground="#B45F1B" HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="CurseForge" FontSize="10" Foreground="White"
+                                                                   Opacity="0" HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
+                                                                <DataTrigger.EnterActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="1" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.EnterActions>
+                                                                <DataTrigger.ExitActions>
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                             To="0" Duration="0:0:0.18" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </DataTrigger.ExitActions>
+                                                            </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </Grid>
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Description}" FontSize="12"
-                                                   Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Meta}" FontSize="11"
-                                                   Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
+
+                                        <StackPanel>
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity"
+                                                                                                       Duration="0:0:0.24">
+                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.2" />
+                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0.24" Value="1" />
+                                                                        </DoubleAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity"
+                                                                                                       Duration="0:0:0.24">
+                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.2" />
+                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0.24" Value="1" />
+                                                                        </DoubleAnimationUsingKeyFrames>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+
+                                            <TextBlock Text="{Binding Description}" FontSize="12"
+                                                       Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Meta}" FontSize="11"
+                                                       Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                 </Grid>

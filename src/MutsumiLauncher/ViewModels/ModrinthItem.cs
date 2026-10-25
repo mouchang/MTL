@@ -48,7 +48,8 @@ public sealed class ModrinthItem : INotifyPropertyChanged
         ? "?"
         : Hit.Title[..1].ToUpperInvariant();
 
-    public string Meta
+    /// <summary>不含来源的说明（来源由合并卡片上的标签体现）。</summary>
+    public string MetaWithoutSource
     {
         get
         {
@@ -61,10 +62,12 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
             var categories = string.Join(" · ", Hit.Categories.Take(3));
             return string.IsNullOrEmpty(categories)
-                ? $"{downloads} 次下载 · {SourceLabel}"
-                : $"{downloads} 次下载 · {categories} · {SourceLabel}";
+                ? $"{downloads} 次下载"
+                : $"{downloads} 次下载 · {categories}";
         }
     }
+
+    public string Meta => $"{MetaWithoutSource} · {SourceLabel}";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }
