@@ -102,6 +102,9 @@ public sealed class VersionInstaller
     {
         GamePaths.EnsureCreated();
 
+        // 每次安装重新扫一遍本地文件，才能复用刚才装好的 jar / 库
+        LocalFileIndex.Invalidate();
+
         var name = string.IsNullOrWhiteSpace(instanceName) ? id : instanceName.Trim();
         var versionDir = Path.Combine(GamePaths.VersionsDir, name);
         Directory.CreateDirectory(versionDir);

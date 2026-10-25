@@ -29,6 +29,9 @@
 - 已存在的客户端 jar / 依赖库按 大小 + SHA-1 校验，一致就跳过下载；资源索引同样校验
 - 依赖库直接用清单里的文件大小，省掉每次下载前的 HEAD 探测
 - auto 模式下 BMCLAPI / MCIM 走直连，避免系统代理与国内镜像 SSL 握手失败
+- 新增本地文件复用（PCL2 的 CheckExistingFile）：下载前在本地实例目录、官方启动器
+  `.minecraft\libraries` / `.minecraft\versions` 里按「文件名 / jar 大小 + SHA-1」
+  找同一份文件直接复制；新装同版本实例不再重复下载客户端 jar
 
 ### 加载器
 - 新增 OptiFine 安装：BMCLAPI 版本列表 → 官方安装器命令行 → 合并成独立实例

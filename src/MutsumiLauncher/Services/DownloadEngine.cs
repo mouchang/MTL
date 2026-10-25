@@ -71,6 +71,9 @@ public static class DownloadEngine
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
+        // 本地已经有完全一致的文件（SHA-1 校验通过）就直接复制，不占带宽
+        if (LocalFileIndex.TryCopy(targetPath, sha1, expectedSize)) return targetPath;
+
         var pool = new SourcePool(endpoints);
         var size = expectedSize ?? await ProbeSizeAsync(pool, cancellationToken);
 
