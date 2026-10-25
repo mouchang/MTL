@@ -44,6 +44,23 @@ public static class ResourceService
         int page, int pageSize, ResourceSort sort = ResourceSort.Downloads,
         CancellationToken cancellationToken = default)
     {
+        // 社区平台只认英文：中文查询先翻译再搜（PCL2 也是把中文关键词换成英文）。
+        // 翻译不出来的仍然按原文搜，至少中文标题的项目还能命中。
+        var translated = SearchAliases.Translate(query);
+        var effective = translated ?? query;
+
+        if (translated is not null && !translated.Equals(query, StringComparison.OrdinalIgnoreCase))
+            AppLog.Info($"search translated: {query} -> {translated}");
+
+        return await SearchCoreAsync(platform, effective, projectType, gameVersion, loader,
+            category, page, pageSize, sort, cancellationToken);
+    }
+
+    private static async Task<ResourceSearchPage> SearchCoreAsync(ResourcePlatform? platform,
+        string query, string projectType, string? gameVersion, string? loader, string? category,
+        int page, int pageSize, ResourceSort sort,
+        CancellationToken cancellationToken)
+    {
         var modrinthHits = new List<ResourceHit>();
         var curseForgeHits = new List<ResourceHit>();
         long modrinthTotal = 0;

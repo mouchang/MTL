@@ -35,6 +35,13 @@ public static class DownloadEngine
     private static readonly HttpClient DirectHttp =
         HttpUtil.Create(TimeSpan.FromMinutes(30), forceDirect: true);
 
+    /// <summary>全局限速（所有下载线程共用一份预算）。</summary>
+    public static SpeedLimiter Limiter { get; } = new();
+
+    /// <summary>按配置同步限速值（0 = 不限速）。</summary>
+    private static void ApplySpeedLimit()
+        => Limiter.Configure(Math.Max(0, AppConfig.Current.MaxDownloadSpeedKbps) * 1024L);
+
     private static bool IsDomesticMirror(string url)
         => url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
            || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
@@ -70,6 +77,7 @@ public static class DownloadEngine
             throw new InvalidOperationException("没有可用的下载地址。");
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        ApplySpeedLimit();
 
         // 本地已经有完全一致的文件（SHA-1 校验通过）就直接复制，不占带宽
         if (LocalFileIndex.TryCopy(targetPath, sha1, expectedSize)) return targetPath;
@@ -220,6 +228,8 @@ public static class DownloadEngine
                             await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                             hash.AppendData(buffer, 0, read);
                             received += read;
+
+                            await Limiter.AcquireAsync(read, cancellationToken);
 
                             if (lastReport.ElapsedMilliseconds >= 150)
                             {
@@ -421,6 +431,8 @@ public static class DownloadEngine
                         await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                         written += read;
                         onBytes(read);
+
+                        await Limiter.AcquireAsync(read, cancellationToken);
 
                         if (written > length)
                             throw new InvalidDataException("分段数据超出范围");

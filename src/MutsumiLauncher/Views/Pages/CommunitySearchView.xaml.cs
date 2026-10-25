@@ -130,16 +130,20 @@ public partial class CommunitySearchView : UserControl
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
+            // 中文查询会被翻译成英文，告诉用户实际搜的是什么
+            var translated = SearchAliases.Translate(SearchNameBox.Text.Trim());
+            var hint = string.IsNullOrWhiteSpace(translated) ? string.Empty : $"（已按「{translated}」搜索）";
+
             StatusText.Text = items.Count == 0
-                ? "没有找到结果，换个关键词或条件试试。"
+                ? "没有找到结果，换个关键词或条件试试。" + hint
                 : platform switch
                 {
                     ResourcePlatform.CurseForge =>
-                        $"找到 {result.Total:N0} 个结果（来自 CurseForge）",
+                        $"找到 {result.Total:N0} 个结果（来自 CurseForge）{hint}",
                     ResourcePlatform.Modrinth =>
-                        $"找到 {result.Total:N0} 个结果（来自 Modrinth）",
+                        $"找到 {result.Total:N0} 个结果（来自 Modrinth）{hint}",
                     _ =>
-                        $"找到 {result.Total:N0} 个结果（Modrinth {result.ModrinthTotal:N0} · CurseForge {result.CurseForgeTotal:N0}）",
+                        $"找到 {result.Total:N0} 个结果（Modrinth {result.ModrinthTotal:N0} · CurseForge {result.CurseForgeTotal:N0}）{hint}",
                 };
 
             BuildPageBar();

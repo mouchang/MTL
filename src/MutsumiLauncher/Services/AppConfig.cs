@@ -42,6 +42,9 @@ public sealed class AppConfig
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "auto";
 
+    /// <summary>下载限速（KB/s），0 表示不限速。</summary>
+    public int MaxDownloadSpeedKbps { get; set; }
+
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";
 

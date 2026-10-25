@@ -314,6 +314,32 @@
             </StackPanel>
         </Border>
 
+        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="下载限速" Style="{StaticResource H2}" />
+                <TextBlock Text="限制启动器占用的带宽，装游戏 / 下 Mod 时不至于把网占满。"
+                           Style="{StaticResource Caption}" Margin="0,4,0,10" />
+                <WrapPanel>
+                    <Button x:Name="SpeedUnlimited" Style="{StaticResource GhostButton}" Padding="14,7"
+                            Margin="0,0,8,0" Click="Speed_Click" Tag="0">
+                        <TextBlock x:Name="SpeedUnlimitedText" Text="不限速" FontSize="12" />
+                    </Button>
+                    <Button x:Name="Speed1M" Style="{StaticResource GhostButton}" Padding="14,7"
+                            Margin="0,0,8,0" Click="Speed_Click" Tag="1024">
+                        <TextBlock x:Name="Speed1MText" Text="1 MB/s" FontSize="12" />
+                    </Button>
+                    <Button x:Name="Speed4M" Style="{StaticResource GhostButton}" Padding="14,7"
+                            Margin="0,0,8,0" Click="Speed_Click" Tag="4096">
+                        <TextBlock x:Name="Speed4MText" Text="4 MB/s" FontSize="12" />
+                    </Button>
+                    <Button x:Name="Speed10M" Style="{StaticResource GhostButton}" Padding="14,7"
+                            Click="Speed_Click" Tag="10240">
+                        <TextBlock x:Name="Speed10MText" Text="10 MB/s" FontSize="12" />
+                    </Button>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
         <TextBlock x:Name="ProxyHint" Style="{StaticResource Caption}" TextWrapping="Wrap"
                    Text="网络代理修改后，重启启动器生效。" />
 
