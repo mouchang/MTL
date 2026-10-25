@@ -73,5 +73,5 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.title }}
-          generate_release_notes: true
+          body_path: .github/release-notes.md
           files: dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe
