@@ -15,6 +15,9 @@ public partial class CommunitySearchView : UserControl
 
     private const int PageSize = 20;
 
+    /// <summary>聚合模式每次最多拉取的总条数，保证跨来源全局按下载量排序。</summary>
+    private const int AggregateMaxItems = 200;
+
     private string _kind = "mod";
     private string _projectType = "mod";
     private int _page;
@@ -130,13 +133,23 @@ public partial class CommunitySearchView : UserControl
             Task<ModrinthSearchResult>? modrinthTask = null;
             Task<CurseForgeSearchResult>? curseForgeTask = null;
 
+            // 聚合模式：拉取前 (page+1) 页并全局排序后切片，避免“第一页全 CF、第二页又全 CF”
+            var aggregate = source == "all";
+            var fetchLimit = aggregate
+                ? Math.Min(AggregateMaxItems, (_page + 1) * PageSize)
+                : PageSize;
+            var offset = aggregate ? 0 : _page * PageSize;
+
             if (source is "all" or "modrinth")
                 modrinthTask = _client.SearchAsync(query, _projectType, GameVersion(), Loader(),
-                    Category(), PageSize, _page * PageSize);
+                    Category(), fetchLimit, offset);
 
             if ((source is "all" or "curseforge") && curseForgeAvailable)
-                curseForgeTask = _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
-                    LoaderType(), _page, PageSize);
+                curseForgeTask = aggregate
+                    ? _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(), LoaderType(),
+                        0, fetchLimit)
+                    : _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(), LoaderType(),
+                        _page, PageSize);
 
             if (source == "curseforge" && curseForgeTask is null)
             {
@@ -210,6 +223,9 @@ public partial class CommunitySearchView : UserControl
                 .OrderByDescending(item => item.Hit.Downloads)
                 .ToList();
 
+            if (aggregate)
+                items = items.Skip(_page * PageSize).Take(PageSize).ToList();
+
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
@@ -256,6 +272,10 @@ public partial class CommunitySearchView : UserControl
     private void BuildPageBar()
     {
         var totalPages = (int)Math.Ceiling(_totalHits / (double)PageSize);
+
+        // 聚合模式只预取前 AggregateMaxItems 条，页数同步封顶
+        if (Source() == "all")
+            totalPages = Math.Min(totalPages, AggregateMaxItems / PageSize);
         if (totalPages <= 1)
         {
             PageBar.Visibility = Visibility.Collapsed;

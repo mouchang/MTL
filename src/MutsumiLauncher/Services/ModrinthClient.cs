@@ -184,7 +184,7 @@ public sealed class ModrinthClient
 
         var facetsJson = "[" + string.Join(",", facets) + "]";
 
-        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index=relevance" +
+        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index=downloads" +
                   $"&query={Uri.EscapeDataString(query ?? string.Empty)}" +
                   $"&facets={Uri.EscapeDataString(facetsJson)}";
 
@@ -279,66 +279,79 @@ public sealed class ModrinthClient
         Directory.CreateDirectory(targetDirectory);
 
         var target = Path.Combine(targetDirectory, fileName);
-        var downloadUrl = DownloadMirror.ModFileUrl(url);
+        var mirrored = DownloadMirror.ModFileUrl(url);
 
-        for (var attempt = 1; attempt <= 2; attempt++)
+        // 镜像可能返回缓存错误页 / 旧文件，校验失败时回退官方 CDN
+        var candidates = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(mirrored)) candidates.Add(mirrored);
+        if (!string.IsNullOrWhiteSpace(url)
+            && !candidates.Contains(url, StringComparer.OrdinalIgnoreCase))
+            candidates.Add(url);
+
+        Exception? lastError = null;
+
+        foreach (var candidate in candidates)
         {
-            // 每次都用独立临时文件，避免重复点击时两个下载写同一个文件
-            var temp = $"{target}.{Guid.NewGuid():N}.tmp";
-
-            try
+            for (var attempt = 1; attempt <= 2; attempt++)
             {
-                using (var response = await Http.GetAsync(downloadUrl,
-                           HttpCompletionOption.ResponseHeadersRead, cancellationToken))
-                {
-                    response.EnsureSuccessStatusCode();
-                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    await using var file = File.Create(temp);
-                    await source.CopyToAsync(file, cancellationToken);
-                }
+                // 每次都用独立临时文件，避免重复点击时两个下载写同一个文件
+                var temp = $"{target}.{Guid.NewGuid():N}.tmp";
 
-                if (!string.IsNullOrWhiteSpace(sha1))
-                {
-                    var bytes = await File.ReadAllBytesAsync(temp, cancellationToken);
-                    var actual = Convert.ToHexString(SHA1.HashData(bytes));
-
-                    if (!actual.Equals(sha1, StringComparison.OrdinalIgnoreCase))
-                    {
-                        AppLog.Info($"checksum mismatch (attempt {attempt}): {fileName} " +
-                                    $"expected={sha1} actual={actual} bytes={bytes.Length} url={downloadUrl}");
-
-                        if (attempt < 2) continue;
-
-                        throw new InvalidDataException(
-                            $"校验失败：{fileName}（下载源返回的内容不对，已自动重试一次）");
-                    }
-                }
-
-                File.Move(temp, target, overwrite: true);
-                AppLog.Info($"modrinth download: {fileName} -> {target}");
-                return target;
-            }
-            catch (InvalidDataException)
-            {
-                throw;
-            }
-            catch (Exception ex) when (attempt < 2)
-            {
-                AppLog.Error(ex, $"download {fileName} (attempt {attempt})");
-            }
-            finally
-            {
                 try
                 {
-                    if (File.Exists(temp)) File.Delete(temp);
+                    using (var response = await Http.GetAsync(candidate,
+                               HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                        await using var file = File.Create(temp);
+                        await source.CopyToAsync(file, cancellationToken);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(sha1))
+                    {
+                        var bytes = await File.ReadAllBytesAsync(temp, cancellationToken);
+                        var actual = Convert.ToHexString(SHA1.HashData(bytes));
+
+                        if (!actual.Equals(sha1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            AppLog.Info($"checksum mismatch (attempt {attempt}): {fileName} " +
+                                        $"expected={sha1} actual={actual} bytes={bytes.Length} url={candidate}");
+
+                            lastError = new InvalidDataException($"校验失败：{fileName}");
+                            continue;
+                        }
+                    }
+
+                    File.Move(temp, target, overwrite: true);
+                    AppLog.Info($"modrinth download: {fileName} -> {target} ({candidate})");
+                    return target;
                 }
-                catch
+                catch (OperationCanceledException)
                 {
-                    // 忽略清理失败
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    AppLog.Error(ex, $"download {fileName} from {candidate} (attempt {attempt})");
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(temp)) File.Delete(temp);
+                    }
+                    catch
+                    {
+                        // 忽略清理失败
+                    }
                 }
             }
         }
 
-        throw new InvalidDataException($"下载失败：{fileName}");
+        throw new InvalidDataException(
+            $"下载失败：{fileName}（镜像与官方 CDN 均不可用：{lastError?.Message}）", lastError);
     }
 }

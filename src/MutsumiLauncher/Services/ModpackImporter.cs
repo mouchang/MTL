@@ -159,7 +159,7 @@ public static class ModpackImporter
                 progress?.Report(new InstallProgress(percent,
                     $"下载整合包文件 {i + 1}/{list.Count}…"));
 
-                await DownloadWithHashAsync(DownloadMirror.ModFileUrl(url!), target, sha1, cancellationToken);
+                await DownloadWithHashAsync(url!, target, sha1, cancellationToken);
             }
         }
 
@@ -230,35 +230,68 @@ public static class ModpackImporter
         }
     }
 
-    private static async Task DownloadWithHashAsync(string url, string targetPath, string? sha1,
+    private static async Task DownloadWithHashAsync(string officialUrl, string targetPath, string? sha1,
         CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
-        using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var mirrored = DownloadMirror.ModFileUrl(officialUrl);
+        var candidates = new List<string>();
 
-        var temp = targetPath + ".tmp";
+        if (!string.IsNullOrWhiteSpace(mirrored)) candidates.Add(mirrored);
+        if (!candidates.Contains(officialUrl, StringComparer.OrdinalIgnoreCase))
+            candidates.Add(officialUrl);
 
-        await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-        await using (var file = File.Create(temp))
+        Exception? lastError = null;
+
+        foreach (var candidate in candidates)
         {
-            await source.CopyToAsync(file, cancellationToken);
-        }
+            var temp = $"{targetPath}.{Guid.NewGuid():N}.tmp";
 
-        if (!string.IsNullOrWhiteSpace(sha1))
-        {
-            var bytes = await File.ReadAllBytesAsync(temp, cancellationToken);
-            var actual = Convert.ToHexString(SHA1.HashData(bytes));
-
-            if (!actual.Equals(sha1, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                File.Delete(temp);
-                throw new InvalidDataException($"校验失败：{Path.GetFileName(targetPath)}");
+                using (var response = await Http.GetAsync(candidate,
+                           HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+                {
+                    response.EnsureSuccessStatusCode();
+                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await using var file = File.Create(temp);
+                    await source.CopyToAsync(file, cancellationToken);
+                }
+
+                if (!string.IsNullOrWhiteSpace(sha1) && !await MatchesAsync(temp, sha1, cancellationToken))
+                {
+                    lastError = new InvalidDataException($"校验失败：{Path.GetFileName(targetPath)}");
+                    AppLog.Info($"modpack file checksum mismatch, url={candidate}");
+                    continue;
+                }
+
+                File.Move(temp, targetPath, overwrite: true);
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                AppLog.Error(ex, $"modpack download {candidate}");
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(temp)) File.Delete(temp);
+                }
+                catch
+                {
+                    // 忽略
+                }
             }
         }
 
-        File.Move(temp, targetPath, overwrite: true);
+        throw new InvalidDataException(
+            $"整合包文件下载失败：{Path.GetFileName(targetPath)}（{lastError?.Message}）", lastError);
     }
 }
