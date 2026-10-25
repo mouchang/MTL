@@ -9,7 +9,7 @@ zone_name = "mtl.dpdns.org"
 
 [vars]
 REPO = "mouchang/MTL"
-ALLOWED_HOSTS = "maven.neoforged.net,maven.minecraftforge.net,files.minecraftforge.net,maven.fabricmc.net"
+ALLOWED_HOSTS = "maven.neoforged.net,maven.minecraftforge.net,files.minecraftforge.net,maven.fabricmc.net,cdn.modrinth.com,edge.forgecdn.net,mediafilez.forgecdn.net,media.forgecdn.net"
 
 # GITHUB_TOKEN 不要写在这里，用：
 #   npx wrangler secret put GITHUB_TOKEN

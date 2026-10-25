@@ -13,7 +13,20 @@ const DEFAULT_ALLOWED_HOSTS = [
   "maven.minecraftforge.net",
   "files.minecraftforge.net",
   "maven.fabricmc.net",
+  "cdn.modrinth.com",
+  "edge.forgecdn.net",
+  "mediafilez.forgecdn.net",
+  "media.forgecdn.net",
 ];
+
+// 这些域名下的文件带版本号、内容永远不会变：
+// 直接用 CF 边缘缓存（cacheEverything），Range 请求由边缘从缓存切片返回，命中率高。
+const IMMUTABLE_HOSTS = new Set([
+  "cdn.modrinth.com",
+  "edge.forgecdn.net",
+  "mediafilez.forgecdn.net",
+  "media.forgecdn.net",
+]);
 
 export default {
   async fetch(request, env, ctx) {
@@ -119,6 +132,22 @@ async function handleMavenProxy(request, url, env, ctx) {
   }
 
   const target = `https://${host}/${rest}${url.search}`;
+
+  // 不可变文件：交给边缘缓存，冷启动才回源一次，之后全部命中
+  if (IMMUTABLE_HOSTS.has(host.toLowerCase())) {
+    return fetch(target, {
+      method: request.method,
+      headers: {
+        "User-Agent": "MTL-Proxy-Worker",
+        "Accept": request.headers.get("Accept") || "*/*",
+      },
+      cf: {
+        cacheEverything: true,
+        cacheTtlByStatus: { "200-299": 31536000, "404-599": 30 },
+      },
+    });
+  }
+
   const cache = caches.default;
   const cacheKey = new Request(target);
 

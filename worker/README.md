@@ -7,6 +7,8 @@
 | `/gh/latest` | GitHub Releases 最新版本（带 token，缓存 5 分钟） | `UpdateService`（自动更新） |
 | `/gh/download?url=...` | 代理 Release 安装包下载 | `UpdateService` |
 | `/<host>/<path>` | 反代白名单站点（NeoForge maven 等） | `ForgeLoader`（`/maven.neoforged.net/...`） |
+| `/cdn.modrinth.com/<path>` | **Modrinth 文件镜像**（墙外回源 + 边缘缓存） | `DownloadSources`（社区 Mod 下载兜底） |
+| `/<forgecdn>/<path>` | CurseForge 文件镜像（同上） | `DownloadSources` |
 
 ## 部署
 
@@ -48,6 +50,11 @@ NeoForge CDN 已经硬编码为 `https://mtl.dpdns.org/maven.neoforged.net`，�
 ```bash
 curl https://mtl.dpdns.org/gh/latest
 curl -I https://mtl.dpdns.org/maven.neoforged.net/releases/net/neoforged/neoforge/21.1.66/neoforge-21.1.66-installer.jar
+
+# Modrinth 文件镜像（第一次回源，之后 CF-Cache-Status: HIT）
+curl -o /dev/null -w "%{http_code} %{size_download}\n" \
+  "https://mtl.dpdns.org/cdn.modrinth.com/data/P7dR8mSH/versions/tCBJwbEV/fabric-api-0.165.0%2B26.4.jar"
+curl -I "https://mtl.dpdns.org/cdn.modrinth.com/data/P7dR8mSH/versions/tCBJwbEV/fabric-api-0.165.0%2B26.4.jar" | grep -i cf-cache-status
 ```
 
 ## 路由冲突排查

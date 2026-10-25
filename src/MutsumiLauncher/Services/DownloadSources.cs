@@ -33,6 +33,18 @@ public static class DownloadSources
     /// <summary>MCIM 的 Modrinth API 镜像（PCL2 同样把 api.modrinth.com 映射到这里）。</summary>
     public const string McimModrinthApi = Mcim + "/modrinth/v2";
 
+    /// <summary>自建 Cloudflare Worker：墙外回源 + 边缘缓存，官方 CDN 直连不通时兜底。</summary>
+    public const string WorkerProxy = "https://mtl.dpdns.org";
+
+    /// <summary>Worker 能反代的社区 CDN 域名（与 worker.js 白名单一致）。</summary>
+    private static readonly string[] WorkerMirroredHosts =
+    [
+        "cdn.modrinth.com",
+        "edge.forgecdn.net",
+        "mediafilez.forgecdn.net",
+        "media.forgecdn.net",
+    ];
+
     private static Task<bool>? _probe;
 
     /// <summary>官方 Mojang 是否足够快（PCL2 的 DlPreferMojang）。</summary>
@@ -189,6 +201,7 @@ public static class DownloadSources
         if (ModMirrorFirst)
         {
             urls.AddRange(McimVariants(officialUrl));
+            urls.AddRange(WorkerVariants(officialUrl));
             urls.AddRange(OfficialVariants(officialUrl));
         }
         else if (!ModAuto)
@@ -197,7 +210,9 @@ public static class DownloadSources
         }
         else
         {
+            // 官方直连不通是常态，自建 Worker 镜像紧跟在官方后面
             urls.AddRange(OfficialVariants(officialUrl));
+            urls.AddRange(WorkerVariants(officialUrl));
             urls.AddRange(McimVariants(officialUrl));
         }
 
@@ -230,6 +245,19 @@ public static class DownloadSources
         yield return url.Replace("-service.overwolf.wtf", ".forgecdn.net", StringComparison.OrdinalIgnoreCase);
         yield return url.Replace("://media.", "://edge.", StringComparison.OrdinalIgnoreCase);
         yield return url;
+    }
+
+    /// <summary>把官方 CDN 地址换成自建 Worker 的镜像地址（mtl.dpdns.org/&lt;host&gt;/&lt;path&gt;）。</summary>
+    private static IEnumerable<string> WorkerVariants(string url)
+    {
+        foreach (var host in WorkerMirroredHosts)
+        {
+            var prefix = $"https://{host}/";
+            if (!url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+            yield return $"{WorkerProxy}/{host}/{url[prefix.Length..]}";
+            yield break;
+        }
     }
 
     private static IEnumerable<string> McimVariants(string url)

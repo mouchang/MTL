@@ -56,6 +56,7 @@ public static class DownloadEngine
         "github.com",
         "objects.githubusercontent.com",
         "optifine.net",
+        "mtl.dpdns.org",
     };
 
     private const long MinSplitSize = 1024 * 1024;
