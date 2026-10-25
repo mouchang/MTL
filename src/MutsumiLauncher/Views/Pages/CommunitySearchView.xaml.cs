@@ -126,14 +126,33 @@ public partial class CommunitySearchView : UserControl
             long curseForgeTotal = 0;
             var curseForgeAvailable = CurseForgeClient.Available;
 
-            if (source is "all" or "modrinth")
-            {
-                StatusText.Text = source == "all"
-                    ? "正在同时搜索 Modrinth 与 CurseForge…"
-                    : "正在搜索 Modrinth…";
+            // 两个来源同时发起请求，聚合模式不会因为先后等待而变慢
+            Task<ModrinthSearchResult>? modrinthTask = null;
+            Task<CurseForgeSearchResult>? curseForgeTask = null;
 
-                var result = await _client.SearchAsync(query, _projectType, GameVersion(), Loader(),
+            if (source is "all" or "modrinth")
+                modrinthTask = _client.SearchAsync(query, _projectType, GameVersion(), Loader(),
                     Category(), PageSize, _page * PageSize);
+
+            if ((source is "all" or "curseforge") && curseForgeAvailable)
+                curseForgeTask = _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
+                    LoaderType(), _page, PageSize);
+
+            if (source == "curseforge" && curseForgeTask is null)
+            {
+                ResultsList.ItemsSource = null;
+                StatusText.Text = "CurseForge 不可用：请开启社区镜像，或配置 CurseForge API Key。";
+                PageBar.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            StatusText.Text = source == "all"
+                ? "正在同时搜索 Modrinth 与 CurseForge…"
+                : source == "curseforge" ? "正在搜索 CurseForge…" : "正在搜索 Modrinth…";
+
+            if (modrinthTask is not null)
+            {
+                var result = await modrinthTask;
 
                 modrinthTotal = result.TotalHits;
                 modrinthItems = result.Hits
@@ -141,52 +160,34 @@ public partial class CommunitySearchView : UserControl
                     .ToList();
             }
 
-            if (source is "all" or "curseforge")
+            if (curseForgeTask is not null)
             {
-                if (!curseForgeAvailable)
+                try
                 {
-                    if (source == "curseforge")
-                    {
-                        ResultsList.ItemsSource = null;
-                        StatusText.Text = "CurseForge 不可用：请开启社区镜像，或配置 CurseForge API Key。";
-                        PageBar.Visibility = Visibility.Collapsed;
-                        return;
-                    }
-                }
-                else
-                {
-                    StatusText.Text = source == "all"
-                        ? "正在同时搜索 Modrinth 与 CurseForge…"
-                        : "正在搜索 CurseForge…";
+                    var result = await curseForgeTask;
 
-                    try
+                    curseForgeTotal = result.Total;
+                    curseForgeItems = result.Mods.Select(mod => new ModrinthItem
                     {
-                        var result = await _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(),
-                            LoaderType(), _page, PageSize);
-
-                        curseForgeTotal = result.Total;
-                        curseForgeItems = result.Mods.Select(mod => new ModrinthItem
+                        Source = "curseforge",
+                        Hit = new ModrinthHit
                         {
-                            Source = "curseforge",
-                            Hit = new ModrinthHit
-                            {
-                                ProjectId = mod.Id.ToString(),
-                                Slug = mod.Slug,
-                                Title = mod.Name,
-                                Description = mod.Summary,
-                                Author = mod.Author,
-                                Downloads = mod.Downloads,
-                                IconUrl = mod.IconUrl,
-                                ProjectType = _projectType,
-                            },
-                        }).ToList();
-                    }
-                    catch (Exception ex) when (source == "all")
-                    {
-                        // 聚合模式下 CurseForge 挂了不影响 Modrinth 结果
-                        AppLog.Error(ex, "curseforge search in aggregate");
-                        curseForgeTotal = 0;
-                    }
+                            ProjectId = mod.Id.ToString(),
+                            Slug = mod.Slug,
+                            Title = mod.Name,
+                            Description = mod.Summary,
+                            Author = mod.Author,
+                            Downloads = mod.Downloads,
+                            IconUrl = mod.IconUrl,
+                            ProjectType = _projectType,
+                        },
+                    }).ToList();
+                }
+                catch (Exception ex) when (source == "all")
+                {
+                    // 聚合模式下 CurseForge 挂了不影响 Modrinth 结果
+                    AppLog.Error(ex, "curseforge search in aggregate");
+                    curseForgeTotal = 0;
                 }
             }
 
