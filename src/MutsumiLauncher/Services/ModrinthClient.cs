@@ -40,6 +40,8 @@ public sealed class ModrinthHit
     [JsonPropertyName("categories")] public List<string> Categories { get; set; } = [];
 
     [JsonPropertyName("project_type")] public string ProjectType { get; set; } = string.Empty;
+
+    [JsonPropertyName("date_modified")] public DateTimeOffset DateModified { get; set; }
 }
 
 public sealed class ModrinthGameVersion
@@ -169,7 +171,7 @@ public sealed class ModrinthClient
 
     public async Task<ModrinthSearchResult> SearchAsync(string query, string projectType,
         string? gameVersion, string? loader, string? category = null, int limit = 20, int offset = 0,
-        CancellationToken cancellationToken = default)
+        string index = "downloads", CancellationToken cancellationToken = default)
     {
         var facets = new List<string> { $"[\"project_type:{projectType}\"]" };
 
@@ -184,7 +186,7 @@ public sealed class ModrinthClient
 
         var facetsJson = "[" + string.Join(",", facets) + "]";
 
-        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index=downloads" +
+        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index={index}" +
                   $"&query={Uri.EscapeDataString(query ?? string.Empty)}" +
                   $"&facets={Uri.EscapeDataString(facetsJson)}";
 

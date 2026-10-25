@@ -119,7 +119,7 @@ public partial class CommunitySearchView : UserControl
         try
         {
             var result = await ResourceService.SearchAsync(platform, SearchNameBox.Text.Trim(),
-                _projectType, GameVersion(), Loader(), Category(), _page, PageSize);
+                _projectType, GameVersion(), Loader(), Category(), _page, PageSize, SortOption());
 
             _totalHits = result.Total;
 
@@ -348,6 +348,14 @@ public partial class CommunitySearchView : UserControl
         if (sender is FrameworkElement { Tag: ModrinthItem item })
             DetailRequested?.Invoke(item, GameVersion());
     }
+
+    private ResourceSort SortOption() =>
+        ((SortCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch
+        {
+            "updated" => ResourceSort.Updated,
+            "relevance" => ResourceSort.Relevance,
+            _ => ResourceSort.Downloads,
+        };
 
     private ResourcePlatform? SourcePlatform() =>
         ((SourceCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch

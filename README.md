@@ -41,7 +41,7 @@
 
 ### 数据与账号
 - 离线账号、微软正版登录（等待 Mojang 应用审核）
-- 整合包导入（`.mrpack`）与导出（`.mrpack` / `.zip`）
+- 整合包导入（Modrinth `.mrpack` / CurseForge / MMC）与导出（`.mrpack` / `.zip`）
 - 实时监听 `versions/`，安装或删除版本后界面自动刷新
 - 内置日志查看器、文件夹浏览器（不依赖系统资源管理器）
 

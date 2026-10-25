@@ -12,7 +12,8 @@ public sealed record CurseForgeMod(
     string Summary,
     string? IconUrl,
     string Author,
-    long Downloads);
+    long Downloads,
+    DateTimeOffset Updated);
 
 public sealed record CurseForgeDependency(int ModId, int RelationType);
 
@@ -60,6 +61,7 @@ public sealed class CurseForgeClient
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,
         string? gameVersion, int? loaderType, int page, int pageSize,
+        int sortField = 6, string sortOrder = "desc",
         CancellationToken cancellationToken = default)
     {
         var parameters = new List<string>
@@ -68,8 +70,8 @@ public sealed class CurseForgeClient
             $"classId={classId}",
             $"index={page * pageSize}",
             $"pageSize={pageSize}",
-            "sortField=6",   // TotalDownloads
-            "sortOrder=desc",
+            $"sortField={sortField}",
+            $"sortOrder={sortOrder}",
         };
 
         if (!string.IsNullOrWhiteSpace(query))
@@ -102,7 +104,10 @@ public sealed class CurseForgeClient
                     Text(item, "summary"),
                     Logo(item),
                     Authors(item),
-                    Long(item, "downloadCount")));
+                    Long(item, "downloadCount"),
+                    DateTimeOffset.TryParse(Text(item, "dateModified"), out var modified)
+                        ? modified
+                        : DateTimeOffset.MinValue));
             }
         }
 
@@ -201,6 +206,59 @@ public sealed class CurseForgeClient
         }
 
         return files;
+    }
+
+    public async Task<CurseForgeFile?> GetFileAsync(int modId, int fileId,
+        CancellationToken cancellationToken = default)
+    {
+        using var document = await GetAsync(
+            $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files/{fileId}", cancellationToken);
+
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Object)
+            return null;
+
+        return ParseFile(data);
+    }
+
+    private static CurseForgeFile? ParseFile(JsonElement item)
+    {
+        var downloadUrl = Text(item, "downloadUrl");
+        if (string.IsNullOrWhiteSpace(downloadUrl)) return null;
+
+        var gameVersions = Strings(item, "gameVersions");
+        var loaders = gameVersions
+            .Where(IsLoaderName)
+            .Select(loader => loader.ToLowerInvariant())
+            .ToList();
+
+        var mcVersions = gameVersions
+            .Where(version => !IsLoaderName(version))
+            .Where(version => !version.Equals("Client", StringComparison.OrdinalIgnoreCase)
+                              && !version.Equals("Server", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var releaseType = Int(item, "releaseType") switch
+        {
+            1 => "release",
+            2 => "beta",
+            _ => "alpha",
+        };
+
+        return new CurseForgeFile(
+            Int(item, "id"),
+            Text(item, "fileName"),
+            Text(item, "displayName"),
+            downloadUrl,
+            Sha1(item),
+            Long(item, "fileLength"),
+            releaseType,
+            DateTimeOffset.TryParse(Text(item, "fileDate"), out var date)
+                ? date
+                : DateTimeOffset.MinValue,
+            mcVersions,
+            loaders,
+            Dependencies(item));
     }
 
     /// <summary>用本地 jar 的指纹反查 CurseForge 上的文件，用于检查更新。</summary>

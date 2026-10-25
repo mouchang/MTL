@@ -39,6 +39,13 @@
 - 低速/无数据 10 秒断开并换源
 - 全局线程池 + 多段并发保留
 
+### 整合包与搜索
+- 新增 CurseForge 整合包导入（manifest.json + overrides/client-overrides）
+- 新增 MMC / Prism 整合包导入（mmc-pack.json + minecraft/ 目录）
+- 搜索新增排序：下载量 / 更新时间 / 相关度（默认下载量）
+- 相关度聚合时按来源交替展示
+- 项目/版本元数据增加磁盘缓存（6 小时）
+
 ### 资源更新
 - 本地 Mod 同时支持 Modrinth SHA-1 与 CurseForge 指纹反查更新
 - CurseForge 更新自动取当前版本/加载器下最新文件

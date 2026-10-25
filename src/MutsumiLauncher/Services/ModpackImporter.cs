@@ -1,36 +1,70 @@
 using System.IO;
 using System.IO.Compression;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace MutsumiLauncher.Services;
 
-/// <summary>导入 .mrpack（Modrinth）整合包：装原版 + 加载器 + 下载文件 + 解压 overrides。</summary>
+/// <summary>
+/// 整合包导入：Modrinth（modrinth.index.json）与 CurseForge（manifest.json）。
+/// 统一走「原版 + 加载器合并实例 → 下载文件 → 解压 overrides」。
+/// </summary>
 public static class ModpackImporter
 {
-    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(10));
-
-    public static async Task<string> ImportAsync(string filePath, IProgress<InstallProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+    public static async Task<string> ImportAsync(string filePath,
+        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException("找不到整合包文件", filePath);
 
         using var archive = ZipFile.OpenRead(filePath);
 
-        var indexEntry = archive.GetEntry("modrinth.index.json")
-                         ?? throw new InvalidOperationException("不是有效的 Modrinth 整合包（缺少 modrinth.index.json）");
+        var modrinth = archive.GetEntry("modrinth.index.json");
+        if (modrinth is not null)
+            return await ImportModrinthAsync(archive, modrinth, filePath, progress, cancellationToken);
 
+        var mmc = archive.GetEntry("mmc-pack.json");
+        if (mmc is not null)
+            return await ImportMmcAsync(archive, mmc, filePath, progress, cancellationToken);
+
+        var curseForge = archive.GetEntry("manifest.json");
+        if (curseForge is not null && await IsCurseForgeManifestAsync(curseForge, cancellationToken))
+            return await ImportCurseForgeAsync(archive, curseForge, filePath, progress, cancellationToken);
+
+        if (archive.GetEntry("modpack.json") is not null)
+            throw new InvalidOperationException("暂不支持 HMCL 整合包，目前支持 .mrpack / CurseForge / MMC。");
+
+        throw new InvalidOperationException("无法识别整合包格式（支持 Modrinth .mrpack 与 CurseForge）。");
+    }
+
+    private static async Task<bool> IsCurseForgeManifestAsync(ZipArchiveEntry entry,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var stream = entry.Open();
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var root = document.RootElement;
+
+            return root.TryGetProperty("manifestType", out var type)
+                   && type.GetString()?.Contains("Modpack", StringComparison.OrdinalIgnoreCase) == true
+                   && root.TryGetProperty("minecraft", out _)
+                   && root.TryGetProperty("files", out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<string> ImportModrinthAsync(ZipArchive archive, ZipArchiveEntry indexEntry,
+        string filePath, IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
+    {
         using var indexStream = indexEntry.Open();
         using var index = await JsonDocument.ParseAsync(indexStream, cancellationToken: cancellationToken);
         var root = index.RootElement;
 
         var name = root.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
-        var versionId = root.TryGetProperty("versionId", out var versionElement)
-            ? versionElement.GetString()
-            : null;
-
         var dependencies = root.TryGetProperty("dependencies", out var dep) ? dep : default;
 
         string? Dep(string key) =>
@@ -42,13 +76,275 @@ public static class ModpackImporter
         var minecraft = Dep("minecraft")
                         ?? throw new InvalidOperationException("整合包缺少 minecraft 依赖版本。");
 
-        var fabric = Dep("fabric-loader");
-        var forge = Dep("forge");
-        var neoforge = Dep("neoforge");
-
         progress?.Report(new InstallProgress(2, $"读取整合包：{name ?? Path.GetFileName(filePath)}"));
 
-        // 1) 原版
+        var (installed, gameDir) = await InstallBaseAsync(minecraft, Dep("fabric-loader"),
+            Dep("forge"), Dep("neoforge"), name, progress, cancellationToken);
+
+        if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+        {
+            var list = files.EnumerateArray().ToList();
+            var total = Math.Max(1, list.Count);
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var item = list[i];
+
+                var clientEnv = item.TryGetProperty("env", out var env)
+                                && env.ValueKind == JsonValueKind.Object
+                                && env.TryGetProperty("client", out var client)
+                    ? client.GetString()
+                    : null;
+
+                if (string.Equals(clientEnv, "unsupported", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var path = item.TryGetProperty("path", out var pathElement) ? pathElement.GetString() : null;
+                if (string.IsNullOrWhiteSpace(path)) continue;
+
+                var url = item.TryGetProperty("downloads", out var downloads)
+                          && downloads.ValueKind == JsonValueKind.Array
+                    ? downloads.EnumerateArray()
+                        .Select(value => value.GetString())
+                        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+                    : null;
+
+                if (string.IsNullOrWhiteSpace(url)) continue;
+
+                string? sha1 = null;
+                if (item.TryGetProperty("hashes", out var hashes)
+                    && hashes.ValueKind == JsonValueKind.Object
+                    && hashes.TryGetProperty("sha1", out var sha1Element))
+                    sha1 = sha1Element.GetString();
+
+                var target = Path.Combine(gameDir, path.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(target)
+                    && (sha1 is null || await MatchesAsync(target, sha1, cancellationToken)))
+                    continue;
+
+                progress?.Report(new InstallProgress(62 + 30.0 * i / total,
+                    $"下载整合包文件 {i + 1}/{list.Count}…"));
+
+                await DownloadWithHashAsync(url!, target, sha1, cancellationToken);
+            }
+        }
+
+        ExtractOverrides(archive, "overrides/", gameDir, progress);
+        Finish(filePath, installed, progress);
+        return installed;
+    }
+
+    private static async Task<string> ImportMmcAsync(ZipArchive archive, ZipArchiveEntry packEntry,
+        string filePath, IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
+    {
+        using var stream = packEntry.Open();
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        var minecraft = string.Empty;
+        string? fabric = null;
+        string? forge = null;
+        string? neoforge = null;
+
+        if (document.RootElement.TryGetProperty("components", out var components)
+            && components.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var component in components.EnumerateArray())
+            {
+                var uid = component.TryGetProperty("uid", out var uidElement)
+                    ? uidElement.GetString() ?? string.Empty
+                    : string.Empty;
+                var version = component.TryGetProperty("version", out var versionElement)
+                    ? versionElement.GetString() ?? string.Empty
+                    : string.Empty;
+
+                switch (uid.ToLowerInvariant())
+                {
+                    case "net.minecraft": minecraft = version; break;
+                    case "net.fabricmc.fabric-loader": fabric = version; break;
+                    case "net.minecraftforge": forge = version; break;
+                    case "net.neoforged":
+                    case "net.neoforged.neoforge": neoforge = version; break;
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(minecraft))
+            throw new InvalidOperationException("MMC 整合包缺少 net.minecraft 组件版本。");
+
+        var instanceName = ReadMmcInstanceName(archive) ?? Path.GetFileNameWithoutExtension(filePath);
+        progress?.Report(new InstallProgress(2, $"读取整合包：{instanceName}"));
+
+        var (installed, gameDir) = await InstallBaseAsync(minecraft, fabric, forge, neoforge,
+            instanceName, progress, cancellationToken);
+
+        ExtractMmcGameFolder(archive, gameDir, progress);
+        Finish(filePath, installed, progress);
+        return installed;
+    }
+
+    private static string? ReadMmcInstanceName(ZipArchive archive)
+    {
+        var cfg = archive.Entries.FirstOrDefault(entry =>
+            entry.FullName.EndsWith("instance.cfg", StringComparison.OrdinalIgnoreCase));
+
+        if (cfg is null) return null;
+
+        try
+        {
+            using var reader = new StreamReader(cfg.Open());
+            string? line;
+
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (line.StartsWith("name=", StringComparison.OrdinalIgnoreCase))
+                    return line["name=".Length..].Trim();
+            }
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        return null;
+    }
+
+    private static void ExtractMmcGameFolder(ZipArchive archive, string gameDir,
+        IProgress<InstallProgress>? progress)
+    {
+        progress?.Report(new InstallProgress(70, "解压 MMC 游戏文件…"));
+
+        var prefix = archive.Entries
+            .Select(entry => entry.FullName)
+            .FirstOrDefault(name => name.StartsWith("minecraft/", StringComparison.OrdinalIgnoreCase)
+                                    || name.StartsWith(".minecraft/", StringComparison.OrdinalIgnoreCase))
+            ?.Split('/')[0];
+
+        if (prefix is null) return;
+
+        prefix += "/";
+
+        foreach (var entry in archive.Entries)
+        {
+            if (!entry.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrEmpty(entry.Name)) continue;
+
+            var relative = entry.FullName[prefix.Length..]
+                .Replace('/', Path.DirectorySeparatorChar);
+            var target = Path.Combine(gameDir, relative);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            entry.ExtractToFile(target, overwrite: true);
+        }
+    }
+
+    private static async Task<string> ImportCurseForgeAsync(ZipArchive archive, ZipArchiveEntry manifestEntry,
+        string filePath, IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
+    {
+        using var stream = manifestEntry.Open();
+        using var manifest = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var root = manifest.RootElement;
+
+        var name = root.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
+
+        var mineElement = root.TryGetProperty("minecraft", out var mine)
+            ? mine
+            : default;
+
+        var minecraft = mineElement.ValueKind == JsonValueKind.Object
+                        && mineElement.TryGetProperty("version", out var versionElement)
+            ? versionElement.GetString()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(minecraft))
+            throw new InvalidOperationException("CurseForge 整合包缺少 Minecraft 版本。");
+
+        string? fabric = null;
+        string? forge = null;
+        string? neoforge = null;
+
+        if (mineElement.ValueKind == JsonValueKind.Object
+            && mineElement.TryGetProperty("modLoaders", out var loaders)
+            && loaders.ValueKind == JsonValueKind.Array)
+        {
+            var loader = loaders.EnumerateArray()
+                .OrderByDescending(item => item.TryGetProperty("primary", out var primary)
+                                           && primary.ValueKind == JsonValueKind.True)
+                .FirstOrDefault();
+
+            var id = loader.ValueKind == JsonValueKind.Object
+                ? loader.TryGetProperty("id", out var idElement) ? idElement.GetString() : null
+                : null;
+
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                var dash = id.IndexOf('-');
+                var kind = dash > 0 ? id[..dash] : id;
+                var version = dash > 0 ? id[(dash + 1)..] : string.Empty;
+
+                switch (kind.ToLowerInvariant())
+                {
+                    case "fabric": fabric = version; break;
+                    case "forge": forge = version; break;
+                    case "neoforge": neoforge = version; break;
+                }
+            }
+        }
+
+        progress?.Report(new InstallProgress(2,
+            $"读取整合包：{name ?? Path.GetFileName(filePath)}"));
+
+        var (installed, gameDir) = await InstallBaseAsync(minecraft, fabric, forge, neoforge, name,
+            progress, cancellationToken);
+
+        if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+        {
+            var list = files.EnumerateArray()
+                .Where(item => !item.TryGetProperty("required", out var required)
+                               || required.ValueKind != JsonValueKind.False)
+                .ToList();
+
+            var client = new CurseForgeClient();
+            var modsDir = Path.Combine(gameDir, "mods");
+            Directory.CreateDirectory(modsDir);
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var item = list[i];
+
+                var projectId = item.TryGetProperty("projectID", out var projectElement)
+                    ? projectElement.GetInt32()
+                    : 0;
+                var fileId = item.TryGetProperty("fileID", out var fileElement)
+                    ? fileElement.GetInt32()
+                    : 0;
+
+                if (projectId == 0 || fileId == 0) continue;
+
+                progress?.Report(new InstallProgress(62 + 30.0 * i / Math.Max(1, list.Count),
+                    $"下载整合包文件 {i + 1}/{list.Count}…"));
+
+                var file = await client.GetFileAsync(projectId, fileId, cancellationToken);
+                if (file is null) continue;
+
+                var target = Path.Combine(modsDir, file.FileName);
+                if (File.Exists(target) && new FileInfo(target).Length == file.Length) continue;
+
+                await DownloadEngine.DownloadAsync(DownloadSources.ModFile(file.DownloadUrl), target,
+                    file.Sha1, file.Length, null, cancellationToken);
+            }
+        }
+
+        ExtractOverrides(archive, "overrides/", gameDir, progress);
+        ExtractOverrides(archive, "client-overrides/", gameDir, progress);
+        Finish(filePath, installed, progress);
+        return installed;
+    }
+
+    private static async Task<(string Installed, string GameDir)> InstallBaseAsync(string minecraft,
+        string? fabric, string? forge, string? neoforge, string? name,
+        IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
+    {
         var manifestService = new VersionManifestService();
         var (manifest, _) = await manifestService.GetAsync(cancellationToken: cancellationToken);
         var versionEntry = manifest.Versions.FirstOrDefault(v => v.Id == minecraft)
@@ -60,14 +356,13 @@ public static class ModpackImporter
         if (vanillaWasMissing)
         {
             progress?.Report(new InstallProgress(5, $"安装原版 {minecraft}…"));
-            var vanillaProgress = Map(progress, 5, 40);
-            await new VersionInstaller().InstallAsync(minecraft, versionEntry.Url, vanillaProgress);
+            await new VersionInstaller().InstallAsync(minecraft, versionEntry.Url,
+                Map(progress, 5, 40), cancellationToken: cancellationToken);
         }
 
-        // 2) 加载器
         var instanceName = UniqueName(SafeName(string.IsNullOrWhiteSpace(name) ? "整合包" : name!));
-
         string installed;
+
         if (!string.IsNullOrWhiteSpace(fabric) || !string.IsNullOrWhiteSpace(forge)
             || !string.IsNullOrWhiteSpace(neoforge))
         {
@@ -89,8 +384,8 @@ public static class ModpackImporter
             else
             {
                 progress?.Report(new InstallProgress(42, $"安装 NeoForge {neoforge}…"));
-                loaderId = await new ForgeLoader().InstallAsync(LoaderKind.NeoForge, minecraft, neoforge!,
-                    Map(progress, 42, 60), tempLoaderId, cancellationToken);
+                loaderId = await new ForgeLoader().InstallAsync(LoaderKind.NeoForge, minecraft,
+                    neoforge!, Map(progress, 42, 60), tempLoaderId, cancellationToken);
             }
 
             installed = InstanceMerger.Merge(minecraft, loaderId, instanceName, Map(progress, 60, 62));
@@ -118,84 +413,44 @@ public static class ModpackImporter
         var gameDir = InstanceService.GameDirFor(installed);
         Directory.CreateDirectory(gameDir);
 
-        // 3) 下载 files[]
-        if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
-        {
-            var list = files.EnumerateArray().ToList();
-            var total = Math.Max(1, list.Count);
+        return (installed, gameDir);
+    }
 
-            for (var i = 0; i < list.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var item = list[i];
-
-                var clientEnv = item.TryGetProperty("env", out var env)
-                                && env.ValueKind == JsonValueKind.Object
-                                && env.TryGetProperty("client", out var client) ? client.GetString() : null;
-
-                if (string.Equals(clientEnv, "unsupported", StringComparison.OrdinalIgnoreCase)) continue;
-
-                var path = item.TryGetProperty("path", out var pathElement) ? pathElement.GetString() : null;
-                if (string.IsNullOrWhiteSpace(path)) continue;
-
-                var url = item.TryGetProperty("downloads", out var downloads)
-                          && downloads.ValueKind == JsonValueKind.Array
-                    ? downloads.EnumerateArray().Select(d => d.GetString()).FirstOrDefault(u => !string.IsNullOrWhiteSpace(u))
-                    : null;
-
-                if (string.IsNullOrWhiteSpace(url)) continue;
-
-                string? sha1 = null;
-                if (item.TryGetProperty("hashes", out var hashes)
-                    && hashes.ValueKind == JsonValueKind.Object
-                    && hashes.TryGetProperty("sha1", out var sha1Element))
-                    sha1 = sha1Element.GetString();
-
-                var target = Path.Combine(gameDir, path.Replace('/', Path.DirectorySeparatorChar));
-                if (File.Exists(target) && (sha1 is null || await MatchesAsync(target, sha1, cancellationToken)))
-                    continue;
-
-                var percent = 60 + 30.0 * i / total;
-                progress?.Report(new InstallProgress(percent,
-                    $"下载整合包文件 {i + 1}/{list.Count}…"));
-
-                await DownloadWithHashAsync(url!, target, sha1, cancellationToken);
-            }
-        }
-
-        // 4) overrides
+    private static void ExtractOverrides(ZipArchive archive, string prefix, string gameDir,
+        IProgress<InstallProgress>? progress)
+    {
         progress?.Report(new InstallProgress(92, "解压 overrides…"));
 
         foreach (var entry in archive.Entries)
         {
-            if (!entry.FullName.StartsWith("overrides/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!entry.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
             if (string.IsNullOrEmpty(entry.Name)) continue;
 
-            var relative = entry.FullName["overrides/".Length..]
+            var relative = entry.FullName[prefix.Length..]
                 .Replace('/', Path.DirectorySeparatorChar);
             var target = Path.Combine(gameDir, relative);
 
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             entry.ExtractToFile(target, overwrite: true);
         }
+    }
 
-        // 5) 选中新实例
+    private static void Finish(string filePath, string installed, IProgress<InstallProgress>? progress)
+    {
         var config = AppConfig.Current;
         config.SelectedVersion = installed;
         config.Save();
 
         progress?.Report(new InstallProgress(100, $"整合包导入完成：{installed}"));
         AppLog.Info($"modpack imported: {filePath} -> {installed}");
-
-        return installed;
     }
 
     private static IProgress<InstallProgress>? Map(IProgress<InstallProgress>? parent, double from, double to)
         => parent is null
             ? null
             : new Progress<InstallProgress>(p =>
-                parent.Report(new InstallProgress(from + (to - from) * Math.Clamp(p.Percent, 0, 100) / 100.0,
-                    p.Message)));
+                parent.Report(new InstallProgress(
+                    from + (to - from) * Math.Clamp(p.Percent, 0, 100) / 100.0, p.Message)));
 
     private static string UniqueName(string baseName)
     {
@@ -216,7 +471,8 @@ public static class ModpackImporter
         return cleaned.Length > 48 ? cleaned[..48] : cleaned;
     }
 
-    private static async Task<bool> MatchesAsync(string path, string sha1, CancellationToken cancellationToken)
+    private static async Task<bool> MatchesAsync(string path, string sha1,
+        CancellationToken cancellationToken)
     {
         try
         {

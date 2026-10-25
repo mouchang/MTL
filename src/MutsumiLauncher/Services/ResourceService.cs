@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Text.Json;
 
 namespace MutsumiLauncher.Services;
 
@@ -9,7 +10,14 @@ public enum ResourcePlatform
     CurseForge,
 }
 
-public sealed record ResourceHit(ModrinthHit Hit, ResourcePlatform Platform);
+public enum ResourceSort
+{
+    Downloads,
+    Updated,
+    Relevance,
+}
+
+public sealed record ResourceHit(ModrinthHit Hit, ResourcePlatform Platform, DateTimeOffset Updated);
 
 public sealed record ResourceSearchPage(
     IReadOnlyList<ResourceHit> Hits,
@@ -33,7 +41,8 @@ public static class ResourceService
 
     public static async Task<ResourceSearchPage> SearchAsync(ResourcePlatform? platform,
         string query, string projectType, string? gameVersion, string? loader, string? category,
-        int page, int pageSize, CancellationToken cancellationToken = default)
+        int page, int pageSize, ResourceSort sort = ResourceSort.Downloads,
+        CancellationToken cancellationToken = default)
     {
         var modrinthHits = new List<ResourceHit>();
         var curseForgeHits = new List<ResourceHit>();
@@ -51,18 +60,20 @@ public static class ResourceService
 
         if (platform is null or ResourcePlatform.Modrinth)
             modrinthTask = Modrinth.SearchAsync(query, projectType, gameVersion, loader, category,
-                modrinthLimit, modrinthOffset, cancellationToken);
+                modrinthLimit, modrinthOffset, IndexOf(sort), cancellationToken);
 
         if (platform is null or ResourcePlatform.CurseForge)
             curseForgeTask = CurseForge.SearchAsync(query, ClassIdOf(projectType), gameVersion,
-                LoaderTypeOf(loader), aggregate ? 0 : page, curseForgeLimit, cancellationToken);
+                LoaderTypeOf(loader), aggregate ? 0 : page, curseForgeLimit,
+                sort == ResourceSort.Updated ? 3 : sort == ResourceSort.Relevance ? 1 : 6,
+                "desc", cancellationToken);
 
         if (modrinthTask is not null)
         {
             var result = await modrinthTask;
             modrinthTotal = result.TotalHits;
             modrinthHits = result.Hits
-                .Select(hit => new ResourceHit(hit, ResourcePlatform.Modrinth))
+                .Select(hit => new ResourceHit(hit, ResourcePlatform.Modrinth, hit.DateModified))
                 .ToList();
         }
 
@@ -82,7 +93,7 @@ public static class ResourceService
                     Downloads = mod.Downloads,
                     IconUrl = mod.IconUrl,
                     ProjectType = projectType,
-                }, ResourcePlatform.CurseForge)).ToList();
+                }, ResourcePlatform.CurseForge, mod.Updated)).ToList();
             }
             catch (Exception ex) when (aggregate)
             {
@@ -91,13 +102,24 @@ public static class ResourceService
             }
         }
 
-        var hits = aggregate
-            ? modrinthHits.Concat(curseForgeHits)
-                .OrderByDescending(hit => hit.Hit.Downloads)
-                .Skip(page * pageSize)
-                .Take(pageSize)
-                .ToList()
-            : (platform == ResourcePlatform.CurseForge ? curseForgeHits : modrinthHits);
+        List<ResourceHit> hits;
+
+        if (!aggregate)
+        {
+            hits = platform == ResourcePlatform.CurseForge ? curseForgeHits : modrinthHits;
+        }
+        else
+        {
+            IEnumerable<ResourceHit> sorted = sort switch
+            {
+                ResourceSort.Updated => modrinthHits.Concat(curseForgeHits)
+                    .OrderByDescending(hit => hit.Updated),
+                ResourceSort.Relevance => Interleave(modrinthHits, curseForgeHits),
+                _ => modrinthHits.Concat(curseForgeHits).OrderByDescending(hit => hit.Hit.Downloads),
+            };
+
+            hits = sorted.Skip(page * pageSize).Take(pageSize).ToList();
+        }
 
         var total = aggregate
             ? modrinthTotal + curseForgeTotal
@@ -111,6 +133,12 @@ public static class ResourceService
     {
         var key = $"{platform}:{projectId}";
         if (ProjectCache.TryGetValue(key, out var cached)) return cached;
+
+        if (TryLoadDisk($"project-{platform}-{projectId}", out ModrinthProject? diskProject))
+        {
+            ProjectCache[key] = diskProject!;
+            return diskProject;
+        }
 
         ModrinthProject? project;
 
@@ -139,7 +167,12 @@ public static class ResourceService
             project = await Modrinth.GetProjectAsync(projectId, cancellationToken);
         }
 
-        if (project is not null) ProjectCache[key] = project;
+        if (project is not null)
+        {
+            ProjectCache[key] = project;
+            SaveDisk($"project-{platform}-{projectId}", project);
+        }
+
         return project;
     }
 
@@ -148,6 +181,12 @@ public static class ResourceService
     {
         var key = $"{platform}:{projectId}";
         if (VersionCache.TryGetValue(key, out var cached)) return cached;
+
+        if (TryLoadDisk($"versions-{platform}-{projectId}", out List<ModrinthVersion>? diskVersions))
+        {
+            VersionCache[key] = diskVersions!;
+            return diskVersions!;
+        }
 
         IReadOnlyList<ModrinthVersion> versions;
 
@@ -192,6 +231,7 @@ public static class ResourceService
         }
 
         VersionCache[key] = versions;
+        SaveDisk($"versions-{platform}-{projectId}", versions);
         return versions;
     }
 
@@ -217,6 +257,68 @@ public static class ResourceService
             return $"https://www.curseforge.com/minecraft/mc-mods/{project.Slug}";
 
         return $"https://modrinth.com/project/{project.Slug}";
+    }
+
+    private static List<ResourceHit> Interleave(IReadOnlyList<ResourceHit> first,
+        IReadOnlyList<ResourceHit> second)
+    {
+        var result = new List<ResourceHit>(first.Count + second.Count);
+        var max = Math.Max(first.Count, second.Count);
+
+        for (var i = 0; i < max; i++)
+        {
+            if (i < first.Count) result.Add(first[i]);
+            if (i < second.Count) result.Add(second[i]);
+        }
+
+        return result;
+    }
+
+    private static string IndexOf(ResourceSort sort) => sort switch
+    {
+        ResourceSort.Updated => "updated",
+        ResourceSort.Relevance => "relevance",
+        _ => "downloads",
+    };
+
+    private static string DiskPath(string key)
+    {
+        var safe = string.Concat(key.Where(character => char.IsLetterOrDigit(character)
+                                                        || character is '-' or '_'));
+        return Path.Combine(AppPaths.CacheDir, "api", safe + ".json");
+    }
+
+    private static bool TryLoadDisk<T>(string key, out T? value)
+    {
+        value = default;
+
+        try
+        {
+            var path = DiskPath(key);
+            if (!File.Exists(path)) return false;
+            if (DateTime.Now - File.GetLastWriteTime(path) > TimeSpan.FromHours(6)) return false;
+
+            value = JsonSerializer.Deserialize<T>(File.ReadAllText(path));
+            return value is not null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void SaveDisk<T>(string key, T value)
+    {
+        try
+        {
+            var path = DiskPath(key);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, JsonSerializer.Serialize(value));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "save resource cache");
+        }
     }
 
     private static int ClassIdOf(string projectType) => projectType switch

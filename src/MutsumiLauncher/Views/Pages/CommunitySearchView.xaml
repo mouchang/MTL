@@ -78,6 +78,14 @@
 
                     <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal"
                                 Margin="0,16,0,0">
+                        <TextBlock Text="排序" Style="{StaticResource FieldLabel}" VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <ComboBox x:Name="SortCombo" Style="{StaticResource MtlComboBox}" Width="120"
+                                  SelectedIndex="0" Margin="0,0,16,0">
+                            <ComboBoxItem Content="下载量" Tag="downloads" />
+                            <ComboBoxItem Content="更新时间" Tag="updated" />
+                            <ComboBoxItem Content="相关度" Tag="relevance" />
+                        </ComboBox>
                         <Button Style="{StaticResource PrimaryButton}" Content="搜索" Width="110"
                                 Click="Search_Click" />
                         <Button Style="{StaticResource SecondaryButton}" Content="重置条件" Width="110"
