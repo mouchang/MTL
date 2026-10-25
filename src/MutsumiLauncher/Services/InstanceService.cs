@@ -80,6 +80,9 @@ public static class InstanceService
             || mainClass.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
             return "NeoForge";
 
+        if (name.Contains("optifine", StringComparison.OrdinalIgnoreCase))
+            return "OptiFine";
+
         if (name.Contains("forge", StringComparison.OrdinalIgnoreCase)
             || mainClass.Contains("forge", StringComparison.OrdinalIgnoreCase))
             return "Forge";

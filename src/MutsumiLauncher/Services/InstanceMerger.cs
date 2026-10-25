@@ -11,8 +11,11 @@ namespace MutsumiLauncher.Services;
 /// </summary>
 public static class InstanceMerger
 {
+    /// <param name="useLoaderJar">
+    /// 加载器安装器产出了自己的客户端 jar 时（OptiFine 会打补丁）用它，否则复制原版 jar。
+    /// </param>
     public static string Merge(string vanillaId, string loaderId, string instanceName,
-        IProgress<InstallProgress>? progress = null)
+        IProgress<InstallProgress>? progress = null, bool useLoaderJar = false)
     {
         var vanillaDir = Path.Combine(GamePaths.VersionsDir, vanillaId);
         var loaderDir = Path.Combine(GamePaths.VersionsDir, loaderId);
@@ -74,8 +77,12 @@ public static class InstanceMerger
         File.WriteAllText(Path.Combine(targetDir, $"{instanceName}.json"),
             vanilla.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
-        // 原版 jar 复制到实例目录，作为 <实例>.jar
-        var sourceJar = Path.Combine(vanillaDir, $"{vanillaId}.jar");
+        // 实例 jar：加载器可能产出打过补丁的客户端 jar（OptiFine），否则用原版 jar
+        var loaderJar = Path.Combine(loaderDir, $"{loaderId}.jar");
+        var sourceJar = useLoaderJar && File.Exists(loaderJar)
+            ? loaderJar
+            : Path.Combine(vanillaDir, $"{vanillaId}.jar");
+
         if (File.Exists(sourceJar))
         {
             var targetJar = Path.Combine(targetDir, $"{instanceName}.jar");

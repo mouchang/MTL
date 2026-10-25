@@ -52,7 +52,7 @@
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="22,14" Margin="0,14,0,0">
             <StackPanel>
                 <TextBlock Text="安装加载器（可选）" Style="{StaticResource H2}" Margin="0,0,0,4" />
-                <TextBlock Text="Fabric / Forge / NeoForge 互不兼容，只能选择其中一个。"
+                <TextBlock Text="Fabric / Forge / NeoForge / OptiFine 互不兼容，只能选择其中一个。"
                            Style="{StaticResource Caption}" Margin="0,0,0,8" />
 
                 <!-- Fabric -->
@@ -146,7 +146,7 @@
 
                 <!-- OptiFine -->
                 <Button x:Name="OptiFineRow" Style="{StaticResource GhostButton}" Padding="8,10"
-                        HorizontalContentAlignment="Stretch" Click="UnsupportedLoader_Click">
+                        HorizontalContentAlignment="Stretch" Click="OptiFine_Click">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140" />
@@ -154,13 +154,22 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="OptiFine" FontSize="14" Foreground="{StaticResource Ink}" />
-                        <TextBlock Grid.Column="1" Text="暂未接入" FontSize="12"
+                        <TextBlock x:Name="OptiFineStatus" Grid.Column="1" Text="可以添加" FontSize="12"
                                    Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource IconFont}"
-                                   FontSize="12" Foreground="{StaticResource InkMute}"
-                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="OptiFineChevron" Grid.Column="2" Text="&#xE76C;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="12"
+                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
+                <Border x:Name="OptiFineVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
+                    <StackPanel>
+                        <TextBlock x:Name="OptiFineVersionsHint" Style="{StaticResource Caption}"
+                                   Margin="0,0,0,6" Text="正在获取 OptiFine 版本…" />
+                        <ScrollViewer MaxHeight="128" VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="OptiFineVersions" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 

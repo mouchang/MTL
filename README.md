@@ -16,7 +16,7 @@
 ## 功能
 
 ### 安装
-- 原版 / Fabric / Forge / NeoForge，支持选择任意游戏版本
+- 原版 / Fabric / Forge / NeoForge / OptiFine，支持选择任意游戏版本
 - 下载源自动选择（官方 / BMCLAPI 测速）+ 手动切换，失败自动回退
 - 社区文件官方 CDN 优先、MCIM 回退
 - **PCL2 式下载引擎**：全局线程池、Range 多段并发、源失败切换、流式 SHA-1 校验
@@ -139,7 +139,7 @@ MutsumiLauncher/
 
 ## 路线图
 
-- [x] 原版 / Fabric / Forge / NeoForge 安装与合并实例
+- [x] 原版 / Fabric / Forge / NeoForge / OptiFine 安装与合并实例
 - [x] 启动面板、崩溃原因、Java 自动下载
 - [x] Modrinth 搜索、Mod 管理、更新检查
 - [x] 下载任务（进度 / 速度 / 取消 / 重试）
@@ -148,7 +148,6 @@ MutsumiLauncher/
 - [x] NSIS 单文件安装器
 - [ ] 微软登录（等待 Mojang 应用审核）
 - [ ] CurseForge（等待 API 审核）
-- [ ] OptiFine 安装
 
 ## 许可
 

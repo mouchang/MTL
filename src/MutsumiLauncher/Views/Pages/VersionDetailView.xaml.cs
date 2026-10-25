@@ -17,6 +17,7 @@ public partial class VersionDetailView : UserControl
     private string? _selectedLoaderVersion;
 
     private readonly Dictionary<string, bool> _loaded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OptiFineBuild> _optiFineBuilds = new(StringComparer.Ordinal);
     private readonly ModrinthClient _modrinth = new();
     private readonly List<Button> _fabricApiChips = [];
     private ModrinthVersion? _selectedFabricApi;
@@ -49,8 +50,9 @@ public partial class VersionDetailView : UserControl
         FabricApiSection.Visibility = Visibility.Collapsed;
         _loaded.Clear();
         _chips.Clear();
+        _optiFineBuilds.Clear();
 
-        foreach (var kind in new[] { "fabric", "forge", "neoforge" })
+        foreach (var kind in new[] { "fabric", "forge", "neoforge", "optifine" })
         {
             var wrap = VersionsPanel(kind);
             wrap?.Children.Clear();
@@ -63,11 +65,12 @@ public partial class VersionDetailView : UserControl
         FabricRow.IsEnabled = true;
         ForgeRow.IsEnabled = true;
         NeoForgeRow.IsEnabled = true;
-        OptiFineRow.IsEnabled = false;
+        OptiFineRow.IsEnabled = true;
 
         FabricStatus.Text = HasLoader("fabric-loader-", entry.Name) ? "已安装" : "可以添加";
         ForgeStatus.Text = HasLoader("forge-", entry.Name) ? "已安装" : "可以添加";
         NeoForgeStatus.Text = HasLoader("neoforge-", entry.Name) ? "已安装" : "可以添加";
+        OptiFineStatus.Text = HasOptiFine() ? "已安装" : "可以添加";
         StartButton.Content = "开始下载";
     }
 
@@ -85,10 +88,30 @@ public partial class VersionDetailView : UserControl
                          && name.Contains(gameVersion, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>已经装过 OptiFine？实例目录名里带 optifine 就算（合并后的实例名由用户决定）。</summary>
+    private static bool HasOptiFine()
+    {
+        if (!Directory.Exists(GamePaths.VersionsDir)) return false;
+
+        try
+        {
+            return Directory.EnumerateDirectories(GamePaths.VersionsDir)
+                .Select(Path.GetFileName)
+                .Any(name => name is not null
+                             && name.Contains("optifine", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "scan optifine instances");
+            return false;
+        }
+    }
+
     private Button Row(string kind) => kind switch
     {
         "fabric" => FabricRow,
         "forge" => ForgeRow,
+        "optifine" => OptiFineRow,
         _ => NeoForgeRow,
     };
 
@@ -96,6 +119,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => FabricStatus,
         "forge" => ForgeStatus,
+        "optifine" => OptiFineStatus,
         _ => NeoForgeStatus,
     };
 
@@ -103,6 +127,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => FabricChevron,
         "forge" => ForgeChevron,
+        "optifine" => OptiFineChevron,
         _ => NeoForgeChevron,
     };
 
@@ -110,6 +135,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => FabricVersions,
         "forge" => ForgeVersions,
+        "optifine" => OptiFineVersions,
         _ => NeoForgeVersions,
     };
 
@@ -117,6 +143,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => FabricVersionsPanel,
         "forge" => ForgeVersionsPanel,
+        "optifine" => OptiFineVersionsPanel,
         _ => NeoForgeVersionsPanel,
     };
 
@@ -124,6 +151,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => FabricVersionsHint,
         "forge" => ForgeVersionsHint,
+        "optifine" => OptiFineVersionsHint,
         _ => NeoForgeVersionsHint,
     };
 
@@ -131,6 +159,7 @@ public partial class VersionDetailView : UserControl
     {
         "fabric" => "Fabric",
         "forge" => "Forge",
+        "optifine" => "OptiFine",
         _ => "NeoForge",
     };
 
@@ -141,6 +170,8 @@ public partial class VersionDetailView : UserControl
     private async void Forge_Click(object sender, RoutedEventArgs e) => await ToggleLoaderAsync("forge");
 
     private async void NeoForge_Click(object sender, RoutedEventArgs e) => await ToggleLoaderAsync("neoforge");
+
+    private async void OptiFine_Click(object sender, RoutedEventArgs e) => await ToggleLoaderAsync("optifine");
 
     private async Task ToggleLoaderAsync(string kind)
     {
@@ -204,6 +235,20 @@ public partial class VersionDetailView : UserControl
             return entries.Select(item => item.Loader.Version).ToList();
         }
 
+        if (kind == "optifine")
+        {
+            var builds = await OptiFineLoader.GetVersionsAsync(_entry!.Name);
+
+            // 有正式版就先只列正式版；预览版只在没有正式版时兜底
+            var stable = builds.Where(build => !build.IsPreview).ToList();
+            var shown = stable.Count > 0 ? stable : builds;
+
+            _optiFineBuilds.Clear();
+            foreach (var build in shown) _optiFineBuilds[build.Display] = build;
+
+            return shown.Select(build => build.Display).ToList();
+        }
+
         var loaderKind = kind == "forge" ? LoaderKind.Forge : LoaderKind.NeoForge;
         return await ForgeLoader.GetVersionsAsync(loaderKind, _entry!.Name);
     }
@@ -254,12 +299,13 @@ public partial class VersionDetailView : UserControl
         FabricStatus.Text = "与所选加载器不互通";
         ForgeStatus.Text = "与所选加载器不互通";
         NeoForgeStatus.Text = "与所选加载器不互通";
+        OptiFineStatus.Text = "与所选加载器不互通";
         if (Status(kind) is { } status) status.Text = $"已选 {version}";
 
         FabricRow.IsEnabled = kind == "fabric";
         ForgeRow.IsEnabled = kind == "forge";
         NeoForgeRow.IsEnabled = kind == "neoforge";
-        OptiFineRow.IsEnabled = false;
+        OptiFineRow.IsEnabled = kind == "optifine";
 
         StartButton.Content = "开始下载";
         HintText.Text = $"已选择 {LoaderName(kind)} {version}，点击「开始下载」。";
@@ -357,12 +403,6 @@ public partial class VersionDetailView : UserControl
             : $"Fabric API：已选 {version.VersionNumber}";
     }
 
-    private void UnsupportedLoader_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedLoaderVersion is not null) return;
-        _toast?.Invoke("OptiFine 还没接入，目前支持 Fabric / Forge / NeoForge。");
-    }
-
     private Progress<InstallProgress> CreateProgress(DownloadTask task) => new(p =>
     {
         ProgressText.Text = $"{_entry?.Name}：{p.Message}";
@@ -417,7 +457,16 @@ public partial class VersionDetailView : UserControl
                 var tempLoaderId = "mtl-merge-" + Guid.NewGuid().ToString("N")[..8];
                 string loaderId;
 
-                if (_selectedLoader == "fabric")
+                if (_selectedLoader == "optifine")
+                {
+                    if (!_optiFineBuilds.TryGetValue(_selectedLoaderVersion, out var build))
+                        throw new InvalidOperationException("OptiFine 版本信息丢失，请重新选择。");
+
+                    // OptiFine 安装器会往临时 .minecraft 里写版本，再由 InstanceMerger 合并成实例
+                    loaderId = await new OptiFineLoader().InstallAsync(_entry.Name, build,
+                        progress, tempLoaderId, task.Token);
+                }
+                else if (_selectedLoader == "fabric")
                 {
                     loaderId = await new FabricLoader().InstallAsync(_entry.Name, _selectedLoaderVersion,
                         progress, tempLoaderId, task.Token);
@@ -429,7 +478,8 @@ public partial class VersionDetailView : UserControl
                         progress, tempLoaderId, task.Token);
                 }
 
-                var id = InstanceMerger.Merge(_entry.Name, loaderId, instanceName, progress);
+                var id = InstanceMerger.Merge(_entry.Name, loaderId, instanceName, progress,
+                    useLoaderJar: _selectedLoader == "optifine");
 
                 // 原版只是这次合并的临时依赖，合并完就删掉，避免版本列表里出现两个条目
                 if (vanillaWasMissing && !instanceName.Equals(_entry.Name, StringComparison.OrdinalIgnoreCase))

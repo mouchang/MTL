@@ -263,39 +263,8 @@ public sealed class ForgeLoader
         return output.ToString();
     }
 
-    private static async Task<JavaRuntime?> PickJavaAsync(string gameVersion)
-    {
-        IReadOnlyList<JavaRuntime> runtimes;
-        try
-        {
-            runtimes = await JavaDetector.DetectAsync();
-        }
-        catch
-        {
-            return null;
-        }
-
-        if (runtimes.Count == 0) return null;
-
-        var required = RequiredJavaMajor(gameVersion);
-        return runtimes.FirstOrDefault(runtime => runtime.Major == required)
-               ?? runtimes.Where(runtime => runtime.Major >= required).OrderBy(runtime => runtime.Major)
-                   .FirstOrDefault()
-               ?? runtimes.OrderByDescending(runtime => runtime.Major).First();
-    }
-
-    private static int RequiredJavaMajor(string gameVersion)
-    {
-        var parts = gameVersion.Split('.');
-        if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
-        {
-            if (minor >= 21) return 21;
-            if (minor >= 18) return 17;
-            if (minor == 17) return 16;
-        }
-
-        return 8;
-    }
+    private static Task<JavaRuntime?> PickJavaAsync(string gameVersion)
+        => JavaSelector.PickAsync(gameVersion);
 
     /// <summary>
     /// 把安装器 jar 内 JSON 里的 maven.neoforged.net 地址替换成 CDN，
