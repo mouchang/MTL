@@ -8,7 +8,7 @@ public sealed record DownloadEndpoint(string Url, int TimeoutSeconds = 30, bool 
 
 /// <summary>
 /// 参考 PCL2 的下载源选择：
-/// - 原版：官方 Mojang / BMCLAPI 自动择优；
+/// - 原版：官方 Mojang / BMCLAPI 自动择优，版本列表与文件下载分别有自己的偏好；
 /// - 社区：官方 Modrinth / CurseForge 优先，MCIM 兜底；
 /// - 每种资源返回有序的源列表，由下载引擎依次尝试。
 /// </summary>
@@ -25,20 +25,26 @@ public static class DownloadSources
 
     public const string FabricMetaBase = "https://meta.fabricmc.net/v2";
     public const string FabricMetaMirror = "https://bmclapi2.bangbang93.com/fabric-meta/v2";
+
     public const string FabricMaven = "https://maven.fabricmc.net";
 
     public const string OfficialModrinthApi = "https://api.modrinth.com/v2";
+
+    /// <summary>MCIM 的 Modrinth API 镜像（PCL2 同样把 api.modrinth.com 映射到这里）。</summary>
+    public const string McimModrinthApi = Mcim + "/modrinth/v2";
+
     private static Task<bool>? _probe;
 
     /// <summary>官方 Mojang 是否足够快（PCL2 的 DlPreferMojang）。</summary>
     public static bool PreferMojang { get; private set; }
 
-    private static bool VanillaAuto =>
-        string.IsNullOrWhiteSpace(AppConfig.Current.VanillaMirror)
-        || AppConfig.Current.VanillaMirror.Equals("auto", StringComparison.OrdinalIgnoreCase);
+    /// <summary>文件下载源偏好：auto / official / mirror。</summary>
+    private static string FileMode =>
+        Normalize(AppConfig.Current.VanillaMirror);
 
-    private static bool VanillaOfficial =>
-        AppConfig.Current.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase);
+    /// <summary>版本清单源偏好：auto / official / mirror（与原文件下载分开设置）。</summary>
+    private static string ListMode =>
+        Normalize(AppConfig.Current.VanillaListMirror);
 
     private static bool ModAuto =>
         string.IsNullOrWhiteSpace(AppConfig.Current.ModMirror)
@@ -46,6 +52,12 @@ public static class DownloadSources
 
     private static bool ModMirrorFirst =>
         AppConfig.Current.ModMirror.Equals("mcim", StringComparison.OrdinalIgnoreCase);
+
+    private static string Normalize(string? mode)
+    {
+        var value = (mode ?? string.Empty).Trim().ToLowerInvariant();
+        return value is "official" or "mirror" ? value : "auto";
+    }
 
     /// <summary>探测官方源延迟，结果缓存到本次运行。</summary>
     public static async Task EnsureProbeAsync(CancellationToken cancellationToken = default)
@@ -92,7 +104,8 @@ public static class DownloadSources
 
         return Order(
             new DownloadEndpoint(OfficialManifest, 15),
-            new DownloadEndpoint($"{Bmclapi}/mc/game/version_manifest_v2.json", 15));
+            new DownloadEndpoint($"{Bmclapi}/mc/game/version_manifest_v2.json", 15),
+            ListMode);
     }
 
     public static async Task<IReadOnlyList<DownloadEndpoint>> VersionJsonAsync(string id, string officialUrl,
@@ -101,7 +114,8 @@ public static class DownloadSources
         await EnsureProbeAsync(cancellationToken);
         return Order(
             new DownloadEndpoint(officialUrl, 20),
-            new DownloadEndpoint($"{Bmclapi}/version/{id}/json", 20));
+            new DownloadEndpoint($"{Bmclapi}/version/{id}/json", 20),
+            ListMode);
     }
 
     public static async Task<IReadOnlyList<DownloadEndpoint>> ClientAsync(string id, string officialUrl,
@@ -110,9 +124,14 @@ public static class DownloadSources
         await EnsureProbeAsync(cancellationToken);
         return Order(
             new DownloadEndpoint(officialUrl),
-            new DownloadEndpoint($"{Bmclapi}/version/{id}/client"));
+            new DownloadEndpoint($"{Bmclapi}/version/{id}/client"),
+            FileMode);
     }
 
+    /// <summary>
+    /// 依赖库下载源。libraries.minecraft.net 与 Forge / Fabric / NeoForge 的 maven
+    /// 都能在 BMCLAPI 找到镜像（/maven 与 /libraries 两条路径），加载器自身的库只走镜像优先。
+    /// </summary>
     public static async Task<IReadOnlyList<DownloadEndpoint>> LibraryAsync(string? officialUrl,
         string? path, CancellationToken cancellationToken = default)
     {
@@ -121,14 +140,27 @@ public static class DownloadSources
         if (string.IsNullOrWhiteSpace(officialUrl))
             return [];
 
-        var mirror = officialUrl.Contains("libraries.minecraft.net", StringComparison.OrdinalIgnoreCase)
-                     && !string.IsNullOrWhiteSpace(path)
-            ? $"{Bmclapi}/maven/{path.Replace('\\', '/')}"
-            : null;
+        var official = new DownloadEndpoint(officialUrl);
+        var host = HostOf(officialUrl);
+        var mavenPath = NormalizeMavenPath(path, officialUrl, host);
 
-        return mirror is null
-            ? [new DownloadEndpoint(officialUrl)]
-            : Order(new DownloadEndpoint(officialUrl), new DownloadEndpoint(mirror));
+        if (mavenPath is null || !IsMirroredMavenHost(host))
+            return [official];
+
+        var mirrors = new List<DownloadEndpoint>
+        {
+            new($"{Bmclapi}/maven/{mavenPath}"),
+            new($"{Bmclapi}/libraries/{mavenPath}"),
+        };
+
+        // 加载器 maven 在国内基本连不上官方，镜像优先；用户显式选官方时除外
+        if (IsLoaderMavenHost(host))
+            return FileMode == "official" ? [official, .. mirrors] : [.. mirrors, official];
+
+        if (FileMode == "official" || (FileMode == "auto" && PreferMojang))
+            return [official, .. mirrors];
+
+        return [.. mirrors, official];
     }
 
     public static async Task<IReadOnlyList<DownloadEndpoint>> AssetAsync(string hash,
@@ -139,25 +171,81 @@ public static class DownloadSources
         var relative = $"{hash[..2]}/{hash}";
         return Order(
             new DownloadEndpoint($"{OfficialResources}/{relative}"),
-            new DownloadEndpoint($"{Bmclapi}/assets/{relative}"));
+            new DownloadEndpoint($"{Bmclapi}/assets/{relative}"),
+            FileMode);
     }
 
+    /// <summary>
+    /// 社区文件下载源：官方 CDN 的各种变体 + MCIM 镜像。
+    /// PCL2 会为 CurseForge 地址生成 edge / mediafilez / media / overwolf 多个变体，
+    /// 部分地区只有其中某个能通。
+    /// </summary>
     public static IReadOnlyList<DownloadEndpoint> ModFile(string officialUrl)
     {
-        var mirror = McimFileUrl(officialUrl);
+        if (string.IsNullOrWhiteSpace(officialUrl)) return [];
 
-        if (string.IsNullOrWhiteSpace(mirror)
-            || mirror.Equals(officialUrl, StringComparison.OrdinalIgnoreCase))
-            return [new DownloadEndpoint(officialUrl)];
+        var urls = new List<string>();
 
-        return ModMirrorFirst
-            ? [new DownloadEndpoint(mirror), new DownloadEndpoint(officialUrl)]
-            : [new DownloadEndpoint(officialUrl), new DownloadEndpoint(mirror)];
+        if (ModMirrorFirst)
+        {
+            urls.AddRange(McimVariants(officialUrl));
+            urls.AddRange(OfficialVariants(officialUrl));
+        }
+        else if (!ModAuto)
+        {
+            urls.AddRange(OfficialVariants(officialUrl));
+        }
+        else
+        {
+            urls.AddRange(OfficialVariants(officialUrl));
+            urls.AddRange(McimVariants(officialUrl));
+        }
+
+        return urls
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(url => new DownloadEndpoint(url))
+            .ToList();
     }
 
-    public static string ModrinthApiBase => ModMirrorFirst && !ModAuto
-        ? $"{Mcim}/modrinth/v2"
-        : OfficialModrinthApi;
+    /// <summary>官方 CDN 地址的多个等价变体（CurseForge 的 edge / mediafilez / media / overwolf）。</summary>
+    private static IEnumerable<string> OfficialVariants(string url)
+    {
+        if (!url.Contains("forgecdn", StringComparison.OrdinalIgnoreCase)
+            && !url.Contains("overwolf.wtf", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return url;
+            yield break;
+        }
+
+        yield return url
+            .Replace("-service.overwolf.wtf", ".forgecdn.net", StringComparison.OrdinalIgnoreCase)
+            .Replace("://edge.", "://mediafilez.", StringComparison.OrdinalIgnoreCase)
+            .Replace("://media.", "://mediafilez.", StringComparison.OrdinalIgnoreCase);
+
+        yield return url
+            .Replace("://edge.", "://mediafilez.", StringComparison.OrdinalIgnoreCase)
+            .Replace("://media.", "://mediafilez.", StringComparison.OrdinalIgnoreCase);
+
+        yield return url.Replace("-service.overwolf.wtf", ".forgecdn.net", StringComparison.OrdinalIgnoreCase);
+        yield return url.Replace("://media.", "://edge.", StringComparison.OrdinalIgnoreCase);
+        yield return url;
+    }
+
+    private static IEnumerable<string> McimVariants(string url)
+    {
+        var mirror = McimFileUrl(url);
+        if (!string.IsNullOrWhiteSpace(mirror)) yield return mirror;
+    }
+
+    /// <summary>Modrinth API 地址列表：auto 官方优先、mcim 镜像优先，都会互相回退。</summary>
+    public static IReadOnlyList<string> ModrinthApiBases => ModMirrorFirst
+        ? [McimModrinthApi, OfficialModrinthApi]
+        : ModAuto
+            ? [OfficialModrinthApi, McimModrinthApi]
+            : [OfficialModrinthApi];
+
+    public static string ModrinthApiBase => ModrinthApiBases[0];
 
     // 没有 API Key 之前，CurseForge 元数据继续走 MCIM 镜像
     public static string CurseForgeApiBase => $"{Mcim}/curseforge/v1";
@@ -169,13 +257,14 @@ public static class DownloadSources
         var mirror =
             $"{Bmclapi}/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer";
 
-        return Order(new DownloadEndpoint(official, 30), new DownloadEndpoint(mirror, 30));
+        return Order(new DownloadEndpoint(official, 30), new DownloadEndpoint(mirror, 30), FileMode);
     }
 
     public static IReadOnlyList<DownloadEndpoint> FabricMetaEndpoints()
         => Order(new DownloadEndpoint(FabricMetaBase, 15),
-            new DownloadEndpoint(FabricMetaMirror, 15));
+            new DownloadEndpoint(FabricMetaMirror, 15), FileMode);
 
+    /// <summary>把社区下载地址换成 MCIM 镜像（不支持的地址原样返回）。</summary>
     public static string McimFileUrl(string url)
     {
         if (string.IsNullOrWhiteSpace(url)) return url;
@@ -191,10 +280,48 @@ public static class DownloadSources
             .Replace("http://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyList<DownloadEndpoint> Order(DownloadEndpoint official, DownloadEndpoint mirror)
+    private static string HostOf(string url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : string.Empty;
+
+    private static bool IsLoaderMavenHost(string host) => host is
+        "maven.minecraftforge.net" or "files.minecraftforge.net" or
+        "maven.fabricmc.net" or "maven.neoforged.net";
+
+    private static bool IsMirroredMavenHost(string host) => host is
+        "libraries.minecraft.net" or "maven.minecraftforge.net" or "files.minecraftforge.net" or
+        "maven.fabricmc.net" or "maven.neoforged.net";
+
+    /// <summary>把各种 maven 地址规整成 BMCLAPI 的路径形式（去掉 maven/、releases/ 前缀）。</summary>
+    private static string? NormalizeMavenPath(string? path, string officialUrl, string host)
     {
-        if (VanillaOfficial) return [official];
-        if (!VanillaAuto) return [mirror, official];
+        var value = path;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (!Uri.TryCreate(officialUrl, UriKind.Absolute, out var uri)) return null;
+            value = uri.AbsolutePath.TrimStart('/');
+        }
+
+        value = value!.Replace('\\', '/').TrimStart('/');
+
+        if (value.StartsWith("maven/", StringComparison.OrdinalIgnoreCase))
+            value = value["maven/".Length..];
+
+        if (value.StartsWith("releases/", StringComparison.OrdinalIgnoreCase))
+            value = value["releases/".Length..];
+
+        if (value.StartsWith("libraries/", StringComparison.OrdinalIgnoreCase))
+            value = value["libraries/".Length..];
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static IReadOnlyList<DownloadEndpoint> Order(DownloadEndpoint official,
+        DownloadEndpoint mirror, string mode)
+    {
+        if (mode == "official") return [official];
+        if (mode == "mirror") return [mirror, official];
+
         return PreferMojang ? [official, mirror] : [mirror, official];
     }
 }

@@ -118,22 +118,34 @@ public sealed class VersionInstaller
 
         if (detail.Downloads.TryGetValue("client", out var client) && client.Url is not null)
         {
-            progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
-            var clientEndpoints = await DownloadSources.ClientAsync(id, client.Url!, cancellationToken);
-            var clientBase = transferred;
-            var lastClientReport = DateTime.UtcNow;
+            var jarPath = Path.Combine(versionDir, $"{name}.jar");
 
-            await DownloadAsync(clientEndpoints, Path.Combine(versionDir, $"{name}.jar"),
-                client.Sha1, cancellationToken, chunk =>
-                {
-                    if ((DateTime.UtcNow - lastClientReport).TotalMilliseconds < 180) return;
-                    lastClientReport = DateTime.UtcNow;
+            if (FileIntegrity.Matches(jarPath, client.Sha1, client.Size))
+            {
+                progress?.Report(new InstallProgress(6, "客户端 jar 已存在，跳过下载"));
+                AppLog.Info($"install {id} -> {name}: client jar already matches");
+                transferred += client.Size;
+            }
+            else
+            {
+                progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
+                var clientEndpoints = await DownloadSources.ClientAsync(id, client.Url!,
+                    cancellationToken);
+                var clientBase = transferred;
+                var lastClientReport = DateTime.UtcNow;
 
-                    progress?.Report(new InstallProgress(6 + Math.Min(14, chunk / 1048576.0),
-                        $"下载客户端 jar… {chunk / 1048576.0:0.0} MB", clientBase + chunk));
-                });
+                await DownloadAsync(clientEndpoints, jarPath,
+                    client.Sha1, client.Size > 0 ? client.Size : null, cancellationToken, chunk =>
+                    {
+                        if ((DateTime.UtcNow - lastClientReport).TotalMilliseconds < 180) return;
+                        lastClientReport = DateTime.UtcNow;
 
-            transferred += client.Size;
+                        progress?.Report(new InstallProgress(6 + Math.Min(14, chunk / 1048576.0),
+                            $"下载客户端 jar… {chunk / 1048576.0:0.0} MB", clientBase + chunk));
+                    });
+
+                transferred += client.Size;
+            }
         }
 
         var artifacts = detail.Libraries
@@ -150,12 +162,16 @@ public sealed class VersionInstaller
         var libraryTasks = artifacts.Select(async artifact =>
         {
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
-            if (File.Exists(target) && new FileInfo(target).Length > 0) return;
+
+            // 大小对不上或哈希不匹配就当没下载过（原版库不大，校验成本可以接受）
+            if (FileIntegrity.Matches(target, artifact.Sha1, artifact.Size)) return;
 
             var endpoints = await DownloadSources.LibraryAsync(artifact.Url, artifact.Path,
                 cancellationToken);
 
-            await DownloadAsync(endpoints, target, artifact.Sha1, cancellationToken, null);
+            // 清单里已经给了大小，直接传给下载引擎，省掉一次 HEAD 探测
+            await DownloadAsync(endpoints, target, artifact.Sha1,
+                artifact.Size > 0 ? artifact.Size : null, cancellationToken, null);
 
             var done = Interlocked.Increment(ref completed);
             progress?.Report(new InstallProgress(8 + 86.0 * done / Math.Max(1, artifactCount),
@@ -242,13 +258,13 @@ public sealed class VersionInstaller
     }
 
     private static async Task DownloadAsync(IReadOnlyList<DownloadEndpoint> endpoints, string targetPath,
-        string? sha1, CancellationToken cancellationToken, Action<long>? onBytes)
+        string? sha1, long? expectedSize, CancellationToken cancellationToken, Action<long>? onBytes)
     {
         var progress = onBytes is null
             ? null
             : new Progress<DownloadProgress>(p => onBytes(p.Received));
 
-        await DownloadEngine.DownloadAsync(endpoints, targetPath, sha1, null, progress,
+        await DownloadEngine.DownloadAsync(endpoints, targetPath, sha1, expectedSize, progress,
             cancellationToken);
     }
 }

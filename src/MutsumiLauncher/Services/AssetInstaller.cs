@@ -35,7 +35,7 @@ public static class AssetInstaller
         Directory.CreateDirectory(indexDir);
         var indexPath = Path.Combine(indexDir, $"{index.Id}.json");
 
-        if (!File.Exists(indexPath))
+        if (!FileIntegrity.Matches(indexPath, index.Sha1))
         {
             progress?.Report(new InstallProgress(0, "下载资源索引…"));
             var indexJson = await Http.GetStringAsync(index.Url, cancellationToken);
@@ -62,6 +62,8 @@ public static class AssetInstaller
             try
             {
                 var target = ObjectPath(obj.Hash);
+
+                // 资源文件有几千个，只比对大小（哈希寻址 + 大小一致已足够可靠）
                 if (File.Exists(target) && new FileInfo(target).Length == obj.Size) return;
 
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);

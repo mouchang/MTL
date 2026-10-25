@@ -39,14 +39,9 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
 
     private readonly VersionManifestService _service = new();
 
-    private IReadOnlyList<VersionEntry> _latest;
-    private IReadOnlyList<VersionSection> _sections;
+    private IReadOnlyList<VersionEntry> _latest = [];
+    private IReadOnlyList<VersionSection> _sections = [];
     private string _status = "正在获取版本清单…";
-
-    public DownloadPageViewModel()
-    {
-        (_latest, _sections) = BuildFallback();
-    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -79,7 +74,9 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
 
             if (manifest.Versions.Count == 0)
             {
-                Status = "版本清单为空，当前显示内置示例";
+                Latest = [];
+                Sections = [];
+                Status = "版本清单为空，请点右上角刷新重试";
                 return false;
             }
 
@@ -92,7 +89,11 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             AppLog.Error(ex, "load version manifest");
-            Status = "获取版本清单失败，当前显示内置示例";
+
+            // 不再显示内置假版本：清单拿不到就明确报错，避免用户点到不存在的版本
+            Latest = [];
+            Sections = [];
+            Status = "获取版本清单失败：" + ex.Message + "（点右上角刷新重试）";
             return false;
         }
     }
@@ -161,41 +162,6 @@ public sealed class DownloadPageViewModel : INotifyPropertyChanged
         };
 
     private static string Format(DateTimeOffset time) => time.LocalDateTime.ToString("yyyy/M/d");
-
-    private static (IReadOnlyList<VersionEntry>, IReadOnlyList<VersionSection>) BuildFallback()
-    {
-        IReadOnlyList<VersionEntry> latest =
-        [
-            new VersionEntry { Name = "26.3", Caption = "最新正式版，发布于 2026/9/15", Icon = ReleaseIcon },
-            new VersionEntry { Name = "26.4-snapshot-5", Caption = "最新预览版，发布于 2026/10/20", Icon = SnapshotIcon },
-        ];
-
-        IReadOnlyList<VersionSection> sections =
-        [
-            new VersionSection
-            {
-                Title = "正式版",
-                Versions =
-                [
-                    new VersionEntry { Name = "26.3", Caption = "2026/9/15", Icon = ReleaseIcon },
-                    new VersionEntry { Name = "26.2", Caption = "2026/8/12", Icon = ReleaseIcon },
-                ],
-            },
-            new VersionSection
-            {
-                Title = "预览版",
-                Versions =
-                [
-                    new VersionEntry { Name = "26.4-snapshot-5", Caption = "2026/10/20", Icon = SnapshotIcon },
-                    new VersionEntry { Name = "26.4-snapshot-4", Caption = "2026/10/13", Icon = SnapshotIcon },
-                ],
-            },
-            new VersionSection { Title = "远古版", Versions = [] },
-            new VersionSection { Title = "愚人节版本", Versions = [] },
-        ];
-
-        return (latest, sections);
-    }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {

@@ -50,6 +50,9 @@ public sealed class VersionManifestService
 
     public static string CachePath => Path.Combine(AppPaths.CacheDir, "version_manifest_v2.json");
 
+    /// <summary>少于这个条数基本可以断定不是正常的版本清单（被墙、被劫持、镜像返回错误页）。</summary>
+    private const int MinimumVersionCount = 100;
+
     /// <summary>取版本清单；返回值表示是否来自网络。</summary>
     public async Task<(VersionManifest Manifest, bool FromNetwork)> GetAsync(
         bool forceRefresh = false, CancellationToken cancellationToken = default)
@@ -62,7 +65,11 @@ public sealed class VersionManifestService
                 if (age < TimeSpan.FromHours(6))
                 {
                     var cached = await File.ReadAllTextAsync(CachePath, cancellationToken);
-                    return (Parse(cached), false);
+                    var manifest = TryParse(cached);
+
+                    if (manifest is not null) return (manifest, false);
+
+                    AppLog.Info("cached version manifest is invalid, refetching");
                 }
             }
             catch (Exception ex)
@@ -73,11 +80,11 @@ public sealed class VersionManifestService
 
         try
         {
-            var json = await FetchManifestAsync(cancellationToken);
+            var (json, manifest) = await FetchManifestAsync(cancellationToken);
             Directory.CreateDirectory(AppPaths.CacheDir);
             await File.WriteAllTextAsync(CachePath, json, cancellationToken);
-            AppLog.Info($"version manifest fetched, {json.Length} bytes");
-            return (Parse(json), true);
+            AppLog.Info($"version manifest fetched, {json.Length} bytes, {manifest.Versions.Count} versions");
+            return (manifest, true);
         }
         catch (Exception ex)
         {
@@ -86,15 +93,18 @@ public sealed class VersionManifestService
             if (File.Exists(CachePath))
             {
                 var cached = await File.ReadAllTextAsync(CachePath, cancellationToken);
-                return (Parse(cached), false);
+                var manifest = TryParse(cached);
+                if (manifest is not null) return (manifest, false);
             }
 
-            throw;
+            throw new InvalidOperationException(
+                "获取版本清单失败，请检查网络或稍后重试（" + ex.Message + "）", ex);
         }
     }
 
-    /// <summary>官方 / BMCLAPI 双源，按延迟自动排序。</summary>
-    private static async Task<string> FetchManifestAsync(CancellationToken cancellationToken)
+    /// <summary>官方 / BMCLAPI 双源，按延迟自动排序；内容不合格就换下一个源。</summary>
+    private static async Task<(string Json, VersionManifest Manifest)> FetchManifestAsync(
+        CancellationToken cancellationToken)
     {
         var endpoints = await DownloadSources.ManifestAsync(cancellationToken);
         Exception? last = null;
@@ -103,7 +113,9 @@ public sealed class VersionManifestService
         {
             try
             {
-                return await Http.GetStringAsync(endpoint.Url, cancellationToken);
+                var json = await Http.GetStringAsync(endpoint.Url, cancellationToken);
+                var manifest = ParseValidated(json, endpoint.Url);
+                return (json, manifest);
             }
             catch (Exception ex)
             {
@@ -115,6 +127,32 @@ public sealed class VersionManifestService
         throw new InvalidOperationException("获取版本清单失败：" + last?.Message, last);
     }
 
-    private static VersionManifest Parse(string json)
-        => JsonSerializer.Deserialize<VersionManifest>(json) ?? new VersionManifest();
+    /// <summary>解析并校验；内容不像是正常的版本清单就抛异常，让调用方换源。</summary>
+    private static VersionManifest ParseValidated(string json, string source)
+    {
+        var manifest = JsonSerializer.Deserialize<VersionManifest>(json);
+
+        if (manifest is null || manifest.Versions.Count < MinimumVersionCount)
+            throw new InvalidDataException(
+                $"版本清单内容异常（{source}，{manifest?.Versions.Count ?? 0} 条）");
+
+        if (manifest.Versions.All(version => !version.Id.Equals(manifest.Latest.Release,
+                StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException($"版本清单缺少最新正式版（{source}）");
+
+        return manifest;
+    }
+
+    private static VersionManifest? TryParse(string json)
+    {
+        try
+        {
+            return ParseValidated(json, "缓存");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "parse cached manifest");
+            return null;
+        }
+    }
 }

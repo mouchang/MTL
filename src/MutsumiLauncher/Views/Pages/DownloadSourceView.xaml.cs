@@ -26,11 +26,15 @@ public partial class DownloadSourceView : UserControl
     {
         var config = AppConfig.Current;
         var vanilla = (config.VanillaMirror ?? "auto").ToLowerInvariant();
+        var list = (config.VanillaListMirror ?? "auto").ToLowerInvariant();
         var mod = (config.ModMirror ?? "auto").ToLowerInvariant();
 
         Highlight(VanillaAuto, VanillaAutoCheck, vanilla is not ("official" or "mirror"));
         Highlight(VanillaOfficial, VanillaOfficialCheck, vanilla == "official");
         Highlight(VanillaMirror, VanillaMirrorCheck, vanilla == "mirror");
+        Highlight(ListAuto, ListAutoCheck, list is not ("official" or "mirror"));
+        Highlight(ListOfficial, ListOfficialCheck, list == "official");
+        Highlight(ListMirror, ListMirrorCheck, list == "mirror");
         Highlight(ModAuto, ModAutoCheck, mod is not ("official" or "mcim"));
         Highlight(ModOfficial, ModOfficialCheck, mod == "official");
         Highlight(ModMirror, ModMirrorCheck, mod == "mcim");
@@ -67,6 +71,20 @@ public partial class DownloadSourceView : UserControl
     private void SetVanilla(string value)
     {
         AppConfig.Current.VanillaMirror = value;
+        AppConfig.Current.Save();
+        Refresh();
+        _onChanged?.Invoke();
+    }
+
+    private void ListAuto_Click(object sender, RoutedEventArgs e) => SetList("auto");
+
+    private void ListOfficial_Click(object sender, RoutedEventArgs e) => SetList("official");
+
+    private void ListMirror_Click(object sender, RoutedEventArgs e) => SetList("mirror");
+
+    private void SetList(string value)
+    {
+        AppConfig.Current.VanillaListMirror = value;
         AppConfig.Current.Save();
         Refresh();
         _onChanged?.Invoke();

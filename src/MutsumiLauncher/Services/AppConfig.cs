@@ -33,8 +33,11 @@ public sealed class AppConfig
     /// <summary>可选的更新代理（Cloudflare Worker），为空时直连 GitHub API。</summary>
     public string UpdateProxy { get; set; } = "https://releases.mtl.dpdns.org/gh";
 
-    /// <summary>原版下载源：mirror（默认，BMCLAPI）或 official。</summary>
+    /// <summary>原版文件下载源：auto（默认，测速择优）/ mirror（BMCLAPI）/ official。</summary>
     public string VanillaMirror { get; set; } = "auto";
+
+    /// <summary>版本清单（正式版/预览版列表）下载源，与文件下载分开设置。</summary>
+    public string VanillaListMirror { get; set; } = "auto";
 
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "auto";

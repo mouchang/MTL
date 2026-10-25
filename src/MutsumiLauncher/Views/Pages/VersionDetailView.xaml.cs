@@ -430,7 +430,14 @@ public partial class VersionDetailView : UserControl
 
     private async void StartDownload_Click(object sender, RoutedEventArgs e)
     {
-        if (_entry is null || string.IsNullOrEmpty(_entry.Url)) return;
+        if (_entry is null) return;
+
+        if (string.IsNullOrEmpty(_entry.Url))
+        {
+            // 版本清单没拿到时不再显示假数据，这里也不会再静默无反应
+            _toast?.Invoke("缺少这个版本的下载地址，请回下载页刷新版本清单后重试。");
+            return;
+        }
 
         StartButton.IsEnabled = false;
         ProgressCard.Visibility = Visibility.Visible;

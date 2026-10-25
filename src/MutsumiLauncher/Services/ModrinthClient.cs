@@ -135,9 +135,64 @@ public sealed class ModrinthHashes
 /// <summary>Modrinth 开放 API：搜索项目、取版本、下载文件。</summary>
 public sealed class ModrinthClient
 {
-    private static string BaseUrl => DownloadSources.ModrinthApiBase;
-
     private static readonly HttpClient Http = CreateClient();
+
+    /// <summary>按源顺序请求 Modrinth API，前面的源失败时自动换下一个（PCL2 的 DlModRequest 同款）。</summary>
+    private static async Task<string> GetStringAsync(string relativeUrl,
+        CancellationToken cancellationToken = default)
+    {
+        Exception? last = null;
+
+        foreach (var baseUrl in DownloadSources.ModrinthApiBases)
+        {
+            try
+            {
+                return await Http.GetStringAsync(baseUrl + relativeUrl, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"modrinth api {baseUrl}");
+            }
+        }
+
+        throw new InvalidOperationException("Modrinth 接口请求失败：" + last?.Message, last);
+    }
+
+    /// <summary>同上，用于需要 POST 的接口。</summary>
+    private static async Task<string> PostJsonAsync(string relativeUrl, string payload,
+        CancellationToken cancellationToken)
+    {
+        Exception? last = null;
+
+        foreach (var baseUrl in DownloadSources.ModrinthApiBases)
+        {
+            try
+            {
+                using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using var response = await Http.PostAsync(baseUrl + relativeUrl, content,
+                    cancellationToken);
+
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"modrinth api post {baseUrl}");
+            }
+        }
+
+        throw new InvalidOperationException("Modrinth 接口请求失败：" + last?.Message, last);
+    }
 
     private static HttpClient CreateClient()
     {
@@ -186,11 +241,11 @@ public sealed class ModrinthClient
 
         var facetsJson = "[" + string.Join(",", facets) + "]";
 
-        var url = $"{BaseUrl}/search?limit={limit}&offset={offset}&index={index}" +
+        var url = $"/search?limit={limit}&offset={offset}&index={index}" +
                   $"&query={Uri.EscapeDataString(query ?? string.Empty)}" +
                   $"&facets={Uri.EscapeDataString(facetsJson)}";
 
-        var json = await Http.GetStringAsync(url, cancellationToken);
+        var json = await GetStringAsync(url, cancellationToken);
         var response = JsonSerializer.Deserialize<ModrinthSearchResponse>(json);
         return new ModrinthSearchResult(response?.Hits ?? [], response?.TotalHits ?? 0);
     }
@@ -199,28 +254,28 @@ public sealed class ModrinthClient
     public async Task<IReadOnlyList<ModrinthGameVersion>> GetGameVersionTagsAsync(
         CancellationToken cancellationToken = default)
     {
-        var json = await Http.GetStringAsync($"{BaseUrl}/tag/game_version", cancellationToken);
+        var json = await GetStringAsync("/tag/game_version", cancellationToken);
         return JsonSerializer.Deserialize<List<ModrinthGameVersion>>(json) ?? [];
     }
 
     public async Task<ModrinthProject?> GetProjectAsync(string projectId,
         CancellationToken cancellationToken = default)
     {
-        var json = await Http.GetStringAsync($"{BaseUrl}/project/{projectId}", cancellationToken);
+        var json = await GetStringAsync($"/project/{projectId}", cancellationToken);
         return JsonSerializer.Deserialize<ModrinthProject>(json);
     }
 
     public async Task<IReadOnlyList<ModrinthVersion>> GetVersionsAsync(string projectId,
         CancellationToken cancellationToken = default)
     {
-        var json = await Http.GetStringAsync($"{BaseUrl}/project/{projectId}/version", cancellationToken);
+        var json = await GetStringAsync($"/project/{projectId}/version", cancellationToken);
         return JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
     }
 
     public async Task<ModrinthVersion?> GetLatestVersionAsync(string projectId, string? gameVersion,
         string? loader, CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/project/{projectId}/version";
+        var url = $"/project/{projectId}/version";
         var query = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(gameVersion))
@@ -231,7 +286,7 @@ public sealed class ModrinthClient
 
         if (query.Count > 0) url += "?" + string.Join("&", query);
 
-        var json = await Http.GetStringAsync(url, cancellationToken);
+        var json = await GetStringAsync(url, cancellationToken);
         var versions = JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
         return versions.FirstOrDefault();
     }
@@ -260,15 +315,8 @@ public sealed class ModrinthClient
         if (!string.IsNullOrWhiteSpace(loader))
             payload["loaders"] = new[] { loader };
 
-        using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8,
-            "application/json");
-
-        using var response = await Http.PostAsync($"{BaseUrl}/version_files/update", content,
-            cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await PostJsonAsync("/version_files/update",
+            JsonSerializer.Serialize(payload), cancellationToken);
         var result = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 

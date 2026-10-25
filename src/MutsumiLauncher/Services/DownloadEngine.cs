@@ -12,6 +12,10 @@ public sealed record DownloadProgress(long Received, long Total, double BytesPer
 /// <summary>所有下载源都不支持分段下载。</summary>
 public sealed class RangeNotSupportedException(string message) : Exception(message);
 
+/// <summary>所有下载源都试过了仍然失败（会触发最后一轮"单线程不续传"重试）。</summary>
+public sealed class DownloadExhaustedException(string message, Exception? inner = null)
+    : IOException(message, inner);
+
 /// <summary>
 /// 参考 PCL2 的下载引擎：
 /// - 全局线程槽位；
@@ -26,6 +30,14 @@ public static class DownloadEngine
 
     private static readonly SemaphoreSlim Slots = new(MaxThreads, MaxThreads);
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(30));
+
+    /// <summary>国内镜像走直连：auto 模式下系统代理常常和 BMCLAPI / MCIM 握手失败。</summary>
+    private static readonly HttpClient DirectHttp =
+        HttpUtil.Create(TimeSpan.FromMinutes(30), forceDirect: true);
+
+    private static bool IsDomesticMirror(string url)
+        => url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
+           || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> NoSplitHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -62,23 +74,38 @@ public static class DownloadEngine
         var pool = new SourcePool(endpoints);
         var size = expectedSize ?? await ProbeSizeAsync(pool, cancellationToken);
 
-        if (size is >= MinSplitSize && pool.HasSplitSource)
+        while (true)
         {
             try
             {
-                await DownloadRangedAsync(pool, targetPath, size.Value, sha1, progress,
+                if (!pool.SingleThreadOnly && size is >= MinSplitSize && pool.HasSplitSource)
+                {
+                    try
+                    {
+                        await DownloadRangedAsync(pool, targetPath, size.Value, sha1, progress,
+                            cancellationToken);
+
+                        return targetPath;
+                    }
+                    catch (RangeNotSupportedException ex)
+                    {
+                        AppLog.Info($"range unsupported, fallback single: {ex.Message}");
+                    }
+                }
+
+                await DownloadSingleAsync(pool, targetPath, sha1, expectedSize, progress,
                     cancellationToken);
 
                 return targetPath;
             }
-            catch (RangeNotSupportedException ex)
+            catch (DownloadExhaustedException) when (pool.CanRetryAsOnce)
             {
-                AppLog.Info($"range unsupported, fallback single: {ex.Message}");
+                // 所有源都失败过一次：把所有源重新启用，降级为「单线程 + 不续传」再试一轮。
+                // 一部分源在多线程下会返回坏数据、或者 Range 行为异常，单线程能救回来（PCL2 同款策略）。
+                AppLog.Info($"all sources failed, retrying single-thread: {Path.GetFileName(targetPath)}");
+                pool.BeginFallbackRound();
             }
         }
-
-        await DownloadSingleAsync(pool, targetPath, sha1, expectedSize, progress, cancellationToken);
-        return targetPath;
     }
 
     private static async Task<long?> ProbeSizeAsync(SourcePool pool, CancellationToken cancellationToken)
@@ -125,7 +152,9 @@ public static class DownloadEngine
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, endpoint.TimeoutSeconds)));
 
-        return await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        var client = HttpUtil.Mode == "auto" && IsDomesticMirror(endpoint.Url) ? DirectHttp : Http;
+
+        return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
     }
 
     private static async Task<int> ReadWithTimeoutAsync(Stream stream, byte[] buffer,
@@ -155,7 +184,7 @@ public static class DownloadEngine
             var endpoint = pool.Next(needSplit: false);
 
             if (endpoint is null)
-                throw new IOException(
+                throw new DownloadExhaustedException(
                     $"下载失败：{Path.GetFileName(targetPath)}（{lastError?.Message}）", lastError);
 
             TryDelete(temp);
@@ -227,7 +256,7 @@ public static class DownloadEngine
             catch (Exception ex)
             {
                 lastError = ex;
-                pool.Fail(endpoint);
+                pool.Fail(endpoint, ex);
                 AppLog.Error(ex, $"single download failed: {endpoint.Url}");
             }
         }
@@ -342,7 +371,7 @@ public static class DownloadEngine
             catch (Exception ex)
             {
                 lastError = ex;
-                pool.Fail(endpoint);
+                pool.Fail(endpoint, ex);
                 AppLog.Error(ex, $"piece {start}-{end} failed: {endpoint.Url}");
             }
         }
@@ -443,10 +472,45 @@ public static class DownloadEngine
         private readonly object _lock = new();
         private readonly List<Source> _sources;
         private int _cursor;
+        private bool _fallbackRound;
 
         public SourcePool(IReadOnlyList<DownloadEndpoint> endpoints)
         {
             _sources = endpoints.Select(endpoint => new Source(endpoint)).ToList();
+        }
+
+        /// <summary>当前是否处于「不续传、只单线程」的兜底重试轮。</summary>
+        public bool SingleThreadOnly
+        {
+            get
+            {
+                lock (_lock) return _fallbackRound;
+            }
+        }
+
+        /// <summary>是否还能再降级重试一次。</summary>
+        public bool CanRetryAsOnce
+        {
+            get
+            {
+                lock (_lock) return !_fallbackRound && _sources.Count > 0;
+            }
+        }
+
+        /// <summary>进入兜底轮：所有源重新启用，并且只允许单线程下载。</summary>
+        public void BeginFallbackRound()
+        {
+            lock (_lock)
+            {
+                _fallbackRound = true;
+                _cursor = 0;
+
+                foreach (var source in _sources)
+                {
+                    source.Disabled = false;
+                    source.FailCount = 0;
+                }
+            }
         }
 
         public bool HasSplitSource
@@ -485,7 +549,7 @@ public static class DownloadEngine
             }
         }
 
-        public void Fail(DownloadEndpoint endpoint)
+        public void Fail(DownloadEndpoint endpoint, Exception? exception = null)
         {
             lock (_lock)
             {
@@ -494,8 +558,43 @@ public static class DownloadEngine
 
                 source.FailCount++;
 
-                if (source.FailCount >= 3)
+                if (source.FailCount >= 3 || IsPermanentFailure(source, exception))
                     source.Disabled = true;
+            }
+        }
+
+        /// <summary>
+        /// 一次就放弃某个源的错误：地址不存在、网关错误、Range 冲突、校验失败，
+        /// 以及非 BMCLAPI 源的 403/429（BMCLAPI 限流是临时的，不该因此禁用）。
+        /// </summary>
+        private static bool IsPermanentFailure(Source source, Exception? exception)
+        {
+            switch (exception)
+            {
+                case null:
+                    return false;
+
+                case InvalidDataException:
+                    // 校验失败 / 长度不符：这个源给出的内容不可信
+                    return true;
+
+                case HttpRequestException http:
+                {
+                    var status = http.StatusCode;
+
+                    if (status is HttpStatusCode.NotFound
+                        or HttpStatusCode.BadGateway
+                        or HttpStatusCode.RequestedRangeNotSatisfiable)
+                        return true;
+
+                    if (status is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
+                        return !source.Host.Contains("bmclapi", StringComparison.OrdinalIgnoreCase);
+
+                    return false;
+                }
+
+                default:
+                    return false;
             }
         }
 

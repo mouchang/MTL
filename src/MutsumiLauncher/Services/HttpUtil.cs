@@ -50,7 +50,9 @@ public static class HttpUtil
         }
     }
 
-    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null)
+    /// <param name="forceDirect">跳过代理直接连接（国内镜像域名走代理反而容易 SSL 握手失败）。</param>
+    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
+        bool forceDirect = false)
     {
         var config = AppConfig.Current;
 
@@ -63,7 +65,7 @@ public static class HttpUtil
 
         var usingProxy = false;
 
-        switch (Mode)
+        switch (forceDirect ? "direct" : Mode)
         {
             case "auto" when SystemProxyReachable():
             case "system":
