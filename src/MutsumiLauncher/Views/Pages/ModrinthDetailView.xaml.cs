@@ -197,9 +197,7 @@ public partial class ModrinthDetailView : UserControl
             TabPanel.Children.Add(button);
         }
 
-        VersionSourceText.Text = CurseForgeClient.IsConfigured
-            ? $"版本来源：Modrinth（{versions.Count} 个版本）+ CurseForge（CF 匹配接入中）"
-            : $"版本来源：Modrinth（{versions.Count} 个版本）· CurseForge 待配置 API Key";
+        VersionSourceText.Text = $"版本来源：Modrinth（{versions.Count} 个版本）";
 
         HighlightTabs();
     }

@@ -17,4 +17,17 @@
     <Resource Include="Assets\**\*" />
   </ItemGroup>
 
+  <!-- 精简版 Windows 可能没有 VC++ 运行库：发布时放进程序目录，避免“缺少 vcruntime140.dll” -->
+  <Target Name="CopyVCRuntime" AfterTargets="Publish">
+    <ItemGroup>
+      <VCRuntimeDll Include="$(WINDIR)/System32/vcruntime140.dll" />
+      <VCRuntimeDll Include="$(WINDIR)/System32/vcruntime140_1.dll" />
+      <VCRuntimeDll Include="$(WINDIR)/System32/msvcp140.dll" />
+      <VCRuntimeDll Include="$(WINDIR)/System32/msvcp140_1.dll" />
+      <VCRuntimeDll Include="$(WINDIR)/System32/msvcp140_2.dll" />
+      <VCRuntimeDll Include="$(WINDIR)/System32/concrt140.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(VCRuntimeDll)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" Condition="Exists('%(VCRuntimeDll.Identity)')" />
+  </Target>
+
 </Project>

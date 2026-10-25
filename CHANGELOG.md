@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 兼容性
+- 启动器改为 `asInvoker`（UAC 被关闭 / 标准用户也能启动）
+- 发布包附带 VC++ 运行库（vcruntime140 / msvcp140），修复精简版 Windows 缺少 DLL
+- 启动失败时写 `startup-error.log` 并弹窗
+
+### 清理
+- 移除旧自定义安装器项目、Inno Setup 脚本
+- 移除未使用的占位数据（CommunitySamples / ModItem）、CurseForge 空壳、废弃配置字段与图片
+
 ### 计划中
 - 微软正版登录（等待 Mojang 应用审核）
 - CurseForge 搜索 / 整合包

@@ -28,7 +28,6 @@ dotnet run --project src/MutsumiLauncher
 
 ```text
 src/MutsumiLauncher/          启动器主程序（WPF）
-src/MutsumiLauncher.Setup/    旧版自定义安装器（保留）
 installer/                    NSIS 安装脚本
 worker/                       Cloudflare Worker（更新 / NeoForge 反代）
 docs/                         文档与截图

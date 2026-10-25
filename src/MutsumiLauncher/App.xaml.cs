@@ -1,6 +1,6 @@
+using System.IO;
 using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
 using MutsumiLauncher.Services;
 
 namespace MutsumiLauncher;
@@ -9,25 +9,80 @@ public partial class App : Application
 {
     private static Mutex? _singleInstance;
 
+    public App()
+    {
+        // 兜底：启动阶段（加载 XAML/资源）出错时至少留下日志，方便在别的机器上排查
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            WriteStartupError(args.ExceptionObject as Exception);
+
+        DispatcherUnhandledException += (_, args) =>
+            WriteStartupError(args.Exception);
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
-        _singleInstance = new Mutex(true, "MutsumiLauncher.SingleInstance", out var isFirst);
-        if (!isFirst)
+        try
         {
-            Shutdown();
-            return;
+            _singleInstance = new Mutex(true, "MutsumiLauncher.SingleInstance", out var isFirst);
+            if (!isFirst)
+            {
+                Shutdown();
+                return;
+            }
+
+            NormalizePath();
+            GamePaths.MigrateFromAppDataIfNeeded();
+
+            base.OnStartup(e);
+            AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");
+            Exit += (_, _) => _singleInstance?.ReleaseMutex();
+        }
+        catch (Exception ex)
+        {
+            WriteStartupError(ex);
+            Shutdown(1);
+        }
+    }
+
+    /// <summary>启动失败时写日志并弹窗，避免精简版系统上双击没反应、无从排查。</summary>
+    private static void WriteStartupError(Exception? exception)
+    {
+        if (exception is null) return;
+
+        var details = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}{exception}";
+        var candidates = new List<string>
+        {
+            Path.Combine(AppContext.BaseDirectory, "startup-error.log"),
+            Path.Combine(Path.GetTempPath(), "MutsumiLauncher-startup-error.log"),
+        };
+
+        foreach (var path in candidates)
+        {
+            try
+            {
+                File.AppendAllText(path, details + Environment.NewLine);
+                break;
+            }
+            catch
+            {
+                // 换下一个位置
+            }
         }
 
-        NormalizePath();
-        GamePaths.MigrateFromAppDataIfNeeded();
-
-        base.OnStartup(e);
-        AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");
-        DispatcherUnhandledException += OnDispatcherUnhandledException;
-        Exit += (_, _) => _singleInstance?.ReleaseMutex();
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
-            AppLog.Error(args.ExceptionObject as Exception ?? new Exception("Unknown unhandled exception"));
+        try
+        {
+            MessageBox.Show(
+                $"启动失败：{exception.Message}\n\n详细信息已写入：{candidates[0]}",
+                "Mutsumi Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        catch
+        {
+            // 连弹窗都失败就算了
+        }
     }
+
 
     /// <summary>清理从 MSYS/Git 继承的 PATH，避免子进程加载到错误 DLL（0xc0000142）。</summary>
     private static void NormalizePath()
@@ -52,14 +107,4 @@ public partial class App : Application
         }
     }
 
-    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
-    {
-        AppLog.Error(e.Exception);
-        MessageBox.Show(
-            $"出了点问题：{e.Exception.Message}\n\n日志已写入：{AppLog.LogPath}",
-            "Mutsumi Launcher",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
-        e.Handled = true;
-    }
 }

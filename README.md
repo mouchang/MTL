@@ -40,6 +40,7 @@
 - 内置日志查看器、文件夹浏览器（不依赖系统资源管理器）
 
 ### 发布
+- **兼容精简版 Windows**：启动器不需要管理员权限，自带 VC++ 运行库，启动失败会写 `startup-error.log`
 - NSIS 单文件安装器：自包含、无需 .NET 运行时、带卸载与快捷方式
 - 自动更新：GitHub Releases + 可选 Cloudflare Worker 代理，失败自动直连回退
 - GitHub Actions：push 自动编译，推 `v*` tag 自动构建并发布安装包
@@ -76,7 +77,7 @@
 | UI | WPF，无边框圆角窗口 + 自绘标题栏、玻璃拟态控件 |
 | 第三方依赖 | **零**（优先官方 API / 自绘控件） |
 | 架构 | 视图 + 轻量 ViewModel；页面级 UserControl 切换 |
-| 安装包 | NSIS（自包含，42 MB） |
+| 安装包 | NSIS（自包含，约 43 MB，附 VC++ 运行库） |
 
 ## 运行与构建
 
@@ -113,7 +114,6 @@ MutsumiLauncher/
 │  ├─ Services/                 # 安装、启动、下载、更新、账号等核心逻辑
 │  ├─ Assets/                   # 背景、头像、图标
 │  └─ app.manifest              # PerMonitorV2 DPI + 管理员权限
-├─ src/MutsumiLauncher.Setup/    # 旧版自定义安装器（保留）
 ├─ installer/MutsumiLauncher.nsi # NSIS 安装脚本
 ├─ worker/                       # Cloudflare Worker（更新代理 / NeoForge 反代）
 ├─ docs/                         # 文档与界面截图

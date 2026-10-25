@@ -17,10 +17,6 @@ public sealed class AppConfig
 
     public bool VersionIsolation { get; set; } = true;
 
-    public string WindowTitle { get; set; } = string.Empty;
-
-    public string CustomInfo { get; set; } = "MTL";
-
     public List<Account> Accounts { get; set; } = [];
 
     public string SelectedAccount { get; set; } = string.Empty;
@@ -30,9 +26,6 @@ public sealed class AppConfig
 
     /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
     public string ModrinthToken { get; set; } = string.Empty;
-
-    /// <summary>CurseForge API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。</summary>
-    public string CurseForgeApiKey { get; set; } = string.Empty;
 
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
