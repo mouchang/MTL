@@ -80,6 +80,7 @@ public partial class ModrinthDetailView : UserControl
     private string _loaderFilter = string.Empty;
     private readonly Stack<(ModrinthItem Item, string? GameVersion)> _history = new();
     private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, CurseForgeModDetail?> _curseForgeCache = [];
     private Action? _onBack;
     private Action<string>? _toast;
     private string _curseForgeUrl = string.Empty;
@@ -213,7 +214,15 @@ public partial class ModrinthDetailView : UserControl
                     Hashes = new ModrinthHashes { Sha1 = file.Sha1 },
                 },
             ],
-            Dependencies = [],
+            Dependencies = file.Dependencies
+                .Where(dependency => dependency.RelationType is 2 or 3)
+                .Select(dependency => new ModrinthDependency
+                {
+                    ProjectId = dependency.ModId.ToString(),
+                    DependencyType = dependency.RelationType == 3 ? "required" : "optional",
+                })
+                .DistinctBy(dependency => dependency.ProjectId)
+                .ToList(),
         }).ToList();
 
         AppLog.Info($"curseforge detail: {item.Title}, files={_versions.Count}");
@@ -373,8 +382,22 @@ public partial class ModrinthDetailView : UserControl
 
             try
             {
-                var project = await GetProjectCachedAsync(dependency.ProjectId!);
-                title = project?.Title ?? dependency.ProjectId!;
+                if (_item?.Source == "curseforge"
+                    && int.TryParse(dependency.ProjectId, out var curseForgeId))
+                {
+                    if (!_curseForgeCache.TryGetValue(curseForgeId, out var mod))
+                    {
+                        mod = await _curseForge.GetModAsync(curseForgeId);
+                        _curseForgeCache[curseForgeId] = mod;
+                    }
+
+                    title = mod?.Name ?? dependency.ProjectId!;
+                }
+                else
+                {
+                    var project = await GetProjectCachedAsync(dependency.ProjectId!);
+                    title = project?.Title ?? dependency.ProjectId!;
+                }
             }
             catch (Exception ex)
             {
@@ -403,7 +426,29 @@ public partial class ModrinthDetailView : UserControl
 
     private async void Dependency_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: DependencyChip chip }) return;
+        if (sender is not Button { Tag: DependencyChip chip } || _item is null) return;
+
+        if (_item.Source == "curseforge")
+        {
+            var title = chip.Label
+                .Replace("前置：", string.Empty)
+                .Replace("可选：", string.Empty);
+
+            var item = new ModrinthItem
+            {
+                Source = "curseforge",
+                Hit = new ModrinthHit
+                {
+                    ProjectId = chip.ProjectId,
+                    Title = title,
+                    ProjectType = _item.Hit.ProjectType,
+                },
+            };
+
+            _history.Push((_item, _currentGameVersion));
+            await LoadAsync(item, _currentGameVersion, _onBack!, _toast!, _targetInstance);
+            return;
+        }
 
         try
         {

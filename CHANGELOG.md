@@ -8,7 +8,7 @@
 ### 新增
 - 原版资源默认切换为 MC 光速镜像（bsmirror.hkmc.online）
 - 社区资源默认「聚合」：同时展示 Modrinth 与 CurseForge，并标注来源
-- CurseForge 走 MCIM 镜像，详情/版本/安装与 Modrinth 共用同一套界面
+- CurseForge 走 MCIM 镜像，详情/版本/安装/前置依赖与 Modrinth 共用同一套界面
 
 ### 兼容性
 - 发布包附带 VC++ 运行库（vcruntime140 / msvcp140），修复精简版 Windows 缺少 DLL

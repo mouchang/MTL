@@ -12,6 +12,8 @@ public sealed record CurseForgeMod(
     string Author,
     long Downloads);
 
+public sealed record CurseForgeDependency(int ModId, int RelationType);
+
 public sealed record CurseForgeFile(
     int Id,
     string FileName,
@@ -22,7 +24,8 @@ public sealed record CurseForgeFile(
     string ReleaseType,
     DateTimeOffset FileDate,
     IReadOnlyList<string> GameVersions,
-    IReadOnlyList<string> Loaders);
+    IReadOnlyList<string> Loaders,
+    IReadOnlyList<CurseForgeDependency> Dependencies);
 
 public sealed record CurseForgeModDetail(
     int Id,
@@ -195,7 +198,8 @@ public sealed class CurseForgeClient
                     ? date
                     : DateTimeOffset.MinValue,
                 mcVersions,
-                loaders));
+                loaders,
+                Dependencies(item)));
         }
 
         return files;
@@ -251,6 +255,25 @@ public sealed class CurseForgeClient
         item.TryGetProperty("links", out var links) && links.ValueKind == JsonValueKind.Object
             ? Text(links, "websiteUrl")
             : string.Empty;
+
+    private static IReadOnlyList<CurseForgeDependency> Dependencies(JsonElement file)
+    {
+        if (!file.TryGetProperty("dependencies", out var dependencies)
+            || dependencies.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var result = new List<CurseForgeDependency>();
+
+        foreach (var dependency in dependencies.EnumerateArray())
+        {
+            var modId = Int(dependency, "modId");
+            if (modId == 0) continue;
+
+            result.Add(new CurseForgeDependency(modId, Int(dependency, "relationType")));
+        }
+
+        return result;
+    }
 
     private static string? Logo(JsonElement element) =>
         element.TryGetProperty("logo", out var logo) && logo.ValueKind == JsonValueKind.Object
