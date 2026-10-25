@@ -6,7 +6,6 @@
 ## [Unreleased]
 
 ### 兼容性
-- 启动器改为 `asInvoker`（UAC 被关闭 / 标准用户也能启动）
 - 发布包附带 VC++ 运行库（vcruntime140 / msvcp140），修复精简版 Windows 缺少 DLL
 - 启动失败时写 `startup-error.log` 并弹窗
 

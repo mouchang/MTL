@@ -46,7 +46,7 @@ dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj `
 | 问题 | 处理 |
 | --- | --- |
 | 缺少 `vcruntime140.dll` / `msvcp140.dll` | 发布时会把 VC++ 运行库复制到程序目录（`CopyVCRuntime` target） |
-| UAC 被关闭，`requireAdministrator` 程序无法启动 | 启动器本体现为 `asInvoker`，只有安装器需要管理员 |
+| UAC 被关闭 / 非管理员 | 启动器与安装器都需要管理员权限，请右键“以管理员身份运行” |
 | 游戏数据在 Program Files 不可写 | `GamePaths` 自动回退 `%APPDATA%\.mutsumi` |
 | 启动失败但无提示 | 会在程序目录或 `%TEMP%` 写 `startup-error.log` 并弹窗 |
 

@@ -40,7 +40,7 @@
 - 内置日志查看器、文件夹浏览器（不依赖系统资源管理器）
 
 ### 发布
-- **兼容精简版 Windows**：启动器不需要管理员权限，自带 VC++ 运行库，启动失败会写 `startup-error.log`
+- **兼容精简版 Windows**：自带 VC++ 运行库，启动失败会写 `startup-error.log`
 - NSIS 单文件安装器：自包含、无需 .NET 运行时、带卸载与快捷方式
 - 自动更新：GitHub Releases + 可选 Cloudflare Worker 代理，失败自动直连回退
 - GitHub Actions：push 自动编译，推 `v*` tag 自动构建并发布安装包
