@@ -143,69 +143,118 @@ public sealed class CurseForgeClient
             Website(data));
     }
 
+    /// <summary>单页条数。CurseForge 接口单页最多 50，想拿全只能翻页。</summary>
+    private const int FilePageSize = 50;
+
+    /// <summary>最多翻取的文件数。热门 Mod 有几万个文件，没必要全拉（也拉不完）。</summary>
+    private const int MaxFiles = 300;
+
+    /// <summary>
+    /// 拉取某个项目的文件列表。
+    /// 之前只请求第一页（50 个），像 JEI 这种 3900+ 文件的项目拿到的版本是残缺的；
+    /// 这里按页翻到够用为止，并像 PCL2 那样对「空页 / 少返回」重试。
+    /// </summary>
     public async Task<IReadOnlyList<CurseForgeFile>> GetFilesAsync(int modId, string? gameVersion,
         int? loaderType, CancellationToken cancellationToken = default)
     {
-        var parameters = new List<string> { "pageSize=50" };
-
-        if (!string.IsNullOrWhiteSpace(gameVersion))
-            parameters.Add("gameVersion=" + Uri.EscapeDataString(gameVersion));
-
-        if (loaderType is { } loader)
-            parameters.Add("modLoaderType=" + loader);
-
-        var url = $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files?"
-                  + string.Join('&', parameters);
-
-        using var document = await GetAsync(url, cancellationToken);
-
-        if (!document.RootElement.TryGetProperty("data", out var data)
-            || data.ValueKind != JsonValueKind.Array)
-            return [];
-
         var files = new List<CurseForgeFile>();
+        var seen = new HashSet<int>();
+        var index = 0;
+        var total = -1;
 
-        foreach (var item in data.EnumerateArray())
+        for (var page = 0; page < MaxFiles / FilePageSize; page++)
         {
-            var downloadUrl = Text(item, "downloadUrl");
-            if (string.IsNullOrWhiteSpace(downloadUrl)) continue;
+            var (parsed, rawCount, totalCount) =
+                await RequestFilesAsync(modId, gameVersion, loaderType, index, cancellationToken);
 
-            var gameVersions = Strings(item, "gameVersions");
-            var loaders = gameVersions
-                .Where(IsLoaderName)
-                .Select(loader => loader.ToLowerInvariant())
-                .ToList();
+            if (rawCount == 0) break;
 
-            var mcVersions = gameVersions
-                .Where(version => !IsLoaderName(version))
-                .Where(version => !version.Equals("Client", StringComparison.OrdinalIgnoreCase)
-                                  && !version.Equals("Server", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            foreach (var file in parsed)
+                if (seen.Add(file.Id)) files.Add(file);
 
-            var releaseType = Int(item, "releaseType") switch
-            {
-                1 => "release",
-                2 => "beta",
-                _ => "alpha",
-            };
+            index += rawCount;
+            if (totalCount > 0) total = totalCount;
 
-            files.Add(new CurseForgeFile(
-                Int(item, "id"),
-                Text(item, "fileName"),
-                Text(item, "displayName"),
-                downloadUrl,
-                Sha1(item),
-                Long(item, "fileLength"),
-                releaseType,
-                DateTimeOffset.TryParse(Text(item, "fileDate"), out var date)
-                    ? date
-                    : DateTimeOffset.MinValue,
-                mcVersions,
-                loaders,
-                Dependencies(item)));
+            if (total >= 0 && index >= total) break;
+            if (files.Count >= MaxFiles) break;
         }
 
+        if (total > files.Count)
+            AppLog.Info($"curseforge files: mod {modId} 取到 {files.Count} 个（共 {total} 个，已截断）");
+        else
+            AppLog.Info($"curseforge files: mod {modId} 取到 {files.Count} 个");
+
         return files;
+    }
+
+    private async Task<(List<CurseForgeFile> Files, int RawCount, int Total)> RequestFilesAsync(
+        int modId, string? gameVersion, int? loaderType, int index, CancellationToken cancellationToken)
+    {
+        Exception? last = null;
+
+        for (var retry = 0; retry < 3; retry++)
+        {
+            var parameters = new List<string> { $"pageSize={FilePageSize + retry}" };
+
+            if (!string.IsNullOrWhiteSpace(gameVersion))
+                parameters.Add("gameVersion=" + Uri.EscapeDataString(gameVersion));
+
+            if (loaderType is { } loader)
+                parameters.Add("modLoaderType=" + loader);
+
+            if (index > 0) parameters.Add("index=" + index);
+
+            var url = $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files?"
+                      + string.Join('&', parameters);
+
+            try
+            {
+                using var document = await GetAsync(url, cancellationToken);
+
+                if (!document.RootElement.TryGetProperty("data", out var data)
+                    || data.ValueKind != JsonValueKind.Array)
+                    return ([], 0, -1);
+
+                var rawCount = data.GetArrayLength();
+                var parsed = new List<CurseForgeFile>();
+
+                foreach (var item in data.EnumerateArray())
+                {
+                    var file = ParseFile(item);
+                    if (file is not null) parsed.Add(file);
+                }
+
+                var total = document.RootElement.TryGetProperty("pagination", out var pagination)
+                            && pagination.ValueKind == JsonValueKind.Object
+                    ? (int)Long(pagination, "totalCount")
+                    : -1;
+
+                // 总量还有却返回空页：接口抽风了，重试（PCL2 的「分页缺失」处理）
+                if (rawCount == 0 && total > index && retry < 2)
+                {
+                    AppLog.Info($"curseforge files 返回空页（index {index} / total {total}），重试");
+                    await Task.Delay(300 * (retry + 1), cancellationToken);
+                    continue;
+                }
+
+                return (parsed, rawCount, total);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"curseforge files {url}");
+                await Task.Delay(300 * (retry + 1), cancellationToken);
+            }
+        }
+
+        if (last is not null)
+            throw new InvalidOperationException("CurseForge 文件列表获取失败：" + last.Message, last);
+
+        return ([], 0, -1);
     }
 
     public async Task<CurseForgeFile?> GetFileAsync(int modId, int fileId,

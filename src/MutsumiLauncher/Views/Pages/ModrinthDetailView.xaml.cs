@@ -189,14 +189,11 @@ public partial class ModrinthDetailView : UserControl
         TabPanel.ColumnDefinitions.Clear();
         TabPanel.RowDefinitions.Clear();
 
-        var versions = _versions
-            .SelectMany(v => v.GameVersions)
-            .Distinct()
-            .OrderByDescending(ParseGameVersion)
-            .ToList();
+        var versions = GameVersionTags.Arrange(
+            _versions.SelectMany(v => v.GameVersions), _item?.Hit.ProjectType);
 
         var labels = new List<(string Text, string? Value)> { ("全部", null) };
-        labels.AddRange(versions.Select(v => (v, (string?)v)));
+        labels.AddRange(versions.Select(v => (GameVersionTags.Display(v), (string?)v)));
 
         var columns = (int)Math.Ceiling(labels.Count / 2.0);
         for (var i = 0; i < columns; i++) TabPanel.ColumnDefinitions.Add(new ColumnDefinition());
@@ -416,15 +413,6 @@ public partial class ModrinthDetailView : UserControl
         {
             AppLog.Error(ex, "select loader filter");
         }
-    }
-
-    private static double ParseGameVersion(string version)
-    {
-        var parts = version.Split('.', '-');
-        return parts.Length >= 2 && double.TryParse(parts[0], out var major)
-                               && double.TryParse(parts[1], out var minor)
-            ? major * 100 + minor
-            : 0;
     }
 
     private async void InstallFile_Click(object sender, RoutedEventArgs e)
