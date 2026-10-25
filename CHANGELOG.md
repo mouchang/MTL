@@ -15,6 +15,9 @@
 
 ## [Unreleased]
 
+### 修复
+- 原版镜像回退 BMCLAPI（MC 光速镜像国内不可达）
+
 ### 计划中
 - 微软登录（等待 Mojang 应用审核）
 - OptiFine 安装

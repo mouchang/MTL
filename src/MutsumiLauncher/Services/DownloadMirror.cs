@@ -1,9 +1,9 @@
 namespace MutsumiLauncher.Services;
 
-/// <summary>下载源：原版走 MC 光速镜像，社区走 MCIM（可在配置里切回官方）。</summary>
+/// <summary>下载源：原版走 BMCLAPI，社区走 MCIM（可在配置里切回官方）。</summary>
 public static class DownloadMirror
 {
-    public const string MirrorBase = "https://bsmirror.hkmc.online";
+    public const string MirrorBase = "https://bmclapi2.bangbang93.com";
 
     public const string McimBase = "https://mod.mcimirror.top";
 
@@ -27,7 +27,7 @@ public static class DownloadMirror
     public static string ClientUrl(string id, string officialUrl) =>
         UseMirror ? $"{MirrorBase}/version/{id}/client" : officialUrl;
 
-    /// <summary>libraries.minecraft.net 的资源走光速镜像的 maven 路由。</summary>
+    /// <summary>libraries.minecraft.net 的资源走 BMCLAPI 的 maven 路由。</summary>
     public static string LibraryUrl(string? officialUrl, string? path)
     {
         if (!UseMirror || string.IsNullOrWhiteSpace(officialUrl) || string.IsNullOrWhiteSpace(path))
