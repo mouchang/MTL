@@ -30,9 +30,6 @@ public static class DownloadSources
 
     public const string OfficialModrinthApi = "https://api.modrinth.com/v2";
 
-    /// <summary>MCIM 的 Modrinth API 镜像（PCL2 同样把 api.modrinth.com 映射到这里）。</summary>
-    public const string McimModrinthApi = Mcim + "/modrinth/v2";
-
     /// <summary>自建 Cloudflare Worker：墙外回源 + 边缘缓存，官方 CDN 直连不通时兜底。</summary>
     public const string WorkerProxy = "https://mtl.dpdns.org";
 
@@ -58,13 +55,6 @@ public static class DownloadSources
     /// <summary>版本清单源偏好：auto / official / mirror（与原文件下载分开设置）。</summary>
     private static string ListMode =>
         Normalize(AppConfig.Current.VanillaListMirror);
-
-    private static bool ModAuto =>
-        string.IsNullOrWhiteSpace(AppConfig.Current.ModMirror)
-        || AppConfig.Current.ModMirror.Equals("auto", StringComparison.OrdinalIgnoreCase);
-
-    private static bool ModMirrorFirst =>
-        AppConfig.Current.ModMirror.Equals("mcim", StringComparison.OrdinalIgnoreCase);
 
     private static string Normalize(string? mode)
     {
@@ -197,25 +187,11 @@ public static class DownloadSources
     {
         if (string.IsNullOrWhiteSpace(officialUrl)) return [];
 
+        // MCIM 已移除：它只是个 302 跳转器，还会给半截文件和错文件名。
+        // 现在只走 官方 CDN + 自建 Worker 镜像（墙外回源 + 边缘缓存）。
         var urls = new List<string>();
-
-        if (ModMirrorFirst)
-        {
-            urls.AddRange(McimVariants(officialUrl));
-            urls.AddRange(WorkerVariants(officialUrl));
-            urls.AddRange(OfficialVariants(officialUrl));
-        }
-        else if (!ModAuto)
-        {
-            urls.AddRange(OfficialVariants(officialUrl));
-        }
-        else
-        {
-            // 官方直连不通是常态，自建 Worker 镜像紧跟在官方后面
-            urls.AddRange(OfficialVariants(officialUrl));
-            urls.AddRange(WorkerVariants(officialUrl));
-            urls.AddRange(McimVariants(officialUrl));
-        }
+        urls.AddRange(OfficialVariants(officialUrl));
+        urls.AddRange(WorkerVariants(officialUrl));
 
         return urls
             .Where(url => !string.IsNullOrWhiteSpace(url))
@@ -261,22 +237,13 @@ public static class DownloadSources
         }
     }
 
-    private static IEnumerable<string> McimVariants(string url)
-    {
-        var mirror = McimFileUrl(url);
-        if (!string.IsNullOrWhiteSpace(mirror)) yield return mirror;
-    }
-
-    /// <summary>Modrinth API 地址列表：auto 官方优先、mcim 镜像优先，都会互相回退。</summary>
-    public static IReadOnlyList<string> ModrinthApiBases => ModMirrorFirst
-        ? [McimModrinthApi, OfficialModrinthApi]
-        : ModAuto
-            ? [OfficialModrinthApi, McimModrinthApi]
-            : [OfficialModrinthApi];
+    /// <summary>Modrinth API 地址（MCIM 镜像已移除，只走官方）。</summary>
+    public static IReadOnlyList<string> ModrinthApiBases => [OfficialModrinthApi];
 
     public static string ModrinthApiBase => ModrinthApiBases[0];
 
-    // 没有 API Key 之前，CurseForge 元数据继续走 MCIM 镜像
+    // 注意：这不是文件下载源。没有 CurseForge API Key 之前，
+    // 搜索 / 项目详情这类「元数据」只能走 MCIM 的 CurseForge 接口（返回的是 JSON，量很小）。
     public static string CurseForgeApiBase => $"{Mcim}/curseforge/v1";
 
     public static IReadOnlyList<DownloadEndpoint> ForgeInstaller(string gameVersion, string loaderVersion)
@@ -292,47 +259,6 @@ public static class DownloadSources
     public static IReadOnlyList<DownloadEndpoint> FabricMetaEndpoints()
         => Order(new DownloadEndpoint(FabricMetaBase, 15),
             new DownloadEndpoint(FabricMetaMirror, 15), FileMode);
-
-    /// <summary>把社区下载地址换成 MCIM 镜像（不支持的地址原样返回）。</summary>
-    public static string McimFileUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) return url;
-
-        var replaced = url
-            .Replace("https://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("http://cdn.modrinth.com", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("https://edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("http://edge.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("https://mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("http://mediafilez.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("https://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase)
-            .Replace("http://media.forgecdn.net", Mcim, StringComparison.OrdinalIgnoreCase);
-
-        if (replaced.Equals(url, StringComparison.OrdinalIgnoreCase)) return url;
-
-        // MCIM 不认 URL 编码后的文件名（fabric-api-0.116.17%2B1.21.1.jar 这种），
-        // 必须传解码后的名字（PCL2 同样处理）
-        try
-        {
-            var uri = new Uri(replaced);
-            var path = uri.AbsolutePath;
-            var slash = path.LastIndexOf('/');
-            if (slash < 0 || slash >= path.Length - 1) return replaced;
-
-            var name = path[(slash + 1)..];
-            var decoded = Uri.UnescapeDataString(name);
-
-            // 解码后带空格 / 井号之类就别动了，保持编码形态
-            if (decoded.Any(char.IsWhiteSpace) || decoded.Contains('#') || decoded.Contains('?'))
-                return replaced;
-
-            return uri.GetLeftPart(UriPartial.Authority) + path[..(slash + 1)] + decoded;
-        }
-        catch
-        {
-            return replaced;
-        }
-    }
 
     private static string HostOf(string url)
         => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : string.Empty;

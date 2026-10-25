@@ -50,8 +50,7 @@ public partial class SettingsPage : UserControl
         var mod = modMode switch
         {
             "official" => "官方源",
-            "mcim" => "镜像（MCIM）",
-            _ => "自动（官方优先，MCIM 回退）",
+            _ => "自动（官方优先，自建镜像回退）",
         };
 
         SourceSummary.Text = $"原版文件：{vanilla}  ·  版本清单：{list}  ·  社区资源：{mod}";

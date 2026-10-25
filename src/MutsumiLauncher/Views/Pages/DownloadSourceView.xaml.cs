@@ -35,9 +35,8 @@ public partial class DownloadSourceView : UserControl
         Highlight(ListAuto, ListAutoCheck, list is not ("official" or "mirror"));
         Highlight(ListOfficial, ListOfficialCheck, list == "official");
         Highlight(ListMirror, ListMirrorCheck, list == "mirror");
-        Highlight(ModAuto, ModAutoCheck, mod is not ("official" or "mcim"));
+        Highlight(ModAuto, ModAutoCheck, mod != "official");
         Highlight(ModOfficial, ModOfficialCheck, mod == "official");
-        Highlight(ModMirror, ModMirrorCheck, mod == "mcim");
 
         var mode = (config.NetworkMode ?? "direct").Trim().ToLowerInvariant();
         Highlight(ProxyAuto, ProxyAutoCheck, mode == "auto");
@@ -100,8 +99,6 @@ public partial class DownloadSourceView : UserControl
     private void ModAuto_Click(object sender, RoutedEventArgs e) => SetMod("auto");
 
     private void ModOfficial_Click(object sender, RoutedEventArgs e) => SetMod("official");
-
-    private void ModMirror_Click(object sender, RoutedEventArgs e) => SetMod("mcim");
 
     private void SetVanilla(string value)
     {

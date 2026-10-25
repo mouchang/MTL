@@ -151,8 +151,8 @@
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="社区资源" Style="{StaticResource H2}" />
-                <TextBlock Text="Modrinth 的搜索接口、项目文件与图标。" Style="{StaticResource Caption}"
-                           Margin="0,4,0,10" />
+                <TextBlock Text="Modrinth 接口与文件；直连不通时自动改走自建镜像（mtl.dpdns.org）。"
+                           Style="{StaticResource Caption}" Margin="0,4,0,10" />
 
                 <Button x:Name="ModAuto" Style="{StaticResource GhostButton}" Padding="14,12"
                         Margin="0,0,0,8" HorizontalContentAlignment="Stretch" Click="ModAuto_Click">
@@ -163,7 +163,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
-                            <TextBlock Text="官方优先，MCIM 作为失败回退"
+                            <TextBlock Text="官方优先，失败自动走自建镜像"
                                        FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ModAutoCheck" Grid.Column="1" Text="&#xE73E;"
@@ -192,24 +192,6 @@
                     </Grid>
                 </Button>
 
-                <Button x:Name="ModMirror" Style="{StaticResource GhostButton}" Padding="14,12"
-                        HorizontalContentAlignment="Stretch" Click="ModMirror_Click">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="镜像源（MCIM）" FontSize="14" Foreground="{StaticResource Ink}" />
-                            <TextBlock Text="mod.mcimirror.top，国内加速，推荐" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
-                        </StackPanel>
-                        <TextBlock x:Name="ModMirrorCheck" Grid.Column="1" Text="&#xE73E;"
-                                   FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
-                                   Visibility="Collapsed" />
-                    </Grid>
-                </Button>
             </StackPanel>
         </Border>
 
