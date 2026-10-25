@@ -28,7 +28,7 @@
 - 启动前清理 Fabric remap 残留、独立临时目录
 
 ### 社区与 Mod
-- **社区资源聚合**：默认同时显示 Modrinth 与 CurseForge（同一条目两边各出现一次，并标注来源）
+- **社区资源聚合**：默认同时显示 Modrinth 与 CurseForge
 - Modrinth / CurseForge 统一详情页、版本列表与安装流程
 - CurseForge 暂走 MCIM 镜像，后续接入官方 API
 - 加载器 / 游戏版本筛选；从 Mod 管理跳转时自动带入当前实例
