@@ -138,9 +138,8 @@ public sealed class ForgeLoader
 
             if (kind == LoaderKind.Forge)
             {
-                var forgeUrl =
-                    $"{DownloadMirror.MirrorBase}/forge/download?mcversion={gameVersion}&version={loaderVersion}&category=installer";
-                await DownloadAsync(forgeUrl, installer, cancellationToken);
+                await DownloadAsync(DownloadSources.ForgeInstaller(gameVersion, loaderVersion), installer,
+                    cancellationToken);
             }
             else
             {
@@ -353,6 +352,12 @@ public sealed class ForgeLoader
             AppLog.Error(ex, "cdn request");
             return await Http.GetStringAsync(fallback, cancellationToken);
         }
+    }
+
+    private static async Task DownloadAsync(IReadOnlyList<DownloadEndpoint> endpoints, string target,
+        CancellationToken cancellationToken)
+    {
+        await DownloadEngine.DownloadAsync(endpoints, target, null, null, null, cancellationToken);
     }
 
     private static async Task DownloadAsync(string url, string target, CancellationToken cancellationToken)

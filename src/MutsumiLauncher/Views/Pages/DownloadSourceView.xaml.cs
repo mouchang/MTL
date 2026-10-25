@@ -25,13 +25,15 @@ public partial class DownloadSourceView : UserControl
     private void Refresh()
     {
         var config = AppConfig.Current;
-        var vanillaOfficial = config.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase);
-        var modOfficial = config.ModMirror.Equals("official", StringComparison.OrdinalIgnoreCase);
+        var vanilla = (config.VanillaMirror ?? "auto").ToLowerInvariant();
+        var mod = (config.ModMirror ?? "auto").ToLowerInvariant();
 
-        Highlight(VanillaOfficial, VanillaOfficialCheck, vanillaOfficial);
-        Highlight(VanillaMirror, VanillaMirrorCheck, !vanillaOfficial);
-        Highlight(ModOfficial, ModOfficialCheck, modOfficial);
-        Highlight(ModMirror, ModMirrorCheck, !modOfficial);
+        Highlight(VanillaAuto, VanillaAutoCheck, vanilla is not ("official" or "mirror"));
+        Highlight(VanillaOfficial, VanillaOfficialCheck, vanilla == "official");
+        Highlight(VanillaMirror, VanillaMirrorCheck, vanilla == "mirror");
+        Highlight(ModAuto, ModAutoCheck, mod is not ("official" or "mcim"));
+        Highlight(ModOfficial, ModOfficialCheck, mod == "official");
+        Highlight(ModMirror, ModMirrorCheck, mod == "mcim");
 
         var mode = (config.NetworkMode ?? "direct").Trim().ToLowerInvariant();
         Highlight(ProxyAuto, ProxyAutoCheck, mode == "auto");
@@ -50,9 +52,13 @@ public partial class DownloadSourceView : UserControl
         check.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void VanillaAuto_Click(object sender, RoutedEventArgs e) => SetVanilla("auto");
+
     private void VanillaOfficial_Click(object sender, RoutedEventArgs e) => SetVanilla("official");
 
     private void VanillaMirror_Click(object sender, RoutedEventArgs e) => SetVanilla("mirror");
+
+    private void ModAuto_Click(object sender, RoutedEventArgs e) => SetMod("auto");
 
     private void ModOfficial_Click(object sender, RoutedEventArgs e) => SetMod("official");
 

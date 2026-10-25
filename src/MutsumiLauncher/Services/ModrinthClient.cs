@@ -133,7 +133,7 @@ public sealed class ModrinthHashes
 /// <summary>Modrinth 开放 API：搜索项目、取版本、下载文件。</summary>
 public sealed class ModrinthClient
 {
-    private static string BaseUrl => DownloadMirror.ModrinthApiBase;
+    private static string BaseUrl => DownloadSources.ModrinthApiBase;
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -279,14 +279,9 @@ public sealed class ModrinthClient
         Directory.CreateDirectory(targetDirectory);
 
         var target = Path.Combine(targetDirectory, fileName);
-        var urls = new List<string> { url };
+        var endpoints = DownloadSources.ModFile(url);
 
-        var mirrored = DownloadMirror.McimModFileUrl(url);
-        if (!string.IsNullOrWhiteSpace(mirrored)
-            && !urls.Contains(mirrored, StringComparer.OrdinalIgnoreCase))
-            urls.Add(mirrored);
-
-        await DownloadEngine.DownloadAsync(urls, target, sha1, null, null, cancellationToken);
+        await DownloadEngine.DownloadAsync(endpoints, target, sha1, null, null, cancellationToken);
 
         AppLog.Info($"modrinth download: {fileName} -> {target}");
         return target;

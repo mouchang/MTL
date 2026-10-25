@@ -41,6 +41,12 @@ public static class DownloadEngine
     private const long PreferredPiece = 16 * 1024 * 1024;
     private const int MaxPieces = 8;
 
+    public static Task<string> DownloadAsync(IReadOnlyList<DownloadEndpoint> endpoints, string targetPath,
+        string? sha1 = null, long? expectedSize = null,
+        IProgress<DownloadProgress>? progress = null, CancellationToken cancellationToken = default)
+        => DownloadAsync(endpoints.Select(endpoint => endpoint.Url).ToList(), targetPath, sha1,
+            expectedSize, progress, cancellationToken);
+
     public static async Task<string> DownloadAsync(IReadOnlyList<string> urls, string targetPath,
         string? sha1 = null, long? expectedSize = null,
         IProgress<DownloadProgress>? progress = null, CancellationToken cancellationToken = default)

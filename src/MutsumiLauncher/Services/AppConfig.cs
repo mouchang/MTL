@@ -34,10 +34,10 @@ public sealed class AppConfig
     public string UpdateProxy { get; set; } = "https://releases.mtl.dpdns.org/gh";
 
     /// <summary>原版下载源：mirror（默认，BMCLAPI）或 official。</summary>
-    public string VanillaMirror { get; set; } = "mirror";
+    public string VanillaMirror { get; set; } = "auto";
 
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
-    public string ModMirror { get; set; } = "official";
+    public string ModMirror { get; set; } = "auto";
 
     /// <summary>CurseForge 官方 API Key（暂未启用，默认走 MCIM 镜像）。</summary>
     public string CurseForgeApiKey { get; set; } = string.Empty;

@@ -85,7 +85,7 @@ public sealed class CurseForgeClient
         if (loaderType is { } loader)
             parameters.Add("modLoaderType=" + loader);
 
-        var url = $"{DownloadMirror.CurseForgeApiBase}/mods/search?" + string.Join('&', parameters);
+        var url = $"{DownloadSources.CurseForgeApiBase}/mods/search?" + string.Join('&', parameters);
 
         using var document = await GetAsync(url, cancellationToken);
         var root = document.RootElement;
@@ -120,7 +120,7 @@ public sealed class CurseForgeClient
     public async Task<CurseForgeModDetail?> GetModAsync(int modId,
         CancellationToken cancellationToken = default)
     {
-        using var document = await GetAsync($"{DownloadMirror.CurseForgeApiBase}/mods/{modId}",
+        using var document = await GetAsync($"{DownloadSources.CurseForgeApiBase}/mods/{modId}",
             cancellationToken);
 
         if (!document.RootElement.TryGetProperty("data", out var data)
@@ -153,7 +153,7 @@ public sealed class CurseForgeClient
         if (loaderType is { } loader)
             parameters.Add("modLoaderType=" + loader);
 
-        var url = $"{DownloadMirror.CurseForgeApiBase}/mods/{modId}/files?"
+        var url = $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files?"
                   + string.Join('&', parameters);
 
         using var document = await GetAsync(url, cancellationToken);

@@ -120,11 +120,11 @@ public sealed class VersionInstaller
         if (detail.Downloads.TryGetValue("client", out var client) && client.Url is not null)
         {
             progress?.Report(new InstallProgress(6, "下载客户端 jar…"));
-            var clientUrl = DownloadMirror.ClientUrl(id, client.Url);
+            var clientEndpoints = await DownloadSources.ClientAsync(id, client.Url!, cancellationToken);
             var clientBase = transferred;
             var lastClientReport = DateTime.UtcNow;
 
-            await DownloadAsync(client.Url!, clientUrl, Path.Combine(versionDir, $"{name}.jar"),
+            await DownloadAsync(clientEndpoints, Path.Combine(versionDir, $"{name}.jar"),
                 client.Sha1, cancellationToken, chunk =>
                 {
                     if ((DateTime.UtcNow - lastClientReport).TotalMilliseconds < 180) return;
@@ -153,10 +153,10 @@ public sealed class VersionInstaller
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
             if (File.Exists(target) && new FileInfo(target).Length > 0) return;
 
-            var libraryUrl = DownloadMirror.LibraryUrl(artifact.Url, artifact.Path);
+            var endpoints = await DownloadSources.LibraryAsync(artifact.Url, artifact.Path,
+                cancellationToken);
 
-            await DownloadAsync(artifact.Url!, libraryUrl, target, artifact.Sha1,
-                cancellationToken, null);
+            await DownloadAsync(endpoints, target, artifact.Sha1, cancellationToken, null);
 
             var done = Interlocked.Increment(ref completed);
             progress?.Report(new InstallProgress(8 + 86.0 * done / Math.Max(1, artifactCount),
@@ -220,17 +220,14 @@ public sealed class VersionInstaller
         return allowed;
     }
 
-    private static async Task DownloadAsync(string officialUrl, string mirrorUrl, string targetPath,
+    private static async Task DownloadAsync(IReadOnlyList<DownloadEndpoint> endpoints, string targetPath,
         string? sha1, CancellationToken cancellationToken, Action<long>? onBytes)
     {
-        var urls = new List<string> { mirrorUrl };
-        if (!string.Equals(officialUrl, mirrorUrl, StringComparison.OrdinalIgnoreCase))
-            urls.Add(officialUrl);
-
         var progress = onBytes is null
             ? null
             : new Progress<DownloadProgress>(p => onBytes(p.Received));
 
-        await DownloadEngine.DownloadAsync(urls, targetPath, sha1, null, progress, cancellationToken);
+        await DownloadEngine.DownloadAsync(endpoints, targetPath, sha1, null, progress,
+            cancellationToken);
     }
 }

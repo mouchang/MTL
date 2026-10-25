@@ -93,27 +93,26 @@ public sealed class VersionManifestService
         }
     }
 
-    /// <summary>优先镜像（BMCLAPI），失败再回退官方源。</summary>
+    /// <summary>官方 / BMCLAPI 双源，按延迟自动排序。</summary>
     private static async Task<string> FetchManifestAsync(CancellationToken cancellationToken)
     {
-        var urls = new List<string> { DownloadMirror.ManifestUrl };
-        if (DownloadMirror.ManifestUrl != OfficialManifest) urls.Add(OfficialManifest);
-
+        var endpoints = await DownloadSources.ManifestAsync(cancellationToken);
         Exception? last = null;
-        foreach (var url in urls)
+
+        foreach (var endpoint in endpoints)
         {
             try
             {
-                return await Http.GetStringAsync(url, cancellationToken);
+                return await Http.GetStringAsync(endpoint.Url, cancellationToken);
             }
             catch (Exception ex)
             {
                 last = ex;
-                AppLog.Error(ex, $"manifest {url}");
+                AppLog.Error(ex, $"fetch manifest {endpoint.Url}");
             }
         }
 
-        throw last ?? new InvalidOperationException("无法获取版本清单");
+        throw new InvalidOperationException("获取版本清单失败：" + last?.Message, last);
     }
 
     private static VersionManifest Parse(string json)

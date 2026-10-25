@@ -23,6 +23,25 @@
                 <TextBlock Text="版本清单、版本 JSON、客户端、依赖库、资源文件。" Style="{StaticResource Caption}"
                            Margin="0,4,0,10" />
 
+                <Button x:Name="VanillaAuto" Style="{StaticResource GhostButton}" Padding="14,12"
+                        Margin="0,0,0,8" HorizontalContentAlignment="Stretch" Click="VanillaAuto_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="测速后决定使用官方还是 BMCLAPI"
+                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="VanillaAutoCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+
                 <Button x:Name="VanillaOfficial" Style="{StaticResource GhostButton}" Padding="14,12"
                         HorizontalContentAlignment="Stretch" Click="VanillaOfficial_Click">
                     <Grid>
@@ -68,6 +87,25 @@
                 <TextBlock Text="社区资源" Style="{StaticResource H2}" />
                 <TextBlock Text="Modrinth 的搜索接口、项目文件与图标。" Style="{StaticResource Caption}"
                            Margin="0,4,0,10" />
+
+                <Button x:Name="ModAuto" Style="{StaticResource GhostButton}" Padding="14,12"
+                        Margin="0,0,0,8" HorizontalContentAlignment="Stretch" Click="ModAuto_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="官方优先，MCIM 作为失败回退"
+                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="ModAutoCheck" Grid.Column="1" Text="&#xE73E;"
+                                   FontFamily="{StaticResource IconFont}" FontSize="14"
+                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Button>
 
                 <Button x:Name="ModOfficial" Style="{StaticResource GhostButton}" Padding="14,12"
                         HorizontalContentAlignment="Stretch" Click="ModOfficial_Click">

@@ -65,10 +65,10 @@ public static class AssetInstaller
                 if (File.Exists(target) && new FileInfo(target).Length == obj.Size) return;
 
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                var bytes = await Http.GetByteArrayAsync(
-                    DownloadMirror.AssetObjectUrl(obj.Hash), cancellationToken);
-                await File.WriteAllBytesAsync(target, bytes, cancellationToken);
-                Interlocked.Add(ref bytesDone, bytes.Length);
+                var endpoints = await DownloadSources.AssetAsync(obj.Hash, cancellationToken);
+                await DownloadEngine.DownloadAsync(endpoints, target, null, obj.Size, null,
+                    cancellationToken);
+                Interlocked.Add(ref bytesDone, obj.Size);
             }
             catch (Exception ex)
             {

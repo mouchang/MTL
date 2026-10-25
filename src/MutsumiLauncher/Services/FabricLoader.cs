@@ -23,8 +23,6 @@ public sealed class FabricLoaderInfo
 /// <summary>Fabric Loader 安装：取 meta 的 profile JSON + 下载 Fabric 依赖库。</summary>
 public sealed class FabricLoader
 {
-    private const string MetaBase = "https://meta.fabricmc.net/v2";
-
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
@@ -33,14 +31,36 @@ public sealed class FabricLoader
     public static async Task<IReadOnlyList<FabricLoaderEntry>> GetLoadersAsync(string gameVersion,
         CancellationToken cancellationToken = default)
     {
-        var json = await Http.GetStringAsync($"{MetaBase}/versions/loader/{gameVersion}", cancellationToken);
+        var json = await GetMetaAsync($"versions/loader/{gameVersion}", cancellationToken);
         return JsonSerializer.Deserialize<List<FabricLoaderEntry>>(json) ?? [];
     }
 
     public static async Task<string> GetProfileJsonAsync(string gameVersion, string loaderVersion,
         CancellationToken cancellationToken = default)
-        => await Http.GetStringAsync(
-            $"{MetaBase}/versions/loader/{gameVersion}/{loaderVersion}/profile/json", cancellationToken);
+        => await GetMetaAsync($"versions/loader/{gameVersion}/{loaderVersion}/profile/json",
+            cancellationToken);
+
+    /// <summary>Fabric meta 官方源失败时切 BMCLAPI。</summary>
+    private static async Task<string> GetMetaAsync(string relative, CancellationToken cancellationToken)
+    {
+        Exception? last = null;
+
+        foreach (var endpoint in DownloadSources.FabricMetaEndpoints())
+        {
+            try
+            {
+                return await Http.GetStringAsync(endpoint.Url.TrimEnd('/') + "/" + relative,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"fabric meta {endpoint.Url}");
+            }
+        }
+
+        throw new InvalidOperationException("获取 Fabric 信息失败：" + last?.Message, last);
+    }
 
     /// <summary>安装 Fabric 版本，返回版本 ID。基础原版必须已安装。</summary>
     public async Task<string> InstallAsync(string gameVersion, string loaderVersion,
@@ -61,7 +81,7 @@ public sealed class FabricLoader
                      ?? throw new InvalidOperationException("Fabric 配置解析失败");
 
         var libraries = detail.Libraries;
-        var jobs = new List<(string Url, string Target)>();
+        var jobs = new List<(IReadOnlyList<DownloadEndpoint> Endpoints, string Target)>();
 
         foreach (var library in libraries)
         {
@@ -75,7 +95,8 @@ public sealed class FabricLoader
                 ? "https://maven.fabricmc.net/"
                 : library.Url!;
 
-            jobs.Add((baseUrl.TrimEnd('/') + "/" + path.Replace('\\', '/'), target));
+            var officialUrl = baseUrl.TrimEnd('/') + "/" + path.Replace('\\', '/');
+            jobs.Add((await DownloadSources.LibraryAsync(officialUrl, path, cancellationToken), target));
         }
 
         var completed = 0;
@@ -83,7 +104,7 @@ public sealed class FabricLoader
         await Task.WhenAll(jobs.Select(async job =>
         {
             Directory.CreateDirectory(Path.GetDirectoryName(job.Target)!);
-            await DownloadEngine.DownloadAsync(new[] { job.Url }, job.Target, null, null, null,
+            await DownloadEngine.DownloadAsync(job.Endpoints, job.Target, null, null, null,
                 cancellationToken);
 
             var done = Interlocked.Increment(ref completed);

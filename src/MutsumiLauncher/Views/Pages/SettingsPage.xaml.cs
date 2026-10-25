@@ -31,12 +31,21 @@ public partial class SettingsPage : UserControl
     private void LoadSourceInfo()
     {
         var config = AppConfig.Current;
-        var vanilla = config.VanillaMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
-            ? "官方源"
-            : "镜像（BMCLAPI）";
-        var mod = config.ModMirror.Equals("official", StringComparison.OrdinalIgnoreCase)
-            ? "官方源"
-            : "镜像（MCIM）";
+        var vanillaMode = (config.VanillaMirror ?? "auto").ToLowerInvariant();
+        var modMode = (config.ModMirror ?? "auto").ToLowerInvariant();
+
+        var vanilla = vanillaMode switch
+        {
+            "official" => "官方源",
+            "mirror" => "镜像（BMCLAPI）",
+            _ => "自动（测速后选择）",
+        };
+        var mod = modMode switch
+        {
+            "official" => "官方源",
+            "mcim" => "镜像（MCIM）",
+            _ => "自动（官方优先，MCIM 回退）",
+        };
 
         SourceSummary.Text = $"原版资源：{vanilla}  ·  社区资源：{mod}";
     }

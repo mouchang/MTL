@@ -21,9 +21,11 @@
 - 社区文件下载校验失败时自动回退官方 CDN（Modrinth / 整合包）
 - 聚合结果跨页全局按下载量排序，不再按来源分页堆积
 
-### 下载源
-- 社区文件改为官方 CDN 优先（对齐 PCL2），MCIM 作为失败回退
-- 社区默认下载源改为「官方」（可在设置里切回 MCIM）
+### 下载源（对齐 PCL2）
+- 新增统一 `DownloadSources`：原版官方/BMCLAPI 自动测速排序，社区官方优先、MCIM 回退
+- 设置页新增「自动选择」选项（原版 / 社区均默认自动）
+- 资源索引、libraries、assets、Forge 安装器、Fabric meta、Mod 文件全部走统一源列表
+- Fabric 依赖库增加 BMCLAPI maven 镜像回退
 
 ### 下载引擎
 - 参考 PCL2 重构：全局线程池、HTTP Range 多段并发、源失败切换、流式 SHA-1 校验
