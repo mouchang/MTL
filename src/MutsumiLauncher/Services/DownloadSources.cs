@@ -36,13 +36,14 @@ public static class DownloadSources
     /// <summary>自建 Cloudflare Worker：墙外回源 + 边缘缓存，官方 CDN 直连不通时兜底。</summary>
     public const string WorkerProxy = "https://mtl.dpdns.org";
 
-    /// <summary>Worker 能反代的社区 CDN 域名（与 worker.js 白名单一致）。</summary>
+    /// <summary>
+    /// Worker 能反代的社区 CDN 域名。
+    /// 目前只放行了 cdn.modrinth.com（独立 Worker 路由）—— forgecdn 要等
+    /// `mtl-neoforge` 的白名单加上对应域名后再开，否则每个 CurseForge 文件都会白拿一个 403。
+    /// </summary>
     private static readonly string[] WorkerMirroredHosts =
     [
         "cdn.modrinth.com",
-        "edge.forgecdn.net",
-        "mediafilez.forgecdn.net",
-        "media.forgecdn.net",
     ];
 
     private static Task<bool>? _probe;
