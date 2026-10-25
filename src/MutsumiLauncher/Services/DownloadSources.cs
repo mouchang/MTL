@@ -28,8 +28,6 @@ public static class DownloadSources
     public const string FabricMaven = "https://maven.fabricmc.net";
 
     public const string OfficialModrinthApi = "https://api.modrinth.com/v2";
-    public const string OfficialCurseForgeApi = "https://api.curseforge.com/v1";
-
     private static Task<bool>? _probe;
 
     /// <summary>官方 Mojang 是否足够快（PCL2 的 DlPreferMojang）。</summary>
@@ -163,8 +161,6 @@ public static class DownloadSources
 
     // 没有 API Key 之前，CurseForge 元数据继续走 MCIM 镜像
     public static string CurseForgeApiBase => $"{Mcim}/curseforge/v1";
-
-    public static bool CurseForgeNeedsKey => false;
 
     public static IReadOnlyList<DownloadEndpoint> ForgeInstaller(string gameVersion, string loaderVersion)
     {

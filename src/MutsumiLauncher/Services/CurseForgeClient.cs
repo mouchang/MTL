@@ -46,20 +46,8 @@ public sealed class CurseForgeClient
 {
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(30));
 
-    public static bool Available =>
-        DownloadMirror.CurseForgeViaMirror || !string.IsNullOrWhiteSpace(ApiKey);
-
-    private static string? ApiKey
-    {
-        get
-        {
-            var fromEnv = Environment.GetEnvironmentVariable("MTL_CURSEFORGE_KEY");
-            if (!string.IsNullOrWhiteSpace(fromEnv)) return fromEnv.Trim();
-
-            var fromConfig = AppConfig.Current.CurseForgeApiKey;
-            return string.IsNullOrWhiteSpace(fromConfig) ? null : fromConfig.Trim();
-        }
-    }
+    /// <summary>暂无官方 Key，统一走 MCIM 镜像，因此始终可用。</summary>
+    public static bool Available => true;
 
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,
@@ -217,9 +205,6 @@ public sealed class CurseForgeClient
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
-
-        if (!DownloadMirror.CurseForgeViaMirror && !string.IsNullOrWhiteSpace(ApiKey))
-            request.Headers.Add("x-api-key", ApiKey);
 
         using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);

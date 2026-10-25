@@ -11,12 +11,8 @@ namespace MutsumiLauncher.Views.Pages;
 public partial class CommunitySearchView : UserControl
 {
     private readonly ModrinthClient _client = new();
-    private readonly CurseForgeClient _curseForge = new();
 
     private const int PageSize = 20;
-
-    /// <summary>聚合模式每次最多拉取的总条数，保证跨来源全局按下载量排序。</summary>
-    private const int AggregateMaxItems = 200;
 
     private string _kind = "mod";
     private string _projectType = "mod";
@@ -118,124 +114,32 @@ public partial class CommunitySearchView : UserControl
         _page = Math.Max(0, page);
         Loading.IsActive = true;
 
-        var query = SearchNameBox.Text.Trim();
-        var source = Source();
+        var platform = SourcePlatform();
 
         try
         {
-            var modrinthItems = new List<ModrinthItem>();
-            var curseForgeItems = new List<ModrinthItem>();
-            long modrinthTotal = 0;
-            long curseForgeTotal = 0;
-            var curseForgeAvailable = CurseForgeClient.Available;
+            var result = await ResourceService.SearchAsync(platform, SearchNameBox.Text.Trim(),
+                _projectType, GameVersion(), Loader(), Category(), _page, PageSize);
 
-            // 两个来源同时发起请求，聚合模式不会因为先后等待而变慢
-            Task<ModrinthSearchResult>? modrinthTask = null;
-            Task<CurseForgeSearchResult>? curseForgeTask = null;
+            _totalHits = result.Total;
 
-            // 聚合模式：拉取前 (page+1) 页并全局排序后切片，避免“第一页全 CF、第二页又全 CF”
-            var aggregate = source == "all";
-            var fetchLimit = aggregate
-                ? Math.Min(AggregateMaxItems, (_page + 1) * PageSize)
-                : PageSize;
-            var offset = aggregate ? 0 : _page * PageSize;
-
-            if (source is "all" or "modrinth")
-                modrinthTask = _client.SearchAsync(query, _projectType, GameVersion(), Loader(),
-                    Category(), fetchLimit, offset);
-
-            if ((source is "all" or "curseforge") && curseForgeAvailable)
-                curseForgeTask = aggregate
-                    ? _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(), LoaderType(),
-                        0, fetchLimit)
-                    : _curseForge.SearchAsync(query, ClassIdOf(_kind), GameVersion(), LoaderType(),
-                        _page, PageSize);
-
-            if (source == "curseforge" && curseForgeTask is null)
-            {
-                ResultsList.ItemsSource = null;
-                StatusText.Text = "CurseForge 不可用：请开启社区镜像，或配置 CurseForge API Key。";
-                PageBar.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            StatusText.Text = source == "all"
-                ? "正在同时搜索 Modrinth 与 CurseForge…"
-                : source == "curseforge" ? "正在搜索 CurseForge…" : "正在搜索 Modrinth…";
-
-            if (modrinthTask is not null)
-            {
-                var result = await modrinthTask;
-
-                modrinthTotal = result.TotalHits;
-                modrinthItems = result.Hits
-                    .Select(hit => new ModrinthItem { Hit = hit, Source = "modrinth" })
-                    .ToList();
-            }
-
-            if (curseForgeTask is not null)
-            {
-                try
-                {
-                    var result = await curseForgeTask;
-
-                    curseForgeTotal = result.Total;
-                    curseForgeItems = result.Mods.Select(mod => new ModrinthItem
-                    {
-                        Source = "curseforge",
-                        Hit = new ModrinthHit
-                        {
-                            ProjectId = mod.Id.ToString(),
-                            Slug = mod.Slug,
-                            Title = mod.Name,
-                            Description = mod.Summary,
-                            Author = mod.Author,
-                            Downloads = mod.Downloads,
-                            IconUrl = mod.IconUrl,
-                            ProjectType = _projectType,
-                        },
-                    }).ToList();
-                }
-                catch (Exception ex) when (source == "all")
-                {
-                    // 聚合模式下 CurseForge 挂了不影响 Modrinth 结果
-                    AppLog.Error(ex, "curseforge search in aggregate");
-                    curseForgeTotal = 0;
-                }
-            }
-
-            var items = source switch
-            {
-                "modrinth" => modrinthItems,
-                "curseforge" => curseForgeItems,
-                _ => Interleave(modrinthItems, curseForgeItems),
-            };
-
-            _totalHits = source switch
-            {
-                "modrinth" => modrinthTotal,
-                "curseforge" => curseForgeTotal,
-                _ => modrinthTotal + curseForgeTotal,
-            };
-
-            // 统一按下载量从高到低排序；聚合模式下同一资源会以两个来源各出现一次
-            items = items
-                .OrderByDescending(item => item.Hit.Downloads)
+            var items = result.Hits
+                .Select(hit => new ModrinthItem { Hit = hit.Hit, Platform = hit.Platform })
                 .ToList();
-
-            if (aggregate)
-                items = items.Skip(_page * PageSize).Take(PageSize).ToList();
 
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
             StatusText.Text = items.Count == 0
                 ? "没有找到结果，换个关键词或条件试试。"
-                : source switch
+                : platform switch
                 {
-                    "curseforge" => $"找到 {_totalHits:N0} 个结果（来自 CurseForge）",
-                    "all" => $"找到 {_totalHits:N0} 个结果（Modrinth {modrinthTotal:N0} · CurseForge {curseForgeTotal:N0}）",
-                    _ => $"找到 {_totalHits:N0} 个结果（来自 Modrinth）",
+                    ResourcePlatform.CurseForge =>
+                        $"找到 {result.Total:N0} 个结果（来自 CurseForge）",
+                    ResourcePlatform.Modrinth =>
+                        $"找到 {result.Total:N0} 个结果（来自 Modrinth）",
+                    _ =>
+                        $"找到 {result.Total:N0} 个结果（Modrinth {result.ModrinthTotal:N0} · CurseForge {result.CurseForgeTotal:N0}）",
                 };
 
             BuildPageBar();
@@ -253,29 +157,13 @@ public partial class CommunitySearchView : UserControl
         }
     }
 
-    /// <summary>聚合模式：两个来源交替排列，同一条目会在两边各出现一次。</summary>
-    private static List<ModrinthItem> Interleave(IReadOnlyList<ModrinthItem> first,
-        IReadOnlyList<ModrinthItem> second)
-    {
-        var result = new List<ModrinthItem>(first.Count + second.Count);
-        var max = Math.Max(first.Count, second.Count);
-
-        for (var i = 0; i < max; i++)
-        {
-            if (i < first.Count) result.Add(first[i]);
-            if (i < second.Count) result.Add(second[i]);
-        }
-
-        return result;
-    }
-
     private void BuildPageBar()
     {
         var totalPages = (int)Math.Ceiling(_totalHits / (double)PageSize);
 
         // 聚合模式只预取前 AggregateMaxItems 条，页数同步封顶
-        if (Source() == "all")
-            totalPages = Math.Min(totalPages, AggregateMaxItems / PageSize);
+        if (SourcePlatform() is null)
+            totalPages = Math.Min(totalPages, 100 / PageSize);
         if (totalPages <= 1)
         {
             PageBar.Visibility = Visibility.Collapsed;
@@ -461,26 +349,13 @@ public partial class CommunitySearchView : UserControl
             DetailRequested?.Invoke(item, GameVersion());
     }
 
-    private string Source() =>
-        (SourceCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
-
-    private static int ClassIdOf(string kind) => kind switch
-    {
-        "pack" => 4471,
-        "datapack" => 6945,
-        "resourcepack" => 12,
-        "shader" => 6552,
-        _ => 6,
-    };
-
-    private int? LoaderType() => Loader() switch
-    {
-        "fabric" => 4,
-        "quilt" => 5,
-        "neoforge" => 6,
-        "forge" => 1,
-        _ => null,
-    };
+    private ResourcePlatform? SourcePlatform() =>
+        ((SourceCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch
+        {
+            "curseforge" => ResourcePlatform.CurseForge,
+            "modrinth" => ResourcePlatform.Modrinth,
+            _ => null,
+        };
 
     private async void InstallPack_Click(object sender, RoutedEventArgs e)
     {

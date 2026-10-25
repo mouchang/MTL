@@ -67,8 +67,6 @@ public sealed class ModrinthFileRow
 
 public partial class ModrinthDetailView : UserControl
 {
-    private readonly ModrinthClient _client = new();
-    private readonly CurseForgeClient _curseForge = new();
 
     private ModrinthItem? _item;
     private ModrinthProject? _project;
@@ -79,11 +77,8 @@ public partial class ModrinthDetailView : UserControl
     private bool _installing;
     private string _loaderFilter = string.Empty;
     private readonly Stack<(ModrinthItem Item, string? GameVersion)> _history = new();
-    private readonly Dictionary<string, ModrinthProject?> _projectCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<int, CurseForgeModDetail?> _curseForgeCache = [];
     private Action? _onBack;
     private Action<string>? _toast;
-    private string _curseForgeUrl = string.Empty;
 
     public ModrinthDetailView()
     {
@@ -97,7 +92,6 @@ public partial class ModrinthDetailView : UserControl
         Action<string> toast, string? targetInstance = null)
     {
         _item = item;
-        _curseForgeUrl = string.Empty;
         _targetInstance = targetInstance;
         _currentGameVersion = initialGameVersion;
         _onBack = onBack;
@@ -122,22 +116,24 @@ public partial class ModrinthDetailView : UserControl
         Loading.IsActive = true;
         try
         {
-            if (item.Source == "curseforge")
-            {
-                await LoadCurseForgeDataAsync(item);
-                ExternalButton.Content = "转到 CurseForge";
-            }
-            else
-            {
-                _project = await _client.GetProjectAsync(item.ProjectId);
-                _versions = await _client.GetVersionsAsync(item.ProjectId);
+            _project = await ResourceService.GetProjectAsync(item.Platform, item.ProjectId,
+                item.Hit.ProjectType);
+            _versions = await ResourceService.GetVersionsAsync(item.Platform, item.ProjectId);
 
-                if (_project is not null)
-                {
+            if (_project is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(_project.Description))
                     DescriptionText.Text = _project.Description;
-                    MetaText.Text = BuildMeta(_project);
-                }
+
+                if (!string.IsNullOrWhiteSpace(_project.Title))
+                    TitleText.Text = _project.Title;
+
+                MetaText.Text = BuildMeta(_project, item.Platform);
             }
+
+            ExternalButton.Content = item.Platform == ResourcePlatform.CurseForge
+                ? "转到 CurseForge"
+                : "转到 Modrinth";
 
             BuildTabs();
 
@@ -148,8 +144,8 @@ public partial class ModrinthDetailView : UserControl
                 HighlightTabs();
                 LoaderRow.Visibility = item.Hit.ProjectType == "mod" ? Visibility.Visible : Visibility.Collapsed;
 
-        ApplyFilter(initialGameVersion ?? null);
-        SelectLoaderForInstance(targetInstance);
+                ApplyFilter(initialGameVersion ?? null);
+                SelectLoaderForInstance(targetInstance);
             }
             else
             {
@@ -158,7 +154,7 @@ public partial class ModrinthDetailView : UserControl
         }
         catch (Exception ex)
         {
-            AppLog.Error(ex, "modrinth detail");
+            AppLog.Error(ex, "resource detail");
             BreadcrumbText.Text = "加载失败：" + ex.Message;
         }
         finally
@@ -167,84 +163,7 @@ public partial class ModrinthDetailView : UserControl
         }
     }
 
-    private async Task LoadCurseForgeDataAsync(ModrinthItem item)
-    {
-        if (!int.TryParse(item.ProjectId, out var modId))
-            throw new InvalidOperationException("CurseForge 项目 ID 无效。");
-
-        var detail = await _curseForge.GetModAsync(modId);
-        var files = await _curseForge.GetFilesAsync(modId, null, null);
-
-        if (detail is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(detail.Summary))
-                DescriptionText.Text = detail.Summary;
-
-            MetaText.Text = BuildCurseForgeMeta(detail);
-            _curseForgeUrl = detail.WebsiteUrl;
-        }
-
-        _project = new ModrinthProject
-        {
-            Id = item.ProjectId,
-            Slug = item.Hit.Slug,
-            Title = detail?.Name ?? item.Title,
-            Description = detail?.Summary ?? item.Description,
-            Downloads = detail?.Downloads ?? item.Hit.Downloads,
-            Updated = detail?.Updated ?? DateTimeOffset.MinValue,
-            Categories = [],
-        };
-
-        _versions = files.Select(file => new ModrinthVersion
-        {
-            Id = file.Id.ToString(),
-            Name = file.DisplayName,
-            VersionNumber = file.DisplayName,
-            GameVersions = file.GameVersions.ToList(),
-            Loaders = file.Loaders.ToList(),
-            VersionType = file.ReleaseType,
-            DatePublished = file.FileDate,
-            Files =
-            [
-                new ModrinthFile
-                {
-                    Url = file.DownloadUrl,
-                    Filename = file.FileName,
-                    Primary = true,
-                    Hashes = new ModrinthHashes { Sha1 = file.Sha1 },
-                },
-            ],
-            Dependencies = file.Dependencies
-                .Where(dependency => dependency.RelationType is 2 or 3)
-                .Select(dependency => new ModrinthDependency
-                {
-                    ProjectId = dependency.ModId.ToString(),
-                    DependencyType = dependency.RelationType == 3 ? "required" : "optional",
-                })
-                .DistinctBy(dependency => dependency.ProjectId)
-                .ToList(),
-        }).ToList();
-
-        AppLog.Info($"curseforge detail: {item.Title}, files={_versions.Count}");
-    }
-
-    private static string BuildCurseForgeMeta(CurseForgeModDetail detail)
-    {
-        var downloads = detail.Downloads switch
-        {
-            >= 100_000_000 => $"{detail.Downloads / 100_000_000.0:0.#} 亿",
-            >= 10_000 => $"{detail.Downloads / 10_000.0:0.#} 万",
-            _ => detail.Downloads.ToString("N0"),
-        };
-
-        var updated = detail.Updated == DateTimeOffset.MinValue
-            ? string.Empty
-            : $" · 最近更新 {detail.Updated.LocalDateTime:yyyy/M/d}";
-
-        return $"{downloads} 次下载{updated} · CurseForge";
-    }
-
-    private static string BuildMeta(ModrinthProject project)
+    private static string BuildMeta(ModrinthProject project, ResourcePlatform platform)
     {
         var downloads = project.Downloads switch
         {
@@ -254,8 +173,14 @@ public partial class ModrinthDetailView : UserControl
         };
 
         var categories = string.Join(" · ", project.Categories.Take(3));
-        var updated = project.Updated.LocalDateTime.ToString("yyyy/M/d");
-        return $"{downloads} 次下载 · {categories} · 最近更新 {updated} · Modrinth";
+        var updated = project.Updated == DateTimeOffset.MinValue
+            ? string.Empty
+            : $" · 最近更新 {project.Updated.LocalDateTime:yyyy/M/d}";
+        var source = platform == ResourcePlatform.CurseForge ? "CurseForge" : "Modrinth";
+
+        return string.IsNullOrEmpty(categories)
+            ? $"{downloads} 次下载{updated} · {source}"
+            : $"{downloads} 次下载 · {categories}{updated} · {source}";
     }
 
     private void BuildTabs()
@@ -286,7 +211,7 @@ public partial class ModrinthDetailView : UserControl
             TabPanel.Children.Add(button);
         }
 
-        VersionSourceText.Text = $"版本来源：Modrinth（{versions.Count} 个版本）";
+        VersionSourceText.Text = $"版本来源：{( _item?.Platform == ResourcePlatform.CurseForge ? "CurseForge" : "Modrinth")}（{versions.Count} 个版本）";
 
         HighlightTabs();
     }
@@ -382,22 +307,10 @@ public partial class ModrinthDetailView : UserControl
 
             try
             {
-                if (_item?.Source == "curseforge"
-                    && int.TryParse(dependency.ProjectId, out var curseForgeId))
-                {
-                    if (!_curseForgeCache.TryGetValue(curseForgeId, out var mod))
-                    {
-                        mod = await _curseForge.GetModAsync(curseForgeId);
-                        _curseForgeCache[curseForgeId] = mod;
-                    }
+                var project = await ResourceService.GetProjectAsync(_item?.Platform ?? ResourcePlatform.Modrinth,
+                    dependency.ProjectId!, _item?.Hit.ProjectType ?? "mod");
 
-                    title = mod?.Name ?? dependency.ProjectId!;
-                }
-                else
-                {
-                    var project = await GetProjectCachedAsync(dependency.ProjectId!);
-                    title = project?.Title ?? dependency.ProjectId!;
-                }
+                title = project?.Title ?? dependency.ProjectId!;
             }
             catch (Exception ex)
             {
@@ -415,53 +328,23 @@ public partial class ModrinthDetailView : UserControl
         }
     }
 
-    private async Task<ModrinthProject?> GetProjectCachedAsync(string projectId)
-    {
-        if (_projectCache.TryGetValue(projectId, out var cached)) return cached;
-
-        var project = await _client.GetProjectAsync(projectId);
-        _projectCache[projectId] = project;
-        return project;
-    }
-
     private async void Dependency_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: DependencyChip chip } || _item is null) return;
-
-        if (_item.Source == "curseforge")
-        {
-            var title = chip.Label
-                .Replace("前置：", string.Empty)
-                .Replace("可选：", string.Empty);
-
-            var item = new ModrinthItem
-            {
-                Source = "curseforge",
-                Hit = new ModrinthHit
-                {
-                    ProjectId = chip.ProjectId,
-                    Title = title,
-                    ProjectType = _item.Hit.ProjectType,
-                },
-            };
-
-            _history.Push((_item, _currentGameVersion));
-            await LoadAsync(item, _currentGameVersion, _onBack!, _toast!, _targetInstance);
-            return;
-        }
 
         try
         {
             Loading.IsActive = true;
 
-            var project = await GetProjectCachedAsync(chip.ProjectId);
+            var project = await ResourceService.GetProjectAsync(_item.Platform, chip.ProjectId,
+                _item.Hit.ProjectType);
+
             if (project is null)
             {
                 _toast?.Invoke("打不开这个前置项目。");
                 return;
             }
 
-            var versions = await _client.GetVersionsAsync(project.Id);
             var hit = new ModrinthHit
             {
                 ProjectId = project.Id,
@@ -472,14 +355,12 @@ public partial class ModrinthDetailView : UserControl
                 Downloads = project.Downloads,
                 IconUrl = project.IconUrl,
                 Categories = project.Categories,
-                ProjectType = project.ProjectType,
+                ProjectType = _item.Hit.ProjectType,
             };
 
-            var item = new ModrinthItem { Hit = hit };
+            var item = new ModrinthItem { Hit = hit, Platform = _item.Platform };
 
-            // 记录当前详情页，返回时回到这里而不是搜索结果
-            if (_item is not null) _history.Push((_item, _currentGameVersion));
-
+            _history.Push((_item, _currentGameVersion));
             await LoadAsync(item, _currentGameVersion, _onBack!, _toast!, _targetInstance);
         }
         catch (Exception ex)
@@ -580,8 +461,7 @@ public partial class ModrinthDetailView : UserControl
             }
 
             var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
-            await _client.DownloadAsync(row.File.Url, row.File.Filename, targetDirectory,
-                row.File.Hashes?.Sha1, task.Token);
+            await ResourceService.DownloadAsync(row.File, targetDirectory, task.Token);
 
             DownloadCenter.Complete(task, "已安装");
             _toast?.Invoke($"{row.Version.Name} 安装完成");
@@ -647,20 +527,16 @@ public partial class ModrinthDetailView : UserControl
 
     private void OpenModrinth_Click(object sender, RoutedEventArgs e)
     {
-        if (_item is null) return;
+        if (_item is null || _project is null) return;
 
-        if (_item.Source == "curseforge")
+        try
         {
-            var url = _curseForgeUrl;
-
-            if (!string.IsNullOrWhiteSpace(url))
-                UrlLauncher.Open(url);
-
-            return;
+            UrlLauncher.Open(ResourceService.WebUrl(_item.Platform, _project));
         }
-
-        if (!string.IsNullOrWhiteSpace(_item.Hit.Slug))
-            UrlLauncher.Open($"https://modrinth.com/project/{_item.Hit.Slug}");
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "open project page");
+        }
     }
 
     private void CopyName_Click(object sender, RoutedEventArgs e)

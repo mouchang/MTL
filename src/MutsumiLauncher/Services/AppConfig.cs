@@ -39,9 +39,6 @@ public sealed class AppConfig
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "auto";
 
-    /// <summary>CurseForge 官方 API Key（暂未启用，默认走 MCIM 镜像）。</summary>
-    public string CurseForgeApiKey { get; set; } = string.Empty;
-
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";
 

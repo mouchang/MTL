@@ -11,14 +11,14 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
     public required ModrinthHit Hit { get; init; }
 
-    /// <summary>来源：modrinth / curseforge。</summary>
-    public string Source { get; init; } = "modrinth";
+    /// <summary>来源平台。</summary>
+    public ResourcePlatform Platform { get; init; } = ResourcePlatform.Modrinth;
 
     public string ProjectId => Hit.ProjectId;
 
-    public string SourceLabel => Source == "curseforge" ? "CurseForge" : "Modrinth";
+    public string SourceLabel => Platform == ResourcePlatform.CurseForge ? "CurseForge" : "Modrinth";
 
-    public Brush SourceBrush => Source == "curseforge"
+    public Brush SourceBrush => Platform == ResourcePlatform.CurseForge
         ? new SolidColorBrush(Color.FromRgb(0xE0, 0x7B, 0x2F))
         : new SolidColorBrush(Color.FromRgb(0x4E, 0x9E, 0x72));
 

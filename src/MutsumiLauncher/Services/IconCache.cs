@@ -52,8 +52,8 @@ public static class IconCache
             var path = Path.Combine(CacheDir, safe + ".png");
             if (File.Exists(path) && IsValidImage(path)) return path;
 
-            // 镜像可能 302 到源站；失败时再试原始 URL
-            foreach (var candidate in new[] { DownloadMirror.ModFileUrl(url), url }.Distinct())
+            // 图标永远直连，不走下载镜像
+            foreach (var candidate in new[] { url })
             {
                 try
                 {

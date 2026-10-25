@@ -27,6 +27,12 @@
 - 资源索引、libraries、assets、Forge 安装器、Fabric meta、Mod 文件全部走统一源列表
 - Fabric 依赖库增加 BMCLAPI maven 镜像回退
 
+### 资源获取（对齐 PCL2）
+- 新增 `ResourceService`：搜索 / 项目 / 版本 / 前置 / 下载统一入口，界面不再区分 Modrinth / CurseForge
+- 搜索分页、聚合排序、平台筛选统一由资源层处理
+- 详情页、前置跳转、外部项目页全部走统一模型
+- 图标保持直连，不走下载镜像
+
 ### 下载引擎
 - 参考 PCL2 重构：全局线程池、HTTP Range 多段并发、源失败切换、流式 SHA-1 校验
 - 大文件（Mod / 整合包 / client jar）自动分块，小文件与 BMCLAPI/GitHub 保持单线程

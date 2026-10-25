@@ -107,8 +107,7 @@ public sealed class VersionInstaller
         Directory.CreateDirectory(versionDir);
 
         progress?.Report(new InstallProgress(1, $"获取 {id} 的版本信息…"));
-        var json = await Http.GetStringAsync(
-            DownloadMirror.VersionJsonUrl(id, versionUrl), cancellationToken);
+        var json = await FetchVersionJsonAsync(id, versionUrl, cancellationToken);
         var detail = JsonSerializer.Deserialize<VersionDetail>(json)
                      ?? throw new InvalidOperationException("版本 JSON 解析失败");
 
@@ -183,6 +182,28 @@ public sealed class VersionInstaller
 
         var gameDir = InstanceSettings.Load(name).EffectiveIsolation ? versionDir : GamePaths.Root;
         GameOptions.EnsureLanguage(gameDir);
+    }
+
+    private static async Task<string> FetchVersionJsonAsync(string id, string officialUrl,
+        CancellationToken cancellationToken)
+    {
+        var endpoints = await DownloadSources.VersionJsonAsync(id, officialUrl, cancellationToken);
+        Exception? last = null;
+
+        foreach (var endpoint in endpoints)
+        {
+            try
+            {
+                return await Http.GetStringAsync(endpoint.Url, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                AppLog.Error(ex, $"version json {endpoint.Url}");
+            }
+        }
+
+        throw new InvalidOperationException("获取版本 JSON 失败：" + last?.Message, last);
     }
 
     private static IEnumerable<Artifact> GetWindowsArtifacts(Library library)
