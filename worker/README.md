@@ -10,6 +10,18 @@
 | `/cdn.modrinth.com/<path>` | **Modrinth 文件镜像**（墙外回源 + 边缘缓存） | `DownloadSources`（社区 Mod 下载兜底） |
 | `/<forgecdn>/<path>` | CurseForge 文件镜像（同上） | `DownloadSources` |
 
+## 独立部署 Modrinth 镜像（不动现有 Worker）
+
+如果账号里已经有别的 Worker 占着 `mtl.dpdns.org/*`（例如老的 `mtl-neoforge`），
+不想合并，也可以单独建一个只做 Modrinth 镜像的 Worker：
+
+1. Workers & Pages → 创建应用程序 → 创建 Worker，命名 `mtl-modrinth`
+2. 编辑代码，粘贴 [`modrinth-mirror.js`](modrinth-mirror.js) 全文，部署
+3. 该 Worker → 设置 → 域和路由 → 添加路由：`mtl.dpdns.org/cdn.modrinth.com/*`
+
+更具体的路由（`mtl.dpdns.org/cdn.modrinth.com/*`）优先于 `mtl.dpdns.org/*`，
+所以不会影响 NeoForge maven 那条。客户端不需要改任何配置。
+
 ## 部署
 
 ```bash
