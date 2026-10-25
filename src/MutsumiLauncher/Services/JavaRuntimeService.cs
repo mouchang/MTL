@@ -29,15 +29,15 @@ public static class JavaRuntimeService
 
             var url = $"https://api.adoptium.net/v3/binary/latest/{majorVersion}/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk";
 
-            using (var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
-                       cancellationToken))
-            {
-                response.EnsureSuccessStatusCode();
+            var downloadProgress = progress is null
+                ? null
+                : new Progress<DownloadProgress>(p =>
+                    progress.Report(new InstallProgress(
+                        Math.Min(68, p.Received / 1048576.0),
+                        $"下载 Java {majorVersion} 运行时… {p.Received / 1048576.0:0.0} MB")));
 
-                await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                await using var file = File.Create(zipPath);
-                await source.CopyToAsync(file, cancellationToken);
-            }
+            await DownloadEngine.DownloadAsync(new[] { url }, zipPath, null, null, downloadProgress,
+                cancellationToken);
 
             progress?.Report(new InstallProgress(70, "解压 Java 运行时…"));
 

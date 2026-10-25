@@ -236,62 +236,11 @@ public static class ModpackImporter
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
         var mirrored = DownloadMirror.ModFileUrl(officialUrl);
-        var candidates = new List<string>();
+        var urls = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(mirrored)) candidates.Add(mirrored);
-        if (!candidates.Contains(officialUrl, StringComparer.OrdinalIgnoreCase))
-            candidates.Add(officialUrl);
+        if (!string.IsNullOrWhiteSpace(mirrored)) urls.Add(mirrored);
+        if (!urls.Contains(officialUrl, StringComparer.OrdinalIgnoreCase)) urls.Add(officialUrl);
 
-        Exception? lastError = null;
-
-        foreach (var candidate in candidates)
-        {
-            var temp = $"{targetPath}.{Guid.NewGuid():N}.tmp";
-
-            try
-            {
-                using (var response = await Http.GetAsync(candidate,
-                           HttpCompletionOption.ResponseHeadersRead, cancellationToken))
-                {
-                    response.EnsureSuccessStatusCode();
-                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    await using var file = File.Create(temp);
-                    await source.CopyToAsync(file, cancellationToken);
-                }
-
-                if (!string.IsNullOrWhiteSpace(sha1) && !await MatchesAsync(temp, sha1, cancellationToken))
-                {
-                    lastError = new InvalidDataException($"校验失败：{Path.GetFileName(targetPath)}");
-                    AppLog.Info($"modpack file checksum mismatch, url={candidate}");
-                    continue;
-                }
-
-                File.Move(temp, targetPath, overwrite: true);
-                return;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                lastError = ex;
-                AppLog.Error(ex, $"modpack download {candidate}");
-            }
-            finally
-            {
-                try
-                {
-                    if (File.Exists(temp)) File.Delete(temp);
-                }
-                catch
-                {
-                    // 忽略
-                }
-            }
-        }
-
-        throw new InvalidDataException(
-            $"整合包文件下载失败：{Path.GetFileName(targetPath)}（{lastError?.Message}）", lastError);
+        await DownloadEngine.DownloadAsync(urls, targetPath, sha1, null, null, cancellationToken);
     }
 }

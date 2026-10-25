@@ -21,6 +21,11 @@
 - 社区文件下载校验失败时自动回退官方 CDN（Modrinth / 整合包）
 - 聚合结果跨页全局按下载量排序，不再按来源分页堆积
 
+### 下载引擎
+- 参考 PCL2 重构：全局线程池、HTTP Range 多段并发、源失败切换、流式 SHA-1 校验
+- 大文件（Mod / 整合包 / client jar）自动分块，小文件与 BMCLAPI/GitHub 保持单线程
+- 版本依赖、Fabric/Forge 依赖改为并发下载
+
 ### 计划中
 - 微软登录（等待 Mojang 应用审核）
 - OptiFine 安装

@@ -357,15 +357,7 @@ public sealed class ForgeLoader
 
     private static async Task DownloadAsync(string url, string target, CancellationToken cancellationToken)
     {
-        using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"安装器下载失败：{(int)response.StatusCode}");
-
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var file = File.Create(target);
-        await source.CopyToAsync(file, cancellationToken);
+        await DownloadEngine.DownloadAsync(new[] { url }, target, null, null, null, cancellationToken);
     }
 
     private static void CopyDirectory(string source, string target)

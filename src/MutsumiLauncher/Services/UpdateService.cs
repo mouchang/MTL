@@ -192,34 +192,15 @@ public static class UpdateService
     private static async Task DownloadOneAsync(string url, string target,
         IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
     {
-        using var http = HttpUtil.Create(TimeSpan.FromMinutes(20));
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"MutsumiLauncher/{CurrentVersion}");
+        var adapter = progress is null
+            ? null
+            : new Progress<DownloadProgress>(p =>
+                progress.Report(new InstallProgress(
+                    p.Total > 0 ? p.Received * 100.0 / p.Total : 0,
+                    $"下载更新… {p.Received / 1048576.0:0.0} MB")));
 
-        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
+        await DownloadEngine.DownloadAsync(new[] { url }, target, null, null, adapter,
             cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        var total = response.Content.Headers.ContentLength ?? 0;
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var file = File.Create(target);
-
-        var buffer = new byte[81920];
-        long read = 0;
-
-        while (true)
-        {
-            var count = await source.ReadAsync(buffer, cancellationToken);
-            if (count <= 0) break;
-
-            await file.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
-            read += count;
-
-            if (total > 0)
-                progress?.Report(new InstallProgress(read * 100.0 / total, "下载更新…"));
-        }
-
-        if (read == 0) throw new InvalidDataException("下载到的安装包是空的。");
 
         progress?.Report(new InstallProgress(100, "下载完成"));
     }

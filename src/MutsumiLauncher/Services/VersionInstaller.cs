@@ -124,8 +124,8 @@ public sealed class VersionInstaller
             var clientBase = transferred;
             var lastClientReport = DateTime.UtcNow;
 
-            await DownloadAsync(clientUrl, Path.Combine(versionDir, $"{name}.jar"), client.Sha1,
-                cancellationToken, chunk =>
+            await DownloadAsync(client.Url!, clientUrl, Path.Combine(versionDir, $"{name}.jar"),
+                client.Sha1, cancellationToken, chunk =>
                 {
                     if ((DateTime.UtcNow - lastClientReport).TotalMilliseconds < 180) return;
                     lastClientReport = DateTime.UtcNow;
@@ -145,35 +145,27 @@ public sealed class VersionInstaller
             .Select(g => g.First())
             .ToList();
 
-        var index = 0;
-        foreach (var artifact in artifacts)
+        var artifactCount = artifacts.Count;
+        var completed = 0;
+
+        var libraryTasks = artifacts.Select(async artifact =>
         {
-            index++;
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var percent = 8 + 86.0 * index / Math.Max(1, artifacts.Count);
-            progress?.Report(new InstallProgress(percent, $"下载依赖 {index}/{artifacts.Count}…",
-                transferred));
-
             var target = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
-            if (File.Exists(target) && new FileInfo(target).Length > 0) continue;
+            if (File.Exists(target) && new FileInfo(target).Length > 0) return;
 
             var libraryUrl = DownloadMirror.LibraryUrl(artifact.Url, artifact.Path);
-            var libraryBase = transferred;
-            var lastLibraryReport = DateTime.UtcNow;
-            var libraryPercent = percent;
 
-            await DownloadAsync(libraryUrl, target, artifact.Sha1, cancellationToken, chunk =>
-            {
-                if ((DateTime.UtcNow - lastLibraryReport).TotalMilliseconds < 180) return;
-                lastLibraryReport = DateTime.UtcNow;
+            await DownloadAsync(artifact.Url!, libraryUrl, target, artifact.Sha1,
+                cancellationToken, null);
 
-                progress?.Report(new InstallProgress(libraryPercent,
-                    $"下载依赖 {index}/{artifacts.Count}…", libraryBase + chunk));
-            });
+            var done = Interlocked.Increment(ref completed);
+            progress?.Report(new InstallProgress(8 + 86.0 * done / Math.Max(1, artifactCount),
+                $"下载依赖 {done}/{artifactCount}…"));
+        }).ToList();
 
-            transferred += artifact.Size;
-        }
+        await Task.WhenAll(libraryTasks);
+
+        transferred += artifacts.Sum(artifact => artifact.Size);
 
         if (installAssets && detail.AssetIndex is { Url.Length: > 0 } assetIndex)
         {
@@ -187,7 +179,7 @@ public sealed class VersionInstaller
         }
 
         progress?.Report(new InstallProgress(100, "安装完成"));
-        AppLog.Info($"install {id} -> {name}: done, {index} artifacts");
+        AppLog.Info($"install {id} -> {name}: done, {artifactCount} artifacts");
 
         var gameDir = InstanceSettings.Load(name).EffectiveIsolation ? versionDir : GamePaths.Root;
         GameOptions.EnsureLanguage(gameDir);
@@ -228,68 +220,17 @@ public sealed class VersionInstaller
         return allowed;
     }
 
-    private static async Task DownloadAsync(string url, string targetPath, string? sha1,
-        CancellationToken cancellationToken, Action<long>? onBytes = null)
+    private static async Task DownloadAsync(string officialUrl, string mirrorUrl, string targetPath,
+        string? sha1, CancellationToken cancellationToken, Action<long>? onBytes)
     {
-        var directory = Path.GetDirectoryName(targetPath);
-        if (directory is not null) Directory.CreateDirectory(directory);
+        var urls = new List<string> { mirrorUrl };
+        if (!string.Equals(officialUrl, mirrorUrl, StringComparison.OrdinalIgnoreCase))
+            urls.Add(officialUrl);
 
-        var tempPath = targetPath + ".tmp";
+        var progress = onBytes is null
+            ? null
+            : new Progress<DownloadProgress>(p => onBytes(p.Received));
 
-        for (var attempt = 0; attempt < 2; attempt++)
-        {
-            var existing = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
-
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-                if (existing > 0)
-                    request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existing, null);
-
-                using var response = await Http.SendAsync(request,
-                    HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-                var resumed = existing > 0
-                              && response.StatusCode == System.Net.HttpStatusCode.PartialContent;
-
-                if (!resumed) existing = 0;
-                response.EnsureSuccessStatusCode();
-
-                await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                await using var target = new FileStream(tempPath,
-                    resumed ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None,
-                    81920, useAsync: true);
-
-                var buffer = new byte[81920];
-                var total = existing;
-                int read;
-
-                while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
-                {
-                    await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                    total += read;
-                    onBytes?.Invoke(total);
-                }
-            }
-            catch (Exception ex) when (attempt == 0)
-            {
-                AppLog.Error(ex, $"download {url}");
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(sha1)) break;
-
-            var bytes = await File.ReadAllBytesAsync(tempPath, cancellationToken);
-            var actual = Convert.ToHexString(SHA1.HashData(bytes));
-
-            if (actual.Equals(sha1, StringComparison.OrdinalIgnoreCase)) break;
-
-            AppLog.Info($"checksum mismatch, retrying full download: {Path.GetFileName(targetPath)}");
-            File.Delete(tempPath);
-        }
-
-        File.Move(tempPath, targetPath, overwrite: true);
+        await DownloadEngine.DownloadAsync(urls, targetPath, sha1, null, progress, cancellationToken);
     }
-
 }

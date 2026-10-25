@@ -61,13 +61,10 @@ public sealed class FabricLoader
                      ?? throw new InvalidOperationException("Fabric 配置解析失败");
 
         var libraries = detail.Libraries;
-        var index = 0;
-        var transferred = 0L;
+        var jobs = new List<(string Url, string Target)>();
+
         foreach (var library in libraries)
         {
-            index++;
-            cancellationToken.ThrowIfCancellationRequested();
-
             var path = MavenPath(library.Name);
             if (path is null) continue;
 
@@ -78,15 +75,21 @@ public sealed class FabricLoader
                 ? "https://maven.fabricmc.net/"
                 : library.Url!;
 
-            var url = baseUrl.TrimEnd('/') + "/" + path.Replace('\\', '/');
-
-            progress?.Report(new InstallProgress(
-                10 + 80.0 * index / Math.Max(1, libraries.Count),
-                $"下载 Fabric 依赖 {index}/{libraries.Count}…",
-                transferred));
-
-            transferred += await DownloadAsync(url, target, cancellationToken);
+            jobs.Add((baseUrl.TrimEnd('/') + "/" + path.Replace('\\', '/'), target));
         }
+
+        var completed = 0;
+
+        await Task.WhenAll(jobs.Select(async job =>
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(job.Target)!);
+            await DownloadEngine.DownloadAsync(new[] { job.Url }, job.Target, null, null, null,
+                cancellationToken);
+
+            var done = Interlocked.Increment(ref completed);
+            progress?.Report(new InstallProgress(10 + 80.0 * done / Math.Max(1, jobs.Count),
+                $"下载 Fabric 依赖 {done}/{jobs.Count}…"));
+        }));
 
         progress?.Report(new InstallProgress(100, "Fabric 安装完成"));
         AppLog.Info($"fabric installed: {id}");
@@ -106,28 +109,4 @@ public sealed class FabricLoader
         return $"{group}/{artifact}/{version}/{artifact}-{version}{classifier}.jar";
     }
 
-    private static async Task<long> DownloadAsync(string url, string target,
-        CancellationToken cancellationToken)
-    {
-        var directory = Path.GetDirectoryName(target);
-        if (directory is not null) Directory.CreateDirectory(directory);
-
-        var temp = target + ".tmp";
-        long written = 0;
-
-        using (var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead,
-                   cancellationToken))
-        {
-            if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"下载失败：{url}（{(int)response.StatusCode}）");
-
-            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await using var file = File.Create(temp);
-            await source.CopyToAsync(file, cancellationToken);
-            written = file.Length;
-        }
-
-        File.Move(temp, target, overwrite: true);
-        return written;
-    }
 }
