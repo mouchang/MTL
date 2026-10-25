@@ -67,26 +67,44 @@ public partial class VersionDetailView : UserControl
         NeoForgeRow.IsEnabled = true;
         OptiFineRow.IsEnabled = true;
 
-        FabricStatus.Text = HasLoader("fabric-loader-", entry.Name) ? "已安装" : "可以添加";
-        ForgeStatus.Text = HasLoader("forge-", entry.Name) ? "已安装" : "可以添加";
-        NeoForgeStatus.Text = HasLoader("neoforge-", entry.Name) ? "已安装" : "可以添加";
+        FabricStatus.Text = HasLoader("fabric", entry.Name) ? "已安装" : "可以添加";
+        ForgeStatus.Text = HasLoader("forge", entry.Name) ? "已安装" : "可以添加";
+        NeoForgeStatus.Text = HasLoader("neoforge", entry.Name) ? "已安装" : "可以添加";
         OptiFineStatus.Text = HasOptiFine() ? "已安装" : "可以添加";
         StartButton.Content = "开始下载";
     }
 
-    private static bool HasLoader(string prefix, string gameVersion)
+    /// <summary>
+    /// 这个游戏版本下装了某个加载器？两种命名都认：
+    /// 加载器自己生成的 fabric-loader-0.16.0-1.21.1，以及合并后的 1.21.1-Fabric-0.20.1。
+    /// </summary>
+    private static bool HasLoader(string loader, string gameVersion)
     {
         if (!Directory.Exists(GamePaths.VersionsDir)) return false;
 
-        return Directory.EnumerateDirectories(GamePaths.VersionsDir)
-            .Select(Path.GetFileName)
-            .Any(name => name is not null
-                         && name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                         && name.EndsWith("-" + gameVersion, StringComparison.OrdinalIgnoreCase)
-                         || name is not null
-                         && name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                         && name.Contains(gameVersion, StringComparison.OrdinalIgnoreCase));
+        try
+        {
+            return Directory.EnumerateDirectories(GamePaths.VersionsDir)
+                .Select(Path.GetFileName)
+                .OfType<string>()
+                .Any(name => name.Contains(gameVersion, StringComparison.OrdinalIgnoreCase)
+                             && MatchesLoader(name, loader));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "scan loader instances");
+            return false;
+        }
     }
+
+    private static bool MatchesLoader(string name, string loader) => loader switch
+    {
+        "fabric" => name.Contains("fabric", StringComparison.OrdinalIgnoreCase),
+        "neoforge" => name.Contains("neoforge", StringComparison.OrdinalIgnoreCase),
+        "forge" => name.Contains("forge", StringComparison.OrdinalIgnoreCase)
+                   && !name.Contains("neoforge", StringComparison.OrdinalIgnoreCase),
+        _ => false,
+    };
 
     /// <summary>已经装过 OptiFine？实例目录名里带 optifine 就算（合并后的实例名由用户决定）。</summary>
     private static bool HasOptiFine()

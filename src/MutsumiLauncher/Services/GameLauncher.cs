@@ -57,8 +57,54 @@ public sealed class GameLauncher
             .Select(Path.GetFileName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name!)
-            .OrderByDescending(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(name => name, NaturalNameComparer.Instance)
             .ToList();
+    }
+
+    /// <summary>版本名自然排序：1.9 &lt; 1.21（字符串排序会把 1.9 排在 1.21 前面）。</summary>
+    private sealed class NaturalNameComparer : IComparer<string>
+    {
+        public static readonly NaturalNameComparer Instance = new();
+
+        public int Compare(string? x, string? y)
+        {
+            if (ReferenceEquals(x, y)) return 0;
+            if (x is null) return -1;
+            if (y is null) return 1;
+
+            var i = 0;
+            var j = 0;
+
+            while (i < x.Length && j < y.Length)
+            {
+                if (char.IsAsciiDigit(x[i]) && char.IsAsciiDigit(y[j]))
+                {
+                    var startX = i;
+                    while (i < x.Length && char.IsAsciiDigit(x[i])) i++;
+
+                    var startY = j;
+                    while (j < y.Length && char.IsAsciiDigit(y[j])) j++;
+
+                    var numberX = x.AsSpan(startX, i - startX).TrimStart('0');
+                    var numberY = y.AsSpan(startY, j - startY).TrimStart('0');
+
+                    if (numberX.Length != numberY.Length) return numberX.Length.CompareTo(numberY.Length);
+
+                    var numeric = numberX.SequenceCompareTo(numberY);
+                    if (numeric != 0) return numeric;
+
+                    continue;
+                }
+
+                var compare = char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]));
+                if (compare != 0) return compare;
+
+                i++;
+                j++;
+            }
+
+            return (x.Length - i).CompareTo(y.Length - j);
+        }
     }
 
     public async Task<LaunchResult> LaunchAsync(string id, LaunchOptions options,
@@ -314,7 +360,7 @@ public sealed class GameLauncher
             ["classpath"] = classpath,
             ["classpath_separator"] = ";",
             ["launcher_name"] = "MutsumiLauncher",
-            ["launcher_version"] = "0.1.0",
+            ["launcher_version"] = AppInfo.Version,
             ["clientid"] = "0",
             ["auth_xuid"] = "0",
         };

@@ -7,7 +7,7 @@ namespace MutsumiLauncher.Services;
 /// <summary>统一的 HttpClient 工厂：默认直连（不走系统代理），可切换系统代理或自定义代理。</summary>
 public static class HttpUtil
 {
-    public const string DefaultUserAgent = "MutsumiLauncher/0.1.0 (github.com/mouchang/MTL)";
+    public static string DefaultUserAgent => $"MutsumiLauncher/{AppInfo.Version} (github.com/mouchang/MTL)";
 
     private static readonly object ProbeLock = new();
     private static bool? _systemProxyReachable;
@@ -50,7 +50,7 @@ public static class HttpUtil
         }
     }
 
-    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = DefaultUserAgent)
+    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null)
     {
         var config = AppConfig.Current;
 
@@ -88,6 +88,8 @@ public static class HttpUtil
         HttpMessageHandler pipeline = usingProxy ? new DirectFallbackHandler(handler) : handler;
 
         var client = new HttpClient(pipeline) { Timeout = timeout ?? TimeSpan.FromMinutes(2) };
+
+        userAgent ??= DefaultUserAgent;
         if (!string.IsNullOrWhiteSpace(userAgent))
             client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
 
