@@ -20,6 +20,25 @@
 const CONFIG_CACHE_KEY = "https://mtl-sub.internal/clash.yaml";
 const CONFIG_CACHE_TTL = 3300; // 55 分钟，比订阅端 24 小时刷新更积极，避免换节点后长时间不生效
 const DEVICE_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
+const UPSTREAM_UA = "clash-verge/v2.0.0";
+
+/**
+ * Secret 里粘贴的东西经常带首尾空白甚至换行（控制台的输入框是 textarea），
+ * 直接丢给 fetch 会抛错，表现就是「上游异常 502」。这里统一清洗 + 校验。
+ */
+function normalizeUrl(raw) {
+  if (!raw) return null;
+
+  const value = raw.toString().trim();
+  if (!/^https?:\/\//i.test(value)) return null;
+
+  try {
+    new URL(value);
+    return value;
+  } catch {
+    return null;
+  }
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,7 +53,7 @@ export default {
     }
 
     if (url.pathname === "/sub/status" || url.pathname === "/sub/status/") {
-      return handleStatus(env);
+      return handleStatus(env, url);
     }
 
     if (url.pathname !== "/sub/config" && url.pathname !== "/sub/config/") {
@@ -78,7 +97,8 @@ export default {
 // ---------------------------------------------------------------- 配置缓存
 
 async function loadConfig(env, ctx) {
-  if (!env.SUB_URL) return null;
+  const subUrl = normalizeUrl(env.SUB_URL);
+  if (!subUrl) return null;
 
   const cache = caches.default;
   const key = new Request(CONFIG_CACHE_KEY);
@@ -88,9 +108,9 @@ async function loadConfig(env, ctx) {
 
   let upstream;
   try {
-    upstream = await fetch(env.SUB_URL, {
+    upstream = await fetch(subUrl, {
       // 订阅端按 UA 返回不同格式：浏览器 UA 拿到的是面板 HTML，必须声明成 clash
-      headers: { "User-Agent": "clash-verge/v2.0.0", "Accept": "*/*" },
+      headers: { "User-Agent": UPSTREAM_UA, "Accept": "*/*" },
       redirect: "follow",
     });
   } catch {
@@ -144,15 +164,44 @@ async function kvGet(env, key) {
 
 // ---------------------------------------------------------------- 杂项
 
-async function handleStatus(env) {
+async function handleStatus(env, url) {
   const enabled = await isEnabled(env);
   const mode = env.SUB_KV ? (await kvGet(env, "mode")) || "open" : "open";
+  const subUrl = normalizeUrl(env.SUB_URL);
 
-  return json(200, {
+  const body = {
     enabled,
     mode,
-    upstream: env.SUB_URL ? "configured" : "missing",
-  });
+    upstream: subUrl ? "configured" : env.SUB_URL ? "invalid-url" : "missing",
+    upstreamHost: subUrl ? new URL(subUrl).host : null,
+    cache: (await caches.default.match(new Request(CONFIG_CACHE_KEY))) ? "hit" : "miss",
+  };
+
+  // 带 ?probe=1 才真的去拉一次订阅，用来定位「上游异常」到底卡在哪
+  if (url.searchParams.get("probe") === "1") {
+    if (!subUrl) {
+      body.probe = { ok: false, reason: "no-url" };
+    } else {
+      try {
+        const response = await fetch(subUrl, {
+          headers: { "User-Agent": UPSTREAM_UA, "Accept": "*/*" },
+          redirect: "follow",
+        });
+        const text = response.ok ? await response.text() : "";
+        body.probe = {
+          ok: response.ok,
+          status: response.status,
+          type: response.headers.get("content-type"),
+          bytes: text.length,
+          looksLikeYaml: /^\s*(mixed-port|port|proxies|proxy-groups)\s*:/m.test(text.slice(0, 2000)),
+        };
+      } catch (error) {
+        body.probe = { ok: false, status: 0, error: String(error).slice(0, 120) };
+      }
+    }
+  }
+
+  return json(200, body);
 }
 
 function json(status, body) {
