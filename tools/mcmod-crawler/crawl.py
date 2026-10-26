@@ -115,13 +115,10 @@ def sync(args, conn):
 
         rows = []
         for loc, lastmod in extract_locs(body):
-            if "/class/" in loc:
-                kind = "class"
-            elif "/modpack/" in loc:
-                kind = "modpack"
-            else:
+            # 只收模组页面：整合包、物品、教程一律不要
+            if "/class/" not in loc:
                 continue
-            rows.append((loc, kind, lastmod))
+            rows.append((loc, "class", lastmod))
 
         before = conn.total_changes
         conn.executemany(
@@ -134,6 +131,12 @@ def sync(args, conn):
         total_new += len(rows)
         log(f"  收录 {len(rows)} 条（累计 {total_new}）")
         time.sleep(args.delay)
+
+    # 清掉历史遗留的非模组条目
+    removed = conn.execute("DELETE FROM urls WHERE kind <> 'class'").rowcount
+    conn.commit()
+    if removed:
+        log(f"  已移除 {removed} 条非模组页面")
 
     log("任务清单已更新：" + str(total(args, conn)))
 
@@ -297,11 +300,9 @@ def fetch_with_recovery(url, args):
 
 
 def crawl(args, conn):
-    kind_filter = "" if args.only == "all" else f" AND kind = '{args.only}'"
-
     pending = conn.execute(
-        "SELECT url FROM urls WHERE status != 'done'" + kind_filter +
-        " ORDER BY status = 'failed', url LIMIT ?",
+        "SELECT url FROM urls WHERE status != 'done' AND kind = 'class' "
+        "ORDER BY status = 'failed', url LIMIT ?",
         (args.limit if args.limit else -1,),
     ).fetchall()
 
@@ -429,8 +430,8 @@ def main():
                         help="断网后最多等多久（秒），超时则停下并保存进度")
     parser.add_argument("--recover-delay", type=int, default=10,
                         help="网络恢复后额外等几秒再继续")
-    parser.add_argument("--only", choices=["all", "class", "modpack"], default="all",
-                        help="只抓某类页面（class = 模组，modpack = 整合包）")
+    parser.add_argument("--only", choices=["class", "all", "modpack"], default="class",
+                        help="抓取范围，默认只抓模组（class）")
     parser.add_argument("--ua", default=DEFAULT_UA)
     args = parser.parse_args()
 
