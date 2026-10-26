@@ -49,6 +49,76 @@ public partial class DownloadSourceView : UserControl
         ProxyPortBox.Text = config.ProxyPort.ToString();
 
         RefreshSpeed();
+        RefreshBuiltIn();
+    }
+
+    private void RefreshBuiltIn()
+    {
+        var config = AppConfig.Current;
+
+        BuiltInToggle.Content = config.BuiltInProxyEnabled ? "停用" : "启用";
+
+        if (string.IsNullOrWhiteSpace(BuiltInNodeBox.Text))
+            BuiltInNodeBox.Text = config.BuiltInProxyNode;
+
+        BuiltInHint.Text = "优先节点（名称包含匹配），留空则自动挑第一个 0.1 倍率节点。设备 ID：" +
+                           DeviceIdentity.Current;
+
+        if (!config.BuiltInProxyEnabled)
+        {
+            BuiltInStatus.Text = "已停用：只走直连 / 系统代理。";
+            return;
+        }
+
+        BuiltInStatus.Text = ProxyCore.Shared.IsRunning
+            ? $"运行中 · 端口 {ProxyCore.Shared.Port} · {ProxyCore.Shared.ActiveNode}"
+            : "已启用：首次下载资源时自动启动内核。";
+    }
+
+    private void BuiltInToggle_Click(object sender, RoutedEventArgs e)
+    {
+        var config = AppConfig.Current;
+        config.BuiltInProxyEnabled = !config.BuiltInProxyEnabled;
+        config.Save();
+
+        if (!config.BuiltInProxyEnabled) ProxyCore.Shared.Stop("用户停用");
+
+        RefreshBuiltIn();
+        _onChanged?.Invoke();
+    }
+
+    private void BuiltInNode_Click(object sender, RoutedEventArgs e)
+    {
+        AppConfig.Current.BuiltInProxyNode = BuiltInNodeBox.Text.Trim();
+        AppConfig.Current.Save();
+
+        if (ProxyCore.Shared.IsRunning) ProxyCore.Shared.Stop("节点变更");
+
+        RefreshBuiltIn();
+        _onChanged?.Invoke();
+    }
+
+    private async void BuiltInTest_Click(object sender, RoutedEventArgs e)
+    {
+        BuiltInTest.IsEnabled = false;
+        BuiltInStatus.Text = "正在启动内核…（首次会下载约 20 MB 内核，请稍候）";
+
+        try
+        {
+            var ok = await ProxyCore.Shared.EnsureRunningAsync();
+
+            BuiltInStatus.Text = ok
+                ? $"运行中 · 端口 {ProxyCore.Shared.Port} · {ProxyCore.Shared.ActiveNode}"
+                : "启动失败：" + (ProxyCore.Shared.LastError ?? "未知原因") + "（会自动回落直连）";
+        }
+        catch (Exception ex)
+        {
+            BuiltInStatus.Text = "启动失败：" + ex.Message;
+        }
+        finally
+        {
+            BuiltInTest.IsEnabled = true;
+        }
     }
 
     private void RefreshSpeed()

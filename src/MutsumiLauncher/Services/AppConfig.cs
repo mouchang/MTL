@@ -45,6 +45,15 @@ public sealed class AppConfig
     /// <summary>下载限速（KB/s），0 表示不限速。</summary>
     public int MaxDownloadSpeedKbps { get; set; }
 
+    /// <summary>内置代理（自带 mihomo 内核，只给境外资源域名用）。</summary>
+    public bool BuiltInProxyEnabled { get; set; }
+
+    /// <summary>内置代理优先使用的节点（按名称包含匹配）。</summary>
+    public string BuiltInProxyNode { get; set; } = "美国03-0.1倍";
+
+    /// <summary>设备标识，首次运行生成，用于订阅网关白名单。</summary>
+    public string DeviceId { get; set; } = "";
+
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";
 

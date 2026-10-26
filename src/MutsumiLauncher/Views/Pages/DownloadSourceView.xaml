@@ -298,6 +298,41 @@
 
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>
+                <TextBlock Text="内置代理" Style="{StaticResource H2}" />
+                <TextBlock Text="自带 mihomo 内核：只在访问 Modrinth / CurseForge / GitHub 时启动，空闲 90 秒自动停止，失败自动回落直连。"
+                           Style="{StaticResource Caption}" Margin="0,4,0,10" TextWrapping="Wrap" />
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="BuiltInStatus" VerticalAlignment="Center" FontSize="12"
+                               Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
+                    <Button x:Name="BuiltInTest" Grid.Column="1" Style="{StaticResource GhostButton}"
+                            Content="测试" Padding="12,6" Margin="8,0,0,0" Click="BuiltInTest_Click" />
+                    <Button x:Name="BuiltInToggle" Grid.Column="2" Style="{StaticResource PrimaryButton}"
+                            Content="启用" Width="76" Height="30" Margin="8,0,0,0" Click="BuiltInToggle_Click" />
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="BuiltInNodeBox" Style="{StaticResource SheetTextBox}" Height="32" />
+                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="保存节点"
+                            Padding="12,6" Margin="8,0,0,0" Click="BuiltInNode_Click" />
+                </Grid>
+
+                <TextBlock x:Name="BuiltInHint" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
+            <StackPanel>
                 <TextBlock Text="下载限速" Style="{StaticResource H2}" />
                 <TextBlock Text="限制启动器占用的带宽，装游戏 / 下 Mod 时不至于把网占满。"
                            Style="{StaticResource Caption}" Margin="0,4,0,10" />

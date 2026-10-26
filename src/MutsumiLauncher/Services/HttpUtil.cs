@@ -60,6 +60,36 @@ public static class HttpUtil
         }
     }
 
+    private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
+
+    /// <summary>
+    /// 用户在跑 Clash 但没开「系统代理」（或用的是 TUN）时，系统代理探测会失败。
+    /// 这里再试几个常见本地端口，能连上就当代理用——只影响境外域名。
+    /// </summary>
+    private static WebProxy? DetectLocalProxy()
+    {
+        foreach (var port in CommonProxyPorts)
+        {
+            try
+            {
+                using var client = new TcpClient();
+                var connect = client.ConnectAsync(System.Net.IPAddress.Loopback, port);
+
+                if (connect.Wait(TimeSpan.FromMilliseconds(300)) && client.Connected)
+                {
+                    AppLog.Info($"detected local proxy on 127.0.0.1:{port}");
+                    return new WebProxy("http://127.0.0.1:" + port);
+                }
+            }
+            catch
+            {
+                // 没开就下一个
+            }
+        }
+
+        return null;
+    }
+
     /// <param name="forceDirect">忽略设置强制直连（诊断用）。</param>
     public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
         bool forceDirect = false)
@@ -79,10 +109,22 @@ public static class HttpUtil
                 proxy.Proxy = WebRequest.GetSystemWebProxy();
                 break;
 
-            case "custom" when !string.IsNullOrWhiteSpace(config.ProxyHost):
+            case "auto":
+            {
+                // 系统代理没开，但本机可能有 Clash 在跑
+                var local = DetectLocalProxy();
+                if (local is null) break;
+
                 proxy = NewHandler();
                 proxy.UseProxy = true;
-                proxy.Proxy = new WebProxy(config.ProxyHost.Trim(),
+                proxy.Proxy = local;
+                break;
+            }
+
+            case "custom" when !string.IsNullOrWhiteSpace(ProxyHostOf(config)):
+                proxy = NewHandler();
+                proxy.UseProxy = true;
+                proxy.Proxy = new WebProxy(ProxyHostOf(config).Trim(),
                     config.ProxyPort <= 0 ? 7890 : config.ProxyPort);
                 break;
         }
@@ -98,6 +140,8 @@ public static class HttpUtil
 
         return client;
     }
+
+    private static string ProxyHostOf(AppConfig config) => config.ProxyHost ?? "";
 
     private static SocketsHttpHandler NewHandler() => new()
     {
@@ -134,6 +178,12 @@ public static class HttpUtil
         {
             var url = request.RequestUri?.ToString() ?? string.Empty;
             var routes = BuildRoutes(url);
+
+            // 内置代理优先：只有境外资源域名会命中；内核不可用时自动回落直连
+            var builtIn = await ProxyCore.Shared.TryGetClientAsync(url, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (builtIn is not null) routes.Insert(0, builtIn);
 
             byte[]? body = request.Content is null
                 ? null
