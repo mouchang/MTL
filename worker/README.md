@@ -50,6 +50,37 @@ npx wrangler secret put SUB_URL          # 粘贴订阅链接，只存 Cloudflar
 npx wrangler deploy -c sub-gateway.wrangler.toml
 ```
 
+### 订阅端 403 时：改用「本机上传」
+
+很多机场会直接屏蔽 **Cloudflare 的出口 IP（AS13335）**，Worker 回源会拿到
+`403`（`/sub/status?probe=1` 里的 `probe.status` 就能看到）。
+这种订阅链接用本机/代理是能正常拉取的，所以改成「本机拉一次，推到 KV」：
+
+1. 建 KV 并绑定（必须，上传的副本存在这里）：
+
+```bash
+npx wrangler kv namespace create SUB_KV   # 把返回的 id 写进 sub-gateway.wrangler.toml
+npx wrangler secret put PUBLISH_KEY       # 随便一个长随机串，上传时要校验
+```
+
+2. 本机执行上传（PowerShell，Windows 自带 curl）：
+
+```powershell
+.\publish-sub.ps1 -SubscriptionUrl "https://你的机场/api/v1/pq/xxxx" -PublishKey "上一步的 PUBLISH_KEY"
+```
+
+脚本会：用 `clash` UA 拉订阅 → 校验像不像 Clash YAML → POST 到 `/sub/publish` → 再拉一次 `/sub/config` 自检。
+
+3. 之后 Worker 永远只读 KV：
+
+| 端点 | 行为 |
+|---|---|
+| `GET /sub/config?did=...` | 优先 KV 副本（`X-Sub-Source: kv`），没有时才回源 |
+| `POST /sub/publish` | 需要 `X-Publish-Key: <PUBLISH_KEY>`，体为 Clash YAML |
+| `GET /sub/status` | 多了 `published` / `publishedAt` 两个字段 |
+
+> 节点更新后重新跑一次脚本即可（建议每周一次，或换节点时）。
+
 路由 `mtl.dpdns.org/sub/*` 写在 `sub-gateway.wrangler.toml` 里，比 `mtl.dpdns.org/*` 更具体，
 不会影响 NeoForge / Modrinth 那两个 Worker。
 

@@ -21,6 +21,9 @@ const CONFIG_CACHE_KEY = "https://mtl-sub.internal/clash.yaml";
 const CONFIG_CACHE_TTL = 3300; // 55 分钟，比订阅端 24 小时刷新更积极，避免换节点后长时间不生效
 const DEVICE_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 const UPSTREAM_UA = "clash-verge/v2.0.0";
+const KV_CONFIG = "sub:yaml";
+const KV_USERINFO = "sub:userinfo";
+const KV_UPDATED = "sub:updated";
 
 /**
  * Secret 里粘贴的东西经常带首尾空白甚至换行（控制台的输入框是 textarea），
@@ -46,6 +49,12 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+
+    // 上传端点用 POST，必须在「只允许 GET/HEAD」的守卫之前处理
+    if (url.pathname === "/sub/publish" || url.pathname === "/sub/publish/") {
+      if (request.method !== "POST") return json(405, { ok: false, reason: "method" });
+      return handlePublish(request, env);
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -97,14 +106,32 @@ export default {
 // ---------------------------------------------------------------- 配置缓存
 
 async function loadConfig(env, ctx) {
-  const subUrl = normalizeUrl(env.SUB_URL);
-  if (!subUrl) return null;
-
   const cache = caches.default;
   const key = new Request(CONFIG_CACHE_KEY);
 
   const hit = await cache.match(key);
   if (hit) return hit;
+
+  // 优先用 /sub/publish 上传的副本：订阅端经常直接拒绝 Cloudflare 出口 IP（403），
+  // 由你自己的电脑拉一次再推上来，Worker 就永远只读 KV。
+  const stored = await kvGet(env, KV_CONFIG);
+  if (stored) {
+    const response = new Response(stored, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/yaml; charset=utf-8",
+        "X-Sub-Info": (await kvGet(env, KV_USERINFO)) || "",
+        "X-Sub-Source": "kv",
+        "Cache-Control": "max-age=" + CONFIG_CACHE_TTL,
+      },
+    });
+
+    ctx.waitUntil(cache.put(key, response.clone()));
+    return response;
+  }
+
+  const subUrl = normalizeUrl(env.SUB_URL);
+  if (!subUrl) return null;
 
   let upstream;
   try {
@@ -119,17 +146,57 @@ async function loadConfig(env, ctx) {
 
   if (!upstream.ok) return null;
 
-  const stored = new Response(upstream.body, {
+  const response = new Response(upstream.body, {
     status: 200,
     headers: {
       "Content-Type": "text/yaml; charset=utf-8",
       "X-Sub-Info": upstream.headers.get("subscription-userinfo") || "",
+      "X-Sub-Source": "upstream",
       "Cache-Control": "max-age=" + CONFIG_CACHE_TTL,
     },
   });
 
-  ctx.waitUntil(cache.put(key, stored.clone()));
-  return stored;
+  ctx.waitUntil(cache.put(key, response.clone()));
+  return response;
+}
+
+/**
+ * POST /sub/publish
+ * 头：X-Publish-Key: <PUBLISH_KEY>
+ * 体：Clash YAML 原文
+ *
+ * 用来绕开「订阅端拒绝 Cloudflare 出口 IP」的问题：本机拉一次，推到 KV 里。
+ */
+async function handlePublish(request, env) {
+  if (!env.PUBLISH_KEY) return json(404, { ok: false, reason: "publish-disabled" });
+  if (!env.SUB_KV) return json(501, { ok: false, reason: "kv-missing" });
+
+  const key = (request.headers.get("x-publish-key") || "").trim();
+  if (key !== env.PUBLISH_KEY.toString().trim()) {
+    return json(403, { ok: false, reason: "bad-key" });
+  }
+
+  let text;
+  try {
+    text = await request.text();
+  } catch {
+    return json(400, { ok: false, reason: "read-body" });
+  }
+
+  if (!text || text.length < 200) return json(400, { ok: false, reason: "too-small" });
+  if (text.length > 4 * 1024 * 1024) return json(400, { ok: false, reason: "too-large" });
+  if (!/(^|\n)\s*(proxies|proxy-groups)\s*:/.test(text)) {
+    return json(400, { ok: false, reason: "not-clash-yaml" });
+  }
+
+  await env.SUB_KV.put(KV_CONFIG, text);
+  await env.SUB_KV.put(KV_USERINFO, request.headers.get("x-sub-info") || "");
+  await env.SUB_KV.put(KV_UPDATED, new Date().toISOString());
+
+  // 让下一次请求立刻拿到新配置
+  await caches.default.delete(new Request(CONFIG_CACHE_KEY));
+
+  return json(200, { ok: true, bytes: text.length, updated: new Date().toISOString() });
 }
 
 // ---------------------------------------------------------------- 开关 / 白名单
@@ -174,6 +241,8 @@ async function handleStatus(env, url) {
     mode,
     upstream: subUrl ? "configured" : env.SUB_URL ? "invalid-url" : "missing",
     upstreamHost: subUrl ? new URL(subUrl).host : null,
+    published: (await kvGet(env, KV_CONFIG)) ? "yes" : "no",
+    publishedAt: (await kvGet(env, KV_UPDATED)) || null,
     cache: (await caches.default.match(new Request(CONFIG_CACHE_KEY))) ? "hit" : "miss",
   };
 
