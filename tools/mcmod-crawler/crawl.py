@@ -24,6 +24,7 @@ import os
 import random
 import re
 import sqlite3
+import statistics
 import sys
 import time
 import urllib.error
@@ -412,6 +413,49 @@ def export(args, conn):
     log(f"导出 {len(records)} 条 -> {args.out}（{raw_mb:.2f} MB，gz {gz_mb:.2f} MB）")
 
 
+def stats(args, conn):
+    """打印进度 + 按已抓页的平均耗时估算剩余时间。"""
+    print(total(args, conn))
+
+    pending = conn.execute(
+        "SELECT COUNT(*) FROM urls WHERE status != 'done' AND kind = 'class'"
+    ).fetchone()[0]
+
+    count, first, last = conn.execute(
+        "SELECT COUNT(*), MIN(fetched_at), MAX(fetched_at) FROM urls "
+        "WHERE status = 'done' AND fetched_at IS NOT NULL"
+    ).fetchone()
+
+    done = conn.execute("SELECT COUNT(*) FROM urls WHERE status = 'done'").fetchone()[0]
+    total_pages = done + pending
+
+    if total_pages:
+        print(f"进度 {done / total_pages * 100:.1f}%（{done:,} / {total_pages:,} 页）")
+
+    if not pending:
+        print("全部抓完，可以 export 了")
+        return
+
+    # 用最近 120 页的间隔中位数估算节奏，避免把跨轮次的长空档算进去
+    rows = conn.execute(
+        "SELECT fetched_at FROM urls WHERE status = 'done' AND fetched_at IS NOT NULL "
+        "ORDER BY fetched_at DESC LIMIT 120"
+    ).fetchall()
+
+    try:
+        times = sorted(datetime.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ") for row in rows)
+    except (ValueError, TypeError):
+        times = []
+
+    gaps = [(later - earlier).total_seconds() for earlier, later in zip(times, times[1:])]
+    gaps = [gap for gap in gaps if 0.5 <= gap <= 120]
+
+    if gaps:
+        per_page = statistics.median(gaps)
+        hours = pending * per_page / 3600
+        print(f"节奏 {per_page:.2f} 秒/页，预计还需 {hours:.1f} 小时")
+
+
 def main():
     parser = argparse.ArgumentParser(description="MC百科译名表爬虫")
     parser.add_argument("command", choices=["sync", "crawl", "export", "stats"])
@@ -445,7 +489,7 @@ def main():
         elif args.command == "export":
             export(args, conn)
         else:
-            log(total(args, conn))
+            stats(args, conn)
     except KeyboardInterrupt:
         log("已中断，进度已保存")
         return 1
