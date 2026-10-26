@@ -299,7 +299,7 @@
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="内置代理" Style="{StaticResource H2}" />
-                <TextBlock Text="自带 mihomo 内核：除正版账号登录外，所有资源获取与下载都走代理；空闲 90 秒自动停止，失败自动回落直连。"
+                <TextBlock Text="自带 mihomo 内核：社区资源与加载器（Modrinth / CurseForge / Forge / Fabric / NeoForge / GitHub）走代理；原版资源与正版登录直连。空闲 90 秒自动停止，失败自动回落。"
                            Style="{StaticResource Caption}" Margin="0,4,0,10" TextWrapping="Wrap" />
 
                 <Grid Margin="0,0,0,10">

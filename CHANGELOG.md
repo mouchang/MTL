@@ -72,8 +72,8 @@
 ### 内置代理（自带 mihomo 内核）
 - 设置页新增「内置代理」：首次使用自动下载 mihomo（SHA-256 校验），随机本地端口启动，
   空闲 90 秒自动停止，退出时杀进程并删除配置（节点凭据不落盘）
-- 默认「除正版账号登录外，所有资源获取与下载都走代理」：
-  Modrinth / CurseForge / BMCLAPI / Mojang 资源 / libraries / GitHub 全部经代理
+- 分流规则：**社区资源与加载器走代理**（Modrinth / CurseForge / Forge / Fabric / NeoForge / GitHub），
+  **原版资源直连**（Mojang 清单与 libraries、BMCLAPI、MCIM）
 - 鉴权域名（`login.live.com`、`api.minecraftservices.com`、`sessionserver.mojang.com` 等）、
   订阅网关 `mtl.dpdns.org` 与本机地址一律直连
 - 订阅从 `mtl.dpdns.org/sub/config` 取（订阅链接只存在 Cloudflare），设备 ID 本地持久化

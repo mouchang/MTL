@@ -84,9 +84,20 @@ public sealed class ProxyCore
         if (IsLoopback(host)) return false;
         if (IsAuthHost(host)) return false;
         if (IsGatewayHost(host)) return false;
+        if (IsVanillaHost(host)) return false;
 
         return true;
     }
+
+    /// <summary>
+    /// 原版资源（Mojang 版本清单 / client jar / libraries / assets）和它们的国内镜像走直连：
+    /// 这些域名绕道国外反而慢。加载器 maven（Forge / Fabric / NeoForge）不在此列，照常走代理。
+    /// </summary>
+    private static bool IsVanillaHost(string host) =>
+        host.EndsWith("mojang.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("minecraft.net", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("bangbang93.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("mcimirror.top", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsLoopback(string host) =>
         host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
