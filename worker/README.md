@@ -11,6 +11,7 @@
 | `/<forgecdn>/<path>` | CurseForge 文件镜像（同上） | `DownloadSources` |
 | `/sub/config?did=...` | **订阅网关**：订阅链接留在 Cloudflare，客户端只拿 YAML | 启动器内置代理 |
 | `/sub/status` | 网关状态（是否启用 / 模式） | 启动器设置页 |
+| `/core/mihomo.zip` | **内核镜像**：mihomo release 缓存在边缘，下载内核不再依赖 GitHub | `ProxyCore` |
 
 ## 独立部署 Modrinth 镜像（不动现有 Worker）
 
@@ -112,6 +113,22 @@ curl -s -o clash.yaml -w "%{http_code} %{size_download}\n" \
   "https://mtl.dpdns.org/sub/config?did=test-device-0001"
 head -3 clash.yaml
 ```
+
+## 内核镜像（内置代理用）
+
+[`core-mirror.js`](core-mirror.js) 把 `mihomo-windows-amd64-compatible-v1.19.33.zip`（约 22.5 MB）
+缓存在 Cloudflare 边缘，启动器优先从这里下载内核，GitHub 作为兜底：
+
+1. Workers & Pages → 新建 Worker，命名 `mtl-core`，粘贴 [`core-mirror.js`](core-mirror.js)
+2. 该 Worker → 设置 → 域和路由 → 添加路由：`mtl.dpdns.org/core/*`
+3. 验证：
+
+```bash
+curl -sI "https://mtl.dpdns.org/core/mihomo.zip" | head -5      # 200 + application/zip
+curl -sI "https://mtl.dpdns.org/core/mihomo.zip" | grep -i x-mtl-cache   # 第二次应为 HIT
+```
+
+客户端下载后会校验 ZIP 的 **SHA-256**（`7aaf636a…864d`），镜像被篡改也装不上。
 
 ## 部署
 

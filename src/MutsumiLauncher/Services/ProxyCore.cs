@@ -18,8 +18,14 @@ public sealed class ProxyCore
     public const string CoreVersion = "v1.19.33";
 
     private const string CoreZipName = "mihomo-windows-amd64-compatible-v" + "1.19.33.zip";
-    private const string CoreUrl = "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/" + CoreZipName;
     private const string CoreSha256 = "7aaf636a4f2172dcd8ec34ac4f52797b059195e5afd6409508c963e545f8864d";
+
+    /// <summary>下载源按顺序尝试：自建边缘缓存优先，GitHub 兜底。两者都要过 SHA-256 校验。</summary>
+    private static readonly string[] CoreUrls =
+    [
+        "https://mtl.dpdns.org/core/mihomo.zip",
+        "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/" + CoreZipName,
+    ];
 
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(25);
     private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(90);
@@ -301,18 +307,46 @@ public sealed class ProxyCore
 
             if (!File.Exists(zipPath) || !MatchesSha256(zipPath))
             {
-                AppLog.Info("proxy core: 下载 mihomo…");
-                using var http = HttpUtil.Create(TimeSpan.FromMinutes(10), forceDirect: false);
-                await using var stream = await http.GetStreamAsync(CoreUrl, cancellationToken);
-                await using var file = File.Create(zipPath);
-                await stream.CopyToAsync(file, cancellationToken);
-            }
+                var downloaded = false;
 
-            if (!MatchesSha256(zipPath))
-            {
-                AppLog.Info("proxy core: 校验失败，删除重下");
-                File.Delete(zipPath);
-                return null;
+                using var http = HttpUtil.Create(TimeSpan.FromMinutes(10), forceDirect: false);
+
+                foreach (var url in CoreUrls)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        AppLog.Info($"proxy core: 下载内核 {url}");
+
+                        await using var stream = await http.GetStreamAsync(url, cancellationToken);
+                        await using var file = File.Create(zipPath);
+                        await stream.CopyToAsync(file, cancellationToken);
+
+                        if (MatchesSha256(zipPath))
+                        {
+                            downloaded = true;
+                            break;
+                        }
+
+                        AppLog.Info("proxy core: 校验不通过，换下一个源");
+                        File.Delete(zipPath);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Error(ex, $"proxy core download {url}");
+                    }
+                }
+
+                if (!downloaded)
+                {
+                    AppLog.Info("proxy core: 所有下载源都失败");
+                    return null;
+                }
             }
 
             using (var archive = ZipFile.OpenRead(zipPath))

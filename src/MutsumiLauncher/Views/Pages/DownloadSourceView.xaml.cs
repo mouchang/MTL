@@ -58,12 +58,6 @@ public partial class DownloadSourceView : UserControl
 
         BuiltInToggle.Content = config.BuiltInProxyEnabled ? "停用" : "启用";
 
-        if (string.IsNullOrWhiteSpace(BuiltInNodeBox.Text))
-            BuiltInNodeBox.Text = config.BuiltInProxyNode;
-
-        BuiltInHint.Text = "优先节点（名称包含匹配），留空则自动挑第一个 0.1 倍率节点。设备 ID：" +
-                           DeviceIdentity.Current;
-
         if (!config.BuiltInProxyEnabled)
         {
             BuiltInStatus.Text = "已停用：只走直连 / 系统代理。";
@@ -82,17 +76,6 @@ public partial class DownloadSourceView : UserControl
         config.Save();
 
         if (!config.BuiltInProxyEnabled) ProxyCore.Shared.Stop("用户停用");
-
-        RefreshBuiltIn();
-        _onChanged?.Invoke();
-    }
-
-    private void BuiltInNode_Click(object sender, RoutedEventArgs e)
-    {
-        AppConfig.Current.BuiltInProxyNode = BuiltInNodeBox.Text.Trim();
-        AppConfig.Current.Save();
-
-        if (ProxyCore.Shared.IsRunning) ProxyCore.Shared.Stop("节点变更");
 
         RefreshBuiltIn();
         _onChanged?.Invoke();

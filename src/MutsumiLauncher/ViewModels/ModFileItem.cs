@@ -24,6 +24,27 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public Brush IconBrush { get; init; } = Brushes.MediumSeaGreen;
 
+    private string? _iconPath;
+
+    /// <summary>Mod 自己的图标（先从 jar 里取，取不到再按 SHA-1 去 Modrinth 找）。</summary>
+    public string? IconPath
+    {
+        get => _iconPath;
+        set
+        {
+            if (_iconPath == value) return;
+
+            _iconPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconVisibility)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InitialVisibility)));
+        }
+    }
+
+    public Visibility IconVisibility => _iconPath is null ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility InitialVisibility => _iconPath is null ? Visibility.Visible : Visibility.Collapsed;
+
     public string StateText => Enabled ? "已启用" : "已禁用";
 
     public string ToggleText => Enabled ? "禁用" : "启用";

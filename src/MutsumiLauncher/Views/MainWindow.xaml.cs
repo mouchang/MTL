@@ -186,20 +186,6 @@ public partial class MainWindow : Window
             new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180)));
     }
 
-    public void OpenFolderBrowser(string path, string? title = null)
-    {
-        var browser = new FolderBrowserView();
-        browser.Closed += () =>
-        {
-            FolderHost.Visibility = Visibility.Collapsed;
-            FolderHost.Content = null;
-        };
-
-        browser.Load(path, title);
-        FolderHost.Content = browser;
-        FolderHost.Visibility = Visibility.Visible;
-    }
-
     public void OpenLogViewer(string instance)
     {
         var viewer = new LogViewerView();

@@ -151,12 +151,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 内置文件夹浏览 -->
-                    <ContentControl x:Name="FolderHost" Grid.Row="0" Grid.RowSpan="2"
-                                    Panel.ZIndex="25" Visibility="Collapsed"
-                                    HorizontalContentAlignment="Stretch"
-                                    VerticalContentAlignment="Stretch" />
-
                     <!-- 启动进度面板（右侧滑出） -->
                     <ContentControl x:Name="LaunchPanelHost" Grid.Row="0" Grid.RowSpan="2"
                                     Panel.ZIndex="26" HorizontalAlignment="Right"

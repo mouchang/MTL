@@ -71,8 +71,7 @@ public partial class LogViewerView : UserControl
     {
         if (string.IsNullOrWhiteSpace(_instance)) return;
 
-        (Window.GetWindow(this) as MainWindow)
-            ?.OpenFolderBrowser(GameLogService.LogDirFor(_instance), "日志文件夹");
+        InstanceService.OpenFolder(GameLogService.LogDirFor(_instance));
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)

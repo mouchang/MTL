@@ -314,6 +314,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         var list = items.ToList();
         ModList.ItemsSource = list;
+        _ = LoadIconsAsync(list);
         EmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Text = _items.Count == 0
             ? "这个实例还没有安装 Mod。"
@@ -353,11 +354,51 @@ public partial class ModManagePage : UserControl, IInstancePage
         (Window.GetWindow(this) as MainWindow)?.OpenCommunityMod(_version, gameVersion, loader);
     }
 
+    /// <summary>后台给列表补图标：先读 jar 里的，再按 SHA-1 查 Modrinth（走内置代理）。</summary>
+    private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
+    {
+        using var gate = new SemaphoreSlim(4);
+
+        var tasks = items.Select(async item =>
+        {
+            await gate.WaitAsync();
+
+            try
+            {
+                var size = 0L;
+
+                try
+                {
+                    size = new FileInfo(item.FullPath).Length;
+                }
+                catch
+                {
+                    // 文件没了就跳过
+                }
+
+                var icon = await ModIconLoader.LoadAsync(item.FullPath, size, null);
+
+                if (icon is not null)
+                    await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "mod icon list");
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
 
-        (Window.GetWindow(this) as MainWindow)?.OpenFolderBrowser(ModsDir, "Mod 文件夹");
+        InstanceService.OpenFolder(ModsDir);
     }
 
     private void InstallFromFile_Click(object sender, RoutedEventArgs e)

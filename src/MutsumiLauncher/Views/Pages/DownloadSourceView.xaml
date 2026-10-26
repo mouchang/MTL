@@ -316,18 +316,6 @@
                             Content="启用" Width="76" Height="30" Margin="8,0,0,0" Click="BuiltInToggle_Click" />
                 </Grid>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="BuiltInNodeBox" Style="{StaticResource SheetTextBox}" Height="32" />
-                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="保存节点"
-                            Padding="12,6" Margin="8,0,0,0" Click="BuiltInNode_Click" />
-                </Grid>
-
-                <TextBlock x:Name="BuiltInHint" Style="{StaticResource Caption}" Margin="0,6,0,0"
-                           TextWrapping="Wrap" />
             </StackPanel>
         </Border>
 

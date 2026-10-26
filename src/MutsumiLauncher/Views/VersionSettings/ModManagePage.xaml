@@ -70,10 +70,17 @@
                                         </Grid.ColumnDefinitions>
 
                                         <Border Width="42" Height="42" CornerRadius="10"
-                                                Background="{Binding IconBrush}" VerticalAlignment="Top">
-                                            <TextBlock Text="{Binding Initial}" Foreground="White"
-                                                       FontSize="13" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                Background="{Binding IconBrush}" VerticalAlignment="Top"
+                                                ClipToBounds="True">
+                                            <Grid>
+                                                <TextBlock Text="{Binding Initial}" Foreground="White"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Visibility="{Binding InitialVisibility}" />
+                                                <Image Source="{Binding IconPath}" Stretch="UniformToFill"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       Visibility="{Binding IconVisibility}" />
+                                            </Grid>
                                         </Border>
 
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
