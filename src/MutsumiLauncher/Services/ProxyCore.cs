@@ -73,18 +73,48 @@ public sealed class ProxyCore
 
     private static string ConfigPath => Path.Combine(CoreDir, "config.yaml");
 
-    /// <summary>这个域名要不要走内置代理（只放境外资源站，国内镜像一律直连）。</summary>
+    /// <summary>
+    /// 是否走内置代理：默认「除了明确排除的，全部走」——
+    /// 资源获取和下载一律经代理，只有正版账号登录、订阅网关和本机地址例外。
+    /// </summary>
     public static bool ShouldRoute(string host)
     {
         if (string.IsNullOrWhiteSpace(host)) return false;
 
-        return host.EndsWith("modrinth.com", StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("curseforge.com", StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("forgecdn.net", StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("github.com", StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("githubusercontent.com", StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("githubassets.com", StringComparison.OrdinalIgnoreCase);
+        if (IsLoopback(host)) return false;
+        if (IsAuthHost(host)) return false;
+        if (IsGatewayHost(host)) return false;
+
+        return true;
     }
+
+    private static bool IsLoopback(string host) =>
+        host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+        || host.StartsWith("10.", StringComparison.Ordinal)
+        || host.StartsWith("192.168.", StringComparison.Ordinal)
+        || host.StartsWith("172.16.", StringComparison.Ordinal);
+
+    /// <summary>
+    /// 正版账号登录 / 鉴权：只走本机网络，不经过代理。
+    /// 注意这里只排除「鉴权」域名——版本清单、client jar、libraries 这些是资源，照常走代理。
+    /// </summary>
+    private static bool IsAuthHost(string host) =>
+        host.EndsWith("live.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("microsoftonline.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("microsoftonline.cn", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("xboxlive.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("xbox.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("minecraftservices.com", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("api.mojang.com", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("authserver.mojang.com", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("sessionserver.mojang.com", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>订阅网关与自建镜像：走代理没有意义，还会绕回来递归。</summary>
+    private static bool IsGatewayHost(string host) =>
+        host.EndsWith("mtl.dpdns.org", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("dpdns.org", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>给某条请求取一个走内置代理的客户端；不需要/不可用时返回 null，调用方回落直连。</summary>
     public async Task<HttpClient?> TryGetClientAsync(string url, CancellationToken cancellationToken)
