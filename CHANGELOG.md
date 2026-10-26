@@ -70,8 +70,10 @@
 ## [Unreleased]
 
 ### 内置代理（自带 mihomo 内核）
-- 设置页新增「内置代理」：首次使用自动下载 mihomo（SHA-256 校验），随机本地端口启动，
-  空闲 90 秒自动停止，退出时杀进程并删除配置（节点凭据不落盘）
+- 设置页新增「内置代理」（默认开启）：首次使用自动下载 mihomo（SHA-256 校验），随机本地端口启动
+- **按需启停**：取用资源时启动，下载任务结束 3 秒内停止，交互请求结束后 20 秒停止，
+  退出时杀进程并删除配置（节点凭据不落盘）；「启用」只是功能开关，不控制内核
+- 「测试」按钮会临时启动内核、真实请求一次 Modrinth，测完立刻停止
 - 分流规则：**社区资源与加载器走代理**（Modrinth / CurseForge / Forge / Fabric / NeoForge / GitHub），
   **原版资源直连**（Mojang 清单与 libraries、BMCLAPI、MCIM）
 - 鉴权域名（`login.live.com`、`api.minecraftservices.com`、`sessionserver.mojang.com` 等）、

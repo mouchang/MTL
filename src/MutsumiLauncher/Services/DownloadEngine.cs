@@ -81,6 +81,9 @@ public static class DownloadEngine
         if (endpoints.Count == 0)
             throw new InvalidOperationException("没有可用的下载地址。");
 
+        // 整次下载算一个会话：期间内核保持运行，结束后几秒内自动停止
+        using var proxySession = ProxyCore.Shared.Pin();
+
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         ApplySpeedLimit();
 

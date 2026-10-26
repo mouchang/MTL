@@ -36,11 +36,17 @@ public sealed class ProxyCore
     private readonly object _stateLock = new();
 
     private Process? _process;
-    private Timer? _idleTimer;
     private HttpClient? _client;
     private int _port;
     private string? _node;
-    private DateTime _lastUsed = DateTime.UtcNow;
+    private int _active;
+    private Timer? _stopTimer;
+
+    /// <summary>交互请求（搜索 / 详情 / 图标）结束后多久停内核。</summary>
+    private const int RequestGraceSeconds = 20;
+
+    /// <summary>连续下载之间留一点粘合时间，避免每个文件都重启一次内核。</summary>
+    private const int DownloadCoalesceSeconds = 3;
 
     static ProxyCore()
     {
@@ -161,7 +167,116 @@ public sealed class ProxyCore
 
     public void Touch()
     {
-        lock (_stateLock) _lastUsed = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// 占用一次会话，返回值 Dispose 时释放。
+    /// 下载任务用这种方式把整批文件包住，计数归零后立刻停内核。
+    /// </summary>
+    public IDisposable Pin()
+    {
+        Interlocked.Increment(ref _active);
+        CancelStop();
+
+        return new Session(this);
+    }
+
+    private sealed class Session(ProxyCore owner) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
+            owner.Release(DownloadCoalesceSeconds);
+        }
+    }
+
+    /// <summary>单条 HTTP 请求占用；结束后按宽限期停内核。</summary>
+    public void EnterRequest()
+    {
+        Interlocked.Increment(ref _active);
+        CancelStop();
+    }
+
+    public void ExitRequest() => Release(RequestGraceSeconds);
+
+    private void Release(int stopDelaySeconds)
+    {
+        if (Interlocked.Decrement(ref _active) > 0) return;
+
+        ScheduleStop(stopDelaySeconds);
+    }
+
+    private void ScheduleStop(int seconds)
+    {
+        if (seconds <= 0)
+        {
+            StopNow("空闲");
+            return;
+        }
+
+        lock (_stateLock)
+        {
+            _stopTimer?.Dispose();
+            _stopTimer = new Timer(_ =>
+            {
+                if (Volatile.Read(ref _active) > 0) return;
+                StopNow("空闲超时");
+            }, null, TimeSpan.FromSeconds(seconds), Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private void CancelStop()
+    {
+        lock (_stateLock)
+        {
+            _stopTimer?.Dispose();
+            _stopTimer = null;
+        }
+    }
+
+    /// <summary>立即停内核（测试按钮、用户关掉代理时用）。</summary>
+    public void StopNow(string reason) => Stop(reason);
+
+    /// <summary>
+    /// 测试按钮：强制启动内核 → 真实请求一次 Modrinth → 立刻停止。
+    /// 不受「启用」开关影响，测完不留后台进程。
+    /// </summary>
+    public async Task<(bool Ok, long Milliseconds, string? Message)> RunSelfTestAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            if (!await EnsureRunningAsync(cancellationToken).ConfigureAwait(false))
+                return (false, watch.ElapsedMilliseconds, LastError ?? "内核启动失败");
+
+            using var client = CreateClient(Port);
+
+            using var response = await client.GetAsync(
+                "https://api.modrinth.com/v2/tag/game_version", cancellationToken);
+
+            watch.Stop();
+
+            return response.IsSuccessStatusCode
+                ? (true, watch.ElapsedMilliseconds, ActiveNode)
+                : (false, watch.ElapsedMilliseconds, $"HTTP {(int)response.StatusCode}");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "proxy self test");
+            return (false, 0, ex.Message);
+        }
+        finally
+        {
+            Stop("自检结束");
+        }
     }
 
     /// <summary>按需启动内核。并发调用会串行化。</summary>
@@ -226,11 +341,9 @@ public sealed class ProxyCore
                 _node = built.Value.Node;
                 _client?.Dispose();
                 _client = CreateClient(port);
-                _lastUsed = DateTime.UtcNow;
             }
 
             LastError = null;
-            StartIdleTimer();
             return true;
         }
         catch (OperationCanceledException)
@@ -278,8 +391,9 @@ public sealed class ProxyCore
             _client = null;
             _node = null;
             _port = 0;
-            _idleTimer?.Dispose();
-            _idleTimer = null;
+            _stopTimer?.Dispose();
+            _stopTimer = null;
+            Interlocked.Exchange(ref _active, 0);
         }
 
         // 配置里带着节点凭据，用完就删
@@ -487,18 +601,5 @@ public sealed class ProxyCore
         return new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
     }
 
-    private void StartIdleTimer()
-    {
-        lock (_stateLock)
-        {
-            _idleTimer?.Dispose();
-            _idleTimer = new Timer(_ =>
-            {
-                DateTime last;
-                lock (_stateLock) last = _lastUsed;
 
-                if (DateTime.UtcNow - last > IdleTimeout && IsRunning) Stop("空闲超时");
-            }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
-        }
-    }
 }

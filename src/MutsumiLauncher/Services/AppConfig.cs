@@ -45,8 +45,8 @@ public sealed class AppConfig
     /// <summary>下载限速（KB/s），0 表示不限速。</summary>
     public int MaxDownloadSpeedKbps { get; set; }
 
-    /// <summary>内置代理（自带 mihomo 内核，只给境外资源域名用）。</summary>
-    public bool BuiltInProxyEnabled { get; set; }
+    /// <summary>内置代理（自带 mihomo 内核）。默认开启，只控制功能开关，不控制内核启停。</summary>
+    public bool BuiltInProxyEnabled { get; set; } = true;
 
     /// <summary>内置代理优先使用的节点（按名称包含匹配）。</summary>
     public string BuiltInProxyNode { get; set; } = "美国03-0.1倍";

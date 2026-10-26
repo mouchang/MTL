@@ -60,13 +60,13 @@ public partial class DownloadSourceView : UserControl
 
         if (!config.BuiltInProxyEnabled)
         {
-            BuiltInStatus.Text = "已停用：只走直连 / 系统代理。";
+            BuiltInStatus.Text = "已停用：资源下载只走直连 / 系统代理。";
             return;
         }
 
         BuiltInStatus.Text = ProxyCore.Shared.IsRunning
             ? $"运行中 · 端口 {ProxyCore.Shared.Port} · {ProxyCore.Shared.ActiveNode}"
-            : "已启用：首次下载资源时自动启动内核。";
+            : "已启用：取用资源时自动启动，完成后自动停止。";
     }
 
     private void BuiltInToggle_Click(object sender, RoutedEventArgs e)
@@ -84,19 +84,19 @@ public partial class DownloadSourceView : UserControl
     private async void BuiltInTest_Click(object sender, RoutedEventArgs e)
     {
         BuiltInTest.IsEnabled = false;
-        BuiltInStatus.Text = "正在启动内核…（首次会下载约 20 MB 内核，请稍候）";
+        BuiltInStatus.Text = "正在启动内核自检…（首次会下载约 20 MB 内核，请稍候）";
 
         try
         {
-            var ok = await ProxyCore.Shared.EnsureRunningAsync();
+            var (ok, milliseconds, message) = await ProxyCore.Shared.RunSelfTestAsync();
 
             BuiltInStatus.Text = ok
-                ? $"运行中 · 端口 {ProxyCore.Shared.Port} · {ProxyCore.Shared.ActiveNode}"
-                : "启动失败：" + (ProxyCore.Shared.LastError ?? "未知原因") + "（会自动回落直连）";
+                ? $"自检通过 · {milliseconds} ms · {message}（内核已停止）"
+                : $"自检失败 · {message}（内核已停止，下载会自动回落直连）";
         }
         catch (Exception ex)
         {
-            BuiltInStatus.Text = "启动失败：" + ex.Message;
+            BuiltInStatus.Text = "自检失败：" + ex.Message;
         }
         finally
         {

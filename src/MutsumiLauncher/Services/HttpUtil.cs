@@ -183,8 +183,14 @@ public static class HttpUtil
             var builtIn = await ProxyCore.Shared.TryGetClientAsync(url, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (builtIn is not null) routes.Insert(0, builtIn);
+            if (builtIn is not null)
+            {
+                routes.Insert(0, builtIn);
+                ProxyCore.Shared.EnterRequest();
+            }
 
+            try
+            {
             byte[]? body = request.Content is null
                 ? null
                 : await request.Content.ReadAsByteArrayAsync(cancellationToken);
@@ -222,6 +228,11 @@ public static class HttpUtil
             }
 
             throw new HttpRequestException($"请求失败（直连 / 代理都试过了）：{last?.Message}", last);
+            }
+            finally
+            {
+                if (builtIn is not null) ProxyCore.Shared.ExitRequest();
+            }
         }
 
         private List<HttpClient> BuildRoutes(string url)
