@@ -18,6 +18,7 @@ sitemap 里取地址，不盲扫 ID、不碰搜索接口、不碰任何编辑路
 """
 import argparse
 import gzip
+import html as html_module
 import json
 import os
 import random
@@ -136,19 +137,39 @@ def total(args, conn):
     return f"完成 {done or 0} / 待抓 {pending or 0} / 失败 {failed or 0}"
 
 
+CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
 def parse_title(title):
     """'[JEI]JEI物品管理器 (Just Enough Items) - MC百科...' -> (abbr, 中文名, 英文名)"""
-    text = TITLE_SUFFIX.sub("", title).strip()
+    text = html_module.unescape(TITLE_SUFFIX.sub("", title).strip())
+
+    abbr, chinese, english = None, text, None
 
     match = re.match(r"^\[([^\]]{1,32})\]\s*(.+?)\s*\(([^()]*)\)\s*$", text)
     if match:
-        return match.group(1), match.group(2).strip(), match.group(3).strip()
+        abbr, chinese, english = match.group(1), match.group(2), match.group(3)
+    else:
+        match = re.match(r"^(.+?)\s*\(([^()]*)\)\s*$", text)
+        if match:
+            chinese, english = match.group(1), match.group(2)
 
-    match = re.match(r"^(.+?)\s*\(([^()]*)\)\s*$", text)
-    if match:
-        return None, match.group(1).strip(), match.group(2).strip()
+    # 没有括号的标题，也要把开头的 [ABBR] 拆出来
+    if abbr is None and english is None:
+        match = re.match(r"^\[([^\]]{1,32})\]\s*(.+)$", text)
+        if match:
+            abbr, chinese = match.group(1), match.group(2)
 
-    return None, text, None
+    abbr = abbr.strip() if isinstance(abbr, str) else None
+    chinese = chinese.strip() if isinstance(chinese, str) else None
+    english = english.strip() if isinstance(english, str) else None
+
+    # 标题里没有中文名的（很多国外模组就是这样），把名字挪到英文名上
+    if chinese and not CJK.search(chinese):
+        if not english:
+            english, chinese = chinese, None
+
+    return abbr or None, chinese or None, english or None
 
 
 def parse_page(html):
