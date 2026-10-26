@@ -2,4 +2,7 @@ state.db
 state.db-journal
 mcmod-zh.json
 mcmod-zh.json.gz
+verify.txt
+crawl.log
+crawl.err
 __pycache__/
