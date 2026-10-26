@@ -132,7 +132,6 @@ public partial class CommunitySearchView : UserControl
 
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
-            _ = LoadChineseNamesAsync(items);
 
             ResultsList.BeginAnimation(OpacityProperty,
                 new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(220))
@@ -140,9 +139,7 @@ public partial class CommunitySearchView : UserControl
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
                 });
 
-            // 中文查询会被翻译成英文，告诉用户实际搜的是什么
-            var translated = McmodService.CachedTranslation(SearchNameBox.Text.Trim());
-            var hint = string.IsNullOrWhiteSpace(translated) ? string.Empty : $"（已按「{translated}」搜索）";
+            var hint = string.Empty;
 
             StatusText.Text = items.Count == 0
                 ? "没有找到结果，换个关键词或条件试试。" + hint
@@ -282,39 +279,6 @@ public partial class CommunitySearchView : UserControl
         {
             AppLog.Error(ex, "modrinth game versions");
         }
-    }
-
-    /// <summary>从 MC百科补中文名，查到就显示在标题上方。</summary>
-    private static async Task LoadChineseNamesAsync(IReadOnlyList<SearchResultCard> cards)
-    {
-        using var gate = new SemaphoreSlim(3);
-
-        // 一页最多补 12 张卡，避免一次打 20 多个请求
-        var tasks = cards.Take(12).Select(async card =>
-        {
-            await gate.WaitAsync();
-
-            try
-            {
-                var entry = await McmodService.LookupAsync(card.Title);
-
-                if (entry?.ChineseName is { Length: > 0 } name
-                    && !name.Equals(card.Title, StringComparison.OrdinalIgnoreCase))
-                {
-                    await Application.Current.Dispatcher.InvokeAsync(() => card.ChineseTitle = name);
-                }
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error(ex, "mcmod card");
-            }
-            finally
-            {
-                gate.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
     }
 
     private static async Task LoadIconsAsync(IReadOnlyList<SearchResultCard> cards)

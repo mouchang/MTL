@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace MutsumiLauncher.Services;
 
@@ -37,11 +36,6 @@ public static class McmodService
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(20));
     private static readonly SemaphoreSlim Gate = new(4, 4);
     private static readonly ConcurrentDictionary<string, McmodEntry?> LookupCache = new();
-    private static readonly ConcurrentDictionary<string, string?> TranslateCache = new();
-    private static readonly Regex Cjk = new(@"[\u4e00-\u9fff]", RegexOptions.Compiled);
-
-    public static bool ContainsChinese(string? text) =>
-        !string.IsNullOrWhiteSpace(text) && Cjk.IsMatch(text);
 
     /// <summary>按关键词搜 MC百科（返回模组 / 整合包条目）。</summary>
     public static async Task<IReadOnlyList<McmodEntry>> SearchAsync(string keyword,
@@ -106,62 +100,6 @@ public static class McmodService
 
         LookupCache[key] = best;
         return best;
-    }
-
-    /// <summary>中文关键词 → 英文名。搜不到英文名时退回详情接口的 subtitle。</summary>
-    public static async Task<string?> TranslateToEnglishAsync(string query,
-        CancellationToken cancellationToken = default)
-    {
-        var key = query.Trim();
-        if (key.Length == 0 || !ContainsChinese(key)) return null;
-
-        if (TranslateCache.TryGetValue(key, out var cached)) return cached;
-
-        var entries = await SearchAsync(key, cancellationToken).ConfigureAwait(false);
-        var first = entries.FirstOrDefault(entry => !ContainsChinese(entry.SubName));
-
-        var english = first?.SubName;
-
-        if (string.IsNullOrWhiteSpace(english) && first?.McmodId is { Length: > 0 } id)
-            english = await FetchEnglishTitleAsync(id, cancellationToken).ConfigureAwait(false);
-
-        english = english?.Trim();
-
-        TranslateCache[key] = string.IsNullOrWhiteSpace(english) ? null : english;
-        return TranslateCache[key];
-    }
-
-    /// <summary>已经翻译过的关键词（不发请求），给界面提示用。</summary>
-    public static string? CachedTranslation(string query) =>
-        TranslateCache.TryGetValue(query.Trim(), out var value) ? value : null;
-
-    private static async Task<string?> FetchEnglishTitleAsync(string id, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                using var response = await Http.GetAsync($"{BaseUrl}/d/class/{id}", cancellationToken);
-                if (!response.IsSuccessStatusCode) return null;
-
-                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-                return document.RootElement.TryGetProperty("subtitle", out var subtitle)
-                    ? subtitle.GetString()
-                    : null;
-            }
-            finally
-            {
-                Gate.Release();
-            }
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static McmodEntry? Parse(JsonElement element)

@@ -1,0 +1,5 @@
+state.db
+state.db-journal
+mcmod-zh.json
+mcmod-zh.json.gz
+__pycache__/

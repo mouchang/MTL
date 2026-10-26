@@ -44,18 +44,7 @@ public static class ResourceService
         int page, int pageSize, ResourceSort sort = ResourceSort.Downloads,
         CancellationToken cancellationToken = default)
     {
-        // 社区平台只认英文：中文查询先用 MC百科反查英文名再搜。
-        // 查不到英文名仍然按原文搜，至少中文标题的项目还能命中。
         var effective = query;
-
-        if (McmodService.ContainsChinese(query))
-        {
-            var english = await McmodService.TranslateToEnglishAsync(query, cancellationToken);
-
-            if (!string.IsNullOrWhiteSpace(english)) effective = english;
-
-            AppLog.Info($"search translated: {query} -> {effective}");
-        }
 
         return await SearchCoreAsync(platform, effective, projectType, gameVersion, loader,
             category, page, pageSize, sort, cancellationToken);
