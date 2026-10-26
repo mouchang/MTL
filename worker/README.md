@@ -9,6 +9,8 @@
 | `/<host>/<path>` | 反代白名单站点（NeoForge maven 等） | `ForgeLoader`（`/maven.neoforged.net/...`） |
 | `/cdn.modrinth.com/<path>` | **Modrinth 文件镜像**（墙外回源 + 边缘缓存） | `DownloadSources`（社区 Mod 下载兜底） |
 | `/<forgecdn>/<path>` | CurseForge 文件镜像（同上） | `DownloadSources` |
+| `/sub/config?did=...` | **订阅网关**：订阅链接留在 Cloudflare，客户端只拿 YAML | 启动器内置代理 |
+| `/sub/status` | 网关状态（是否启用 / 模式） | 启动器设置页 |
 
 ## 独立部署 Modrinth 镜像（不动现有 Worker）
 
@@ -21,6 +23,64 @@
 
 更具体的路由（`mtl.dpdns.org/cdn.modrinth.com/*`）优先于 `mtl.dpdns.org/*`，
 所以不会影响 NeoForge maven 那条。客户端不需要改任何配置。
+
+## 订阅网关（内置代理用）
+
+[`sub-gateway.js`](sub-gateway.js) 让启动器**永远拿不到订阅链接**：
+
+```
+启动器（只知道 Worker 地址 + 设备 ID）
+   └─ GET /sub/config?did=<deviceId>
+        Worker 用 SUB_URL（secret）去拉订阅 → 缓存 55 分钟 → 返回 Clash YAML
+```
+
+| 响应 | 含义 |
+|---|---|
+| `200 text/yaml` | 正常，正文为 Clash 配置；`subscription-userinfo` 头带流量信息 |
+| `400 {"enabled":false,"reason":"bad-device"}` | deviceId 格式不对 |
+| `403 {"enabled":false,"reason":"device-not-allowed"}` | 白名单模式且该设备未授权 |
+| `502 {"enabled":false,"reason":"upstream"}` | 订阅端拉取失败（有缓存时会用缓存） |
+| `503 {"enabled":false,"reason":"disabled"}` | 已被远程停用 |
+
+### 部署
+
+```bash
+cd worker
+npx wrangler secret put SUB_URL          # 粘贴订阅链接，只存 Cloudflare
+npx wrangler deploy -c sub-gateway.wrangler.toml
+```
+
+路由 `mtl.dpdns.org/sub/*` 写在 `sub-gateway.wrangler.toml` 里，比 `mtl.dpdns.org/*` 更具体，
+不会影响 NeoForge / Modrinth 那两个 Worker。
+
+> 订阅端按 UA 返回不同格式：网关固定用 `User-Agent: clash-verge/...` 请求，
+> 否则拿到的是面板 HTML 而不是 Clash YAML。
+
+### 开关与白名单（可选 KV）
+
+不绑 KV 就是**开放模式**（任何合法 deviceId 都能拿配置），先跑通再收紧：
+
+```bash
+npx wrangler kv namespace create SUB_KV    # 把返回的 id 写进 sub-gateway.wrangler.toml
+
+# 1) 全员停用（客户端自动回退直连）
+npx wrangler kv key put --binding SUB_KV enabled "0"
+
+# 2) 切到白名单模式
+npx wrangler kv key put --binding SUB_KV mode "closed"
+
+# 3) 放行某台设备（设备 ID 在启动器「设置 → 下载源 → 内置代理」里显示）
+npx wrangler kv key put --binding SUB_KV "allow:3f2a1c40-..." "1"
+```
+
+### 验证
+
+```bash
+curl -s "https://mtl.dpdns.org/sub/status"
+curl -s -o clash.yaml -w "%{http_code} %{size_download}\n" \
+  "https://mtl.dpdns.org/sub/config?did=test-device-0001"
+head -3 clash.yaml
+```
 
 ## 部署
 
