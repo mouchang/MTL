@@ -130,6 +130,9 @@
                                     </Grid>
 
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                        <TextBlock Text="{Binding ChineseTitle}" FontSize="12"
+                                                   Foreground="{StaticResource InkMute}" Margin="0,0,0,2"
+                                                   Visibility="{Binding ChineseTitleVisibility}" />
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Title}" FontSize="15"
                                                        Foreground="{StaticResource Ink}" VerticalAlignment="Center" />

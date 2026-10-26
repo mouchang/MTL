@@ -40,6 +40,27 @@ public sealed class SearchResultCard : INotifyPropertyChanged
 
     public string Title => _current.Title;
 
+    private string? _chineseTitle;
+
+    /// <summary>MC百科上的中文名（没有就隐藏这一行）。</summary>
+    public string? ChineseTitle
+    {
+        get => _chineseTitle;
+        set
+        {
+            if (_chineseTitle == value) return;
+
+            _chineseTitle = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChineseTitle)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChineseTitleVisibility)));
+        }
+    }
+
+    public System.Windows.Visibility ChineseTitleVisibility =>
+        string.IsNullOrWhiteSpace(_chineseTitle)
+            ? System.Windows.Visibility.Collapsed
+            : System.Windows.Visibility.Visible;
+
     public string Author => _current.Author;
 
     public string Description => _current.Description;

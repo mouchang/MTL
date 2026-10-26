@@ -62,6 +62,9 @@
                                 Height="30" Padding="14,0" Click="OpenModrinth_Click" />
                         <Button Style="{StaticResource SecondaryButton}" Content="复制名称"
                                 Height="30" Padding="14,0" Margin="8,0,0,0" Click="CopyName_Click" />
+                        <Button x:Name="McmodButton" Style="{StaticResource SecondaryButton}" Content="MC百科"
+                                Height="30" Padding="14,0" Margin="8,0,0,0" Visibility="Collapsed"
+                                Click="OpenMcmod_Click" />
                     </StackPanel>
                 </StackPanel>
             </Grid>

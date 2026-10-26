@@ -99,6 +99,8 @@ public partial class ModrinthDetailView : UserControl
 
         BreadcrumbText.Text = $"社区资源 / {item.Title}";
         TitleText.Text = item.Title;
+
+        _ = LoadMcmodAsync(item.Title);
         AuthorText.Text = item.Author;
         DescriptionText.Text = item.Description;
         InitialText.Text = item.Initial;
@@ -126,7 +128,10 @@ public partial class ModrinthDetailView : UserControl
                     DescriptionText.Text = _project.Description;
 
                 if (!string.IsNullOrWhiteSpace(_project.Title))
+                {
                     TitleText.Text = _project.Title;
+                    _ = LoadMcmodAsync(_project.Title);
+                }
 
                 MetaText.Text = BuildMeta(_project, item.Platform);
             }
@@ -525,6 +530,39 @@ public partial class ModrinthDetailView : UserControl
         {
             AppLog.Error(ex, "open project page");
         }
+    }
+
+    private string? _mcmodUrl;
+
+    /// <summary>按项目名去 MC百科找对应条目，命中才显示「MC百科」按钮。</summary>
+    private async Task LoadMcmodAsync(string title)
+    {
+        try
+        {
+            var entry = await McmodService.LookupAsync(title);
+            if (entry is null) return;
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                _mcmodUrl = entry.Address;
+                McmodButton.Content = string.IsNullOrWhiteSpace(entry.ChineseName)
+                    ? "MC百科"
+                    : $"MC百科 · {entry.ChineseName}";
+                McmodButton.Visibility = Visibility.Visible;
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "mcmod detail");
+        }
+    }
+
+    private void OpenMcmod_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_mcmodUrl)) return;
+
+        var error = UrlLauncher.Open(_mcmodUrl);
+        if (error is not null) _toast?.Invoke(error);
     }
 
     private void CopyName_Click(object sender, RoutedEventArgs e)
