@@ -28,7 +28,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, time as clock_time, timedelta, timezone
 
 SITEMAP_INDEX = "https://www.mcmod.cn/sitemap.xml"
 # HTTP 头只能是 latin-1，别把中文放进来
@@ -64,6 +64,15 @@ def log(message):
 def open_db(path):
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
+
+    # 老库补列：has_cn 用来标记「这页没有中文名，不用收录」
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(urls)")}
+    if "has_cn" not in columns:
+        conn.execute("ALTER TABLE urls ADD COLUMN has_cn INTEGER NOT NULL DEFAULT 0")
+        # 老数据按已抓到的中文名回填
+        conn.execute("UPDATE urls SET has_cn = 1 WHERE chinese_name IS NOT NULL AND chinese_name <> ''")
+        conn.commit()
+
     return conn
 
 
@@ -130,11 +139,11 @@ def sync(args, conn):
 
 
 def total(args, conn):
-    done, pending, failed = conn.execute(
-        "SELECT "
-        "SUM(status='done'), SUM(status='pending'), SUM(status='failed') FROM urls"
+    useful, skipped, pending, failed = conn.execute(
+        "SELECT SUM(status='done' AND has_cn=1), SUM(status='done' AND has_cn=0), "
+        "SUM(status='pending'), SUM(status='failed') FROM urls"
     ).fetchone()
-    return f"完成 {done or 0} / 待抓 {pending or 0} / 失败 {failed or 0}"
+    return f"收录 {useful or 0} / 无中文名 {skipped or 0} / 待抓 {pending or 0} / 失败 {failed or 0}"
 
 
 CJK = re.compile(r"[\u4e00-\u9fff]")
@@ -185,9 +194,114 @@ def looks_blocked(status, html):
     return any(hint in html[:4000] for hint in BLOCK_HINTS)
 
 
+def parse_windows(text):
+    """'00:00-00:06,12:00-12:02' -> [(time(0,0), time(0,6)), ...]"""
+    windows = []
+
+    for part in (text or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+
+        match = re.match(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$", part)
+        if not match:
+            raise SystemExit(f"暂停窗口格式不对：{part}（应为 HH:MM-HH:MM）")
+
+        start = clock_time(int(match.group(1)), int(match.group(2)))
+        end = clock_time(int(match.group(3)), int(match.group(4)))
+        windows.append((start, end))
+
+    return windows
+
+
+def sleep_until(target_time):
+    """睡到今天的 target_time（已过则明天），外加 15 秒缓冲。"""
+    target = datetime.combine(datetime.now().date(), target_time)
+    if target <= datetime.now():
+        target += timedelta(days=1)
+
+    seconds = max(0, (target - datetime.now()).total_seconds()) + 15
+    log(f"  进入计划内断网时段，暂停到 {target.strftime('%H:%M')}（约 {seconds / 60:.0f} 分钟）")
+    time.sleep(seconds)
+    log("  断网时段结束，继续")
+
+
+def in_pause_window(windows):
+    """当前时间落在某个暂停窗口里就返回窗口结束时刻。"""
+    if not windows:
+        return None
+
+    current = datetime.now().time()
+
+    for start, end in windows:
+        if start <= end:
+            if start <= current < end:
+                return end
+        elif current >= start or current < end:  # 跨午夜
+            return end
+
+    return None
+
+
+def probe_network(timeout=5.0):
+    """用一个极小的请求判断网络是否恢复。"""
+    try:
+        request = urllib.request.Request(
+            "https://www.mcmod.cn/robots.txt",
+            headers={"User-Agent": DEFAULT_UA, "Cache-Control": "no-cache"},
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            response.read(256)
+        return True
+    except Exception:
+        return False
+
+
+def wait_for_network(args):
+    """断网后等待恢复。返回 True 表示网络回来了。"""
+    waited = 0
+    log("  网络不可用，开始等待恢复…")
+
+    while waited < args.net_wait_max:
+        time.sleep(min(30, args.net_wait_max - waited))
+        waited += 30
+
+        if probe_network():
+            log(f"  网络已恢复（等待了 {waited} 秒），{args.recover_delay} 秒后继续")
+            time.sleep(args.recover_delay)
+            return True
+
+        if waited % 300 == 0:
+            log(f"  仍在等待网络…（已等 {waited // 60} 分钟）")
+
+    return False
+
+
+def fetch_with_recovery(url, args):
+    """抓一页；遇到网络错误就等恢复后重试同一页。返回 (status, html) 或 None。"""
+    for attempt in range(1, 4):
+        try:
+            return fetch(url, args.ua, args.timeout)
+        except urllib.error.HTTPError as error:
+            return error.code, ""
+        except Exception as error:
+            if attempt >= 3:
+                log(f"  同一页连续失败 {attempt} 次：{type(error).__name__}")
+                return None
+
+            log(f"  网络异常（{type(error).__name__}: {error}），第 {attempt} 次重试用尽")
+            if not wait_for_network(args):
+                return None
+
+    return None
+
+
 def crawl(args, conn):
+    kind_filter = "" if args.only == "all" else f" AND kind = '{args.only}'"
+
     pending = conn.execute(
-        "SELECT url FROM urls WHERE status != 'done' ORDER BY status = 'failed', url LIMIT ?",
+        "SELECT url FROM urls WHERE status != 'done'" + kind_filter +
+        " ORDER BY status = 'failed', url LIMIT ?",
         (args.limit if args.limit else -1,),
     ).fetchall()
 
@@ -196,22 +310,33 @@ def crawl(args, conn):
         return
 
     log(f"本次计划抓取 {len(pending)} 页，节奏 {args.delay}s/页")
+
+    windows = parse_windows(args.pause_window)
+    if windows:
+        describe = "、".join(f"{s.strftime('%H:%M')}-{e.strftime('%H:%M')}" for s, e in windows)
+        log(f"计划内断网窗口：{describe}（到点会自动暂停，网络恢复后接着抓同一页）")
+
     blocked = 0
     started = time.time()
-    done_this_run = 0
+    fetched_this_run = 0
+    skipped_this_run = 0
 
     for index, (url,) in enumerate(pending, start=1):
+        # 落在断网窗口里就睡过去，不浪费请求
+        while True:
+            window_end = in_pause_window(windows)
+            if window_end is None:
+                break
+            sleep_until(window_end)
+
         time.sleep(args.delay + random.uniform(0, args.jitter))
 
-        try:
-            status, html = fetch(url, args.ua, args.timeout)
-        except urllib.error.HTTPError as error:
-            status, html = error.code, ""
-        except Exception as error:  # 网络层错误：记一次失败，继续
-            conn.execute("UPDATE urls SET status='failed', attempts=attempts+1 WHERE url=?", (url,))
-            conn.commit()
-            log(f"  [{index}/{len(pending)}] 网络错误 {url} -> {error}")
-            continue
+        result = fetch_with_recovery(url, args)
+        if result is None:
+            log("网络长时间不可用，已停止（进度已保存，恢复后重跑同一条命令即可）")
+            return
+
+        status, html = result
 
         if looks_blocked(status, html):
             blocked += 1
@@ -228,31 +353,38 @@ def crawl(args, conn):
         blocked = 0
         abbr, chinese, english = parse_page(html)
 
+        # 没有中文名的页面不收录：记成 done，但不进导出表，以后也不会再抓
+        has_cn = 1 if chinese else 0
+
         conn.execute(
-            "UPDATE urls SET status='done', http=?, chinese_name=?, english_name=?, abbr=?, "
+            "UPDATE urls SET status='done', http=?, chinese_name=?, english_name=?, abbr=?, has_cn=?, "
             "fetched_at=?, attempts=attempts+1 WHERE url=?",
-            (status, chinese, english, abbr, now(), url),
+            (status, chinese, english, abbr, has_cn, now(), url),
         )
         conn.commit()
-        done_this_run += 1
+
+        fetched_this_run += 1
+        if not has_cn:
+            skipped_this_run += 1
 
         if index % 20 == 0 or index == len(pending):
             elapsed = time.time() - started
             speed = elapsed / max(1, index)
             eta = (len(pending) - index) * speed / 3600
-            log(f"  [{index}/{len(pending)}] {chinese or '?'} | 剩余约 {eta:.1f} 小时 | {total(args, conn)}")
+            label = chinese or f"(无中文名) {english or '?'}"
+            log(f"  [{index}/{len(pending)}] {label} | 剩余约 {eta:.1f} 小时 | {total(args, conn)}")
 
         if args.pause_every and index % args.pause_every == 0:
             log(f"  休息 {args.pause_seconds} 秒（每 {args.pause_every} 页）")
             time.sleep(args.pause_seconds)
 
-    log(f"本轮完成 {done_this_run} 页，{total(args, conn)}")
+    log(f"本轮完成 {fetched_this_run} 页（其中 {skipped_this_run} 页没有中文名，未收录），{total(args, conn)}")
 
 
 def export(args, conn):
     rows = conn.execute(
         "SELECT url, kind, chinese_name, english_name, abbr FROM urls "
-        "WHERE status='done' AND (chinese_name IS NOT NULL OR english_name IS NOT NULL)"
+        "WHERE status='done' AND chinese_name IS NOT NULL AND chinese_name <> ''"
     ).fetchall()
 
     records = []
@@ -291,6 +423,14 @@ def main():
     parser.add_argument("--max-blocked", type=int, default=5, help="连续被拒多少次就停")
     parser.add_argument("--pause-every", type=int, default=0, help="每 N 页休息一次，0 = 不休息")
     parser.add_argument("--pause-seconds", type=int, default=120)
+    parser.add_argument("--pause-window", default="00:00-00:06",
+                        help="计划内断网时段，如 00:00-00:06（可写多个，逗号分隔）；到点自动暂停")
+    parser.add_argument("--net-wait-max", type=int, default=1800,
+                        help="断网后最多等多久（秒），超时则停下并保存进度")
+    parser.add_argument("--recover-delay", type=int, default=10,
+                        help="网络恢复后额外等几秒再继续")
+    parser.add_argument("--only", choices=["all", "class", "modpack"], default="all",
+                        help="只抓某类页面（class = 模组，modpack = 整合包）")
     parser.add_argument("--ua", default=DEFAULT_UA)
     args = parser.parse_args()
 
