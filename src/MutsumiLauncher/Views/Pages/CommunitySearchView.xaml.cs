@@ -73,6 +73,8 @@ public partial class CommunitySearchView : UserControl
 
             foreach (var name in categories)
             {
+                if (!CategoryNames.IsVisible(name)) continue;
+
                 TypeCombo.Items.Add(new ComboBoxItem
                 {
                     Content = CategoryNames.Chinese(name),

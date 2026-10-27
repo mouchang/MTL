@@ -234,6 +234,53 @@
                                        Margin="0,8,0,0" />
                             <TextBlock x:Name="UpdateStatus" Text="WPF · .NET 10 · 开源"
                                        Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap" />
+
+                            <Border Height="1" Background="{DynamicResource Divider}"
+                                    Margin="0,16,0,12" />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="开发者" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="DeveloperText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}"
+                                        Content="GitHub" Height="28" Padding="12,0"
+                                        Click="OpenDeveloper_Click" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="项目地址" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="RepoText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button Style="{StaticResource GhostButton}" Content="反馈"
+                                            Height="28" Padding="12,0" Margin="0,0,8,0"
+                                            Click="OpenIssues_Click" />
+                                    <Button Style="{StaticResource GhostButton}" Content="打开"
+                                            Height="28" Padding="12,0" Click="OpenRepo_Click" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="开源协议" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="LicenseText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}" VerticalAlignment="Center" />
+                            </Grid>
                         </StackPanel>
                     </Border>
 

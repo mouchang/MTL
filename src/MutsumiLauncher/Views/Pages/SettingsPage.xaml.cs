@@ -10,6 +10,9 @@ namespace MutsumiLauncher.Views.Pages;
 
 public partial class SettingsPage : UserControl
 {
+    private string _repoUrl = "https://github.com/mouchang/MTL";
+    private string _ownerUrl = "https://github.com/mouchang";
+
     private bool _loaded;
     private bool _memoryLoading;
     private bool _themeLoading;
@@ -22,6 +25,22 @@ public partial class SettingsPage : UserControl
 
         VersionText.Text = AppInfo.DisplayName;
         UpdateStatus.Text = $"版本 {AppInfo.Version} · WPF · .NET 10 · 开源";
+
+        // 开发者信息：仓库地址跟着 UpdateRepo 走，换仓库时这里自动跟着变
+        var repo = string.IsNullOrWhiteSpace(AppConfig.Current.UpdateRepo)
+            ? "mouchang/MTL"
+            : AppConfig.Current.UpdateRepo.Trim();
+
+        _repoUrl = repo.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? repo.TrimEnd('/')
+            : $"https://github.com/{repo}";
+
+        var owner = repo.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "mouchang";
+        _ownerUrl = $"https://github.com/{owner}";
+
+        DeveloperText.Text = owner;
+        RepoText.Text = _repoUrl.Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
+        LicenseText.Text = "MIT · 可自由使用与修改（保留版权声明）";
 
         GameDirText.Text = GamePaths.Root;
         DataDirText.Text = AppPaths.DataRoot;
@@ -339,6 +358,19 @@ public partial class SettingsPage : UserControl
         var size = CacheService.GetSize();
         CacheSizeText.Text = $"当前缓存 {CacheService.FormatSize(size)}（版本清单 + 项目图标）";
         CachePathText.Text = string.Join("  ·  ", CacheService.Roots);
+    }
+
+    private void OpenDeveloper_Click(object sender, RoutedEventArgs e) => OpenUrl(_ownerUrl);
+
+    private void OpenRepo_Click(object sender, RoutedEventArgs e) => OpenUrl(_repoUrl);
+
+    private void OpenIssues_Click(object sender, RoutedEventArgs e) => OpenUrl(_repoUrl + "/issues");
+
+    private void OpenUrl(string url)
+    {
+        var error = UrlLauncher.Open(url);
+        if (error is not null)
+            MessageDialog.Show(Window.GetWindow(this), "打不开链接", error, "知道了", null);
     }
 
     private void OpenGameDir_Click(object sender, RoutedEventArgs e) => OpenPath(GamePaths.Root);

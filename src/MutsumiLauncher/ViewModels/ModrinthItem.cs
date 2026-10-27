@@ -66,16 +66,8 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
     public string Meta => $"{MetaWithoutSource} · {SourceLabel}";
 
-    private static readonly HashSet<string> LoaderTags = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "fabric", "forge", "neoforge", "quilt", "liteloader", "rift",
-    };
-
-    /// <summary>平台上的标签（去掉加载器，加载器在详情页看就够了）。</summary>
-    public string TagsText => string.Join(" · ", Hit.Categories
-        .Where(tag => !LoaderTags.Contains(tag))
-        .Take(5)
-        .Select(CategoryNames.Chinese));
+    /// <summary>平台上的标签（去掉加载器和项目类型标记，翻译成中文，最多 5 个）。</summary>
+    public string TagsText => CategoryNames.VisibleText(Hit.Categories, 5);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }

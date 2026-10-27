@@ -178,7 +178,7 @@ public partial class ModrinthDetailView : UserControl
             _ => project.Downloads.ToString("N0"),
         };
 
-        var categories = string.Join(" · ", project.Categories.Take(3));
+        var categories = CategoryNames.VisibleText(project.Categories, 3);
         var updated = project.Updated == DateTimeOffset.MinValue
             ? string.Empty
             : $" · 最近更新 {project.Updated.LocalDateTime:yyyy/M/d}";

@@ -69,6 +69,22 @@
 
 ## [Unreleased]
 
+### 社区分类翻译与标签清理
+- **整合包、光影的类型下拉全部中文**：kitchen-sink → 大杂烩、quests → 任务、
+  lightweight → 轻量、multiplayer → 多人、path-tracing → 路径追踪、
+  semi-realistic → 半写实、pbr → PBR 材质、colored-lighting → 彩色光照、
+  high / medium / low / potato → 高配 / 中配 / 低配 / 超低配 等
+- 分类表按 Modrinth `/tag/category` 全量对齐，mod / modpack / shader / resourcepack
+  四类已无遗漏（顺手去掉了表里的重复项）
+- 卡片标签和详情页信息行也走同一套翻译，之前详情页里还是英文 slug
+- **噪音标签不再占位置**：加载器（fabric / forge / iris / optifine …）和项目类型标记
+  （`minecraft` / `datapack` / `mod` / `resourcepack` …）一律不显示
+- 数据包卡片上的「minecraft」标签没有了
+
+### 关于页开发者信息
+- 「其他」页补上开发者、项目地址（可直接打开或跳反馈）、开源协议
+- 仓库地址跟着 `UpdateRepo` 配置走，换仓库时不用改界面
+
 ### 设置页重做 + 主题
 - 设置页从「一长条卡片往下堆」改成**左侧分类**：基础 / 启动 / 下载 / 其他
   - 基础：内存分配 + 外观主题（用户要的「基础」页就是这个）
