@@ -23,10 +23,9 @@ public sealed class AppConfig
 
     /// <summary>
     /// 微软登录用的 clientId（也可用环境变量 MTL_MS_CLIENT_ID）。
-    /// 留空 = 用内置的官方 id，设备码流程开箱即用；
-    /// 填自建 Azure 应用的「应用程序(客户端) ID」= 走 v2 流程。
+    /// 默认是 MTL 在 Azure 上注册、已通过 Mojang AppID 审核的应用；需要换成自己的应用时改这里。
     /// </summary>
-    public string MicrosoftClientId { get; set; } = string.Empty;
+    public string MicrosoftClientId { get; set; } = "15263b9d-c342-48cb-8a6e-8c6ca4bfb433";
 
     /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
     public string ModrinthToken { get; set; } = string.Empty;

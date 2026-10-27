@@ -93,7 +93,7 @@
 
 ### 微软正版登录
 - 设备码登录：窗口显示 6 位码（自动复制），粘到 `microsoft.com/link` 授权即可，无需内嵌浏览器
-- clientId 两种用法：留空用内置官方 id（开箱即用）；填自建 Azure 应用（通过 Mojang AppID 审核的用这个）
+- 固定使用 MTL 自己的 Azure 应用（clientId `15263b9d-…`，已通过 Mojang AppID 审核），无需用户配置
 - 保存 refresh token，启动前自动续期（游戏令牌 24 小时过期）；续期失败提示重新登录，可继续离线启动
 - 启动参数带 `user_type=msa` 与真实 `auth_xuid`，正版服可正常进入
 - 登录后自动拉取正版皮肤头像

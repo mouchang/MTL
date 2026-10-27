@@ -16,50 +16,30 @@ public sealed record MicrosoftProfile(string Name, string Uuid, string AccessTok
 
 /// <summary>
 /// 微软登录：设备码 → MSA → Xbox Live → XSTS → Minecraft 服务。
-/// 支持两种 clientId：
-/// - 留空 / 微软官方那串：走 login.live.com 的旧版设备码流程，开箱即用
-/// - 自建 Azure 应用：走 login.microsoftonline.com 的 v2 流程（拿到过 Mojang AppID 审核的用这个）
+/// 固定使用 MTL 自己的 Azure 应用（clientId 可在 config.json 里改）。
 /// </summary>
 public static class MicrosoftAuth
 {
-    /// <summary>微软自家启动器的公开 clientId，旧版设备码流程可以直接用。</summary>
-    public const string LegacyClientId = "00000000402b5328";
-
-    private const string LegacyScope = "service::user.auth.xboxlive.com::MBI_SSL";
-
-    private const string LegacyDeviceCodeUrl = "https://login.live.com/oauth20_connect.srf";
-    private const string LegacyTokenUrl = "https://login.live.com/oauth20_token.srf";
+    /// <summary>MTL 在 Azure 上注册的应用（已通过 Mojang AppID 审核）。</summary>
+    public const string DefaultClientId = "15263b9d-c342-48cb-8a6e-8c6ca4bfb433";
 
     private const string V2Base = "https://login.microsoftonline.com/consumers/oauth2/v2.0";
     private const string V2Scope = "XboxLive.signin offline_access";
 
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(30));
 
-    private static bool IsLegacy(string? clientId) =>
-        string.IsNullOrWhiteSpace(clientId); // 空 = 用内置的官方 clientId
-
     private static string EffectiveClientId(string? clientId) =>
-        IsLegacy(clientId) ? LegacyClientId : clientId!.Trim();
+        string.IsNullOrWhiteSpace(clientId) ? DefaultClientId : clientId.Trim();
 
     public static async Task<DeviceCodeInfo> StartAsync(string? clientId, CancellationToken cancellationToken)
     {
-        var legacy = IsLegacy(clientId);
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_id"] = EffectiveClientId(clientId),
+            ["scope"] = V2Scope,
+        });
 
-        using var content = new FormUrlEncodedContent(legacy
-            ? new Dictionary<string, string>
-            {
-                ["client_id"] = EffectiveClientId(clientId),
-                ["scope"] = LegacyScope,
-                ["response_type"] = "device_code",
-            }
-            : new Dictionary<string, string>
-            {
-                ["client_id"] = EffectiveClientId(clientId),
-                ["scope"] = V2Scope,
-            });
-
-        var url = legacy ? LegacyDeviceCodeUrl : V2Base + "/devicecode";
-        using var response = await Http.PostAsync(url, content, cancellationToken);
+        using var response = await Http.PostAsync(V2Base + "/devicecode", content, cancellationToken);
         var text = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -82,7 +62,6 @@ public static class MicrosoftAuth
     public static async Task<MsaTokens> WaitForTokenAsync(string? clientId, DeviceCodeInfo code,
         CancellationToken cancellationToken)
     {
-        var legacy = IsLegacy(clientId);
         var deadline = DateTime.UtcNow.AddSeconds(code.ExpiresIn);
         var interval = Math.Max(2, code.Interval);
 
@@ -90,23 +69,14 @@ public static class MicrosoftAuth
         {
             await Task.Delay(TimeSpan.FromSeconds(interval), cancellationToken);
 
-            using var content = new FormUrlEncodedContent(legacy
-                ? new Dictionary<string, string>
-                {
-                    ["client_id"] = EffectiveClientId(clientId),
-                    ["scope"] = LegacyScope,
-                    ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
-                    ["device_code"] = code.DeviceCode,
-                }
-                : new Dictionary<string, string>
-                {
-                    ["client_id"] = EffectiveClientId(clientId),
-                    ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
-                    ["device_code"] = code.DeviceCode,
-                });
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["client_id"] = EffectiveClientId(clientId),
+                ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+                ["device_code"] = code.DeviceCode,
+            });
 
-            var url = legacy ? LegacyTokenUrl : V2Base + "/token";
-            using var response = await Http.PostAsync(url, content, cancellationToken);
+            using var response = await Http.PostAsync(V2Base + "/token", content, cancellationToken);
             var text = await response.Content.ReadAsStringAsync(cancellationToken);
 
             using var document = JsonDocument.Parse(text);
@@ -140,26 +110,15 @@ public static class MicrosoftAuth
     public static async Task<MsaTokens> RefreshAsync(string? clientId, string refreshToken,
         CancellationToken cancellationToken)
     {
-        var legacy = IsLegacy(clientId);
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_id"] = EffectiveClientId(clientId),
+            ["scope"] = V2Scope,
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+        });
 
-        using var content = new FormUrlEncodedContent(legacy
-            ? new Dictionary<string, string>
-            {
-                ["client_id"] = EffectiveClientId(clientId),
-                ["scope"] = LegacyScope,
-                ["grant_type"] = "refresh_token",
-                ["refresh_token"] = refreshToken,
-            }
-            : new Dictionary<string, string>
-            {
-                ["client_id"] = EffectiveClientId(clientId),
-                ["scope"] = V2Scope,
-                ["grant_type"] = "refresh_token",
-                ["refresh_token"] = refreshToken,
-            });
-
-        var url = legacy ? LegacyTokenUrl : V2Base + "/token";
-        using var response = await Http.PostAsync(url, content, cancellationToken);
+        using var response = await Http.PostAsync(V2Base + "/token", content, cancellationToken);
         var text = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)

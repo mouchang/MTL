@@ -133,7 +133,7 @@ public partial class AccountPickerView : UserControl
 
     private void MicrosoftLogin_Click(object sender, RoutedEventArgs e)
     {
-        // 留空就用内置的官方 clientId（旧版设备码流程）；填了就用自建 Azure 应用
+        // 留空就用 MTL 自己的 Azure 应用；填别的值则用自建应用
         var clientId = AppConfig.Current.MicrosoftClientId;
         if (string.IsNullOrWhiteSpace(clientId))
             clientId = Environment.GetEnvironmentVariable("MTL_MS_CLIENT_ID") ?? string.Empty;
