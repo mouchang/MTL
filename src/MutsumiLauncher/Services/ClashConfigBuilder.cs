@@ -91,6 +91,13 @@ public static class ClashConfigBuilder
         builder.AppendLine("unified-delay: true");
         builder.AppendLine("tcp-concurrent: true");
         builder.AppendLine("external-controller: ''");
+        // 节点域名用 DoH 解析：机场节点常用境外域名，系统 DNS 被污染时也能连上
+        builder.AppendLine("dns:");
+        builder.AppendLine("  enable: true");
+        builder.AppendLine("  ipv6: false");
+        builder.AppendLine("  nameserver:");
+        builder.AppendLine("    - https://dns.alidns.com/dns-query");
+        builder.AppendLine("    - https://doh.pub/dns-query");
         builder.AppendLine("proxies:");
         builder.AppendLine(block);
         builder.AppendLine("rules:");
