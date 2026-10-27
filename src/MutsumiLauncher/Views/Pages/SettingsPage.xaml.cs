@@ -21,9 +21,72 @@ public partial class SettingsPage : UserControl
             if (_loaded) return;
             _loaded = true;
             LoadSourceInfo();
+            LoadMemoryInfo();
             LoadCacheInfo();
             await LoadJavaAsync();
         };
+    }
+
+    private bool _memoryLoading;
+
+    /// <summary>机器物理内存（MB），用来算「自动配置」的建议值。</summary>
+    private static int TotalMemoryMb =>
+        (int)Math.Min(int.MaxValue, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024);
+
+    private static int AutoMemoryMb()
+    {
+        var half = TotalMemoryMb / 2;
+        return Math.Clamp(half / 512 * 512, 2048, 12288);
+    }
+
+    private void LoadMemoryInfo()
+    {
+        _memoryLoading = true;
+
+        var config = AppConfig.Current;
+        var manual = config.MemoryMb > 0;
+
+        MemoryManualRadio.IsChecked = manual;
+        MemoryAutoRadio.IsChecked = !manual;
+
+        var value = manual ? config.MemoryMb : AutoMemoryMb();
+        MemorySlider.Value = Math.Clamp(value, 512, 32768);
+        MemorySlider.IsEnabled = manual;
+
+        MemoryHint.Text = $"自动配置按物理内存（{TotalMemoryMb:N0} MB）的一半分配，上限 12 GB；" +
+                          "版本设置里可以给单个实例单独指定。";
+        MemoryValueText.Text = manual ? $"{value} MB" : $"{value} MB（自动）";
+
+        _memoryLoading = false;
+    }
+
+    private void MemoryMode_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_memoryLoading || MemorySlider is null) return;
+
+        var manual = MemoryManualRadio.IsChecked == true;
+        MemorySlider.IsEnabled = manual;
+
+        var value = manual ? (int)MemorySlider.Value : AutoMemoryMb();
+
+        AppConfig.Current.MemoryMb = value;
+        AppConfig.Current.MemoryAuto = !manual;
+        AppConfig.Current.Save();
+
+        MemoryValueText.Text = manual ? $"{value} MB" : $"{value} MB（自动）";
+    }
+
+    private void MemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_memoryLoading || MemoryValueText is null || MemoryManualRadio?.IsChecked != true) return;
+
+        var value = (int)e.NewValue;
+
+        AppConfig.Current.MemoryMb = value;
+        AppConfig.Current.MemoryAuto = false;
+        AppConfig.Current.Save();
+
+        MemoryValueText.Text = $"{value} MB";
     }
 
     private async void RefreshJava_Click(object sender, RoutedEventArgs e) => await LoadJavaAsync();

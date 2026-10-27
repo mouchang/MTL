@@ -27,7 +27,7 @@ public sealed class InstanceSettings
         => JavaPath ?? AppConfig.Current.JavaPath;
 
     public int EffectiveMemoryMb
-        => MemoryMb > 0 ? MemoryMb : AppConfig.Current.MemoryMb;
+        => MemoryMb > 0 ? MemoryMb : AppConfig.Current.EffectiveMemoryMb;
 
     public bool EffectiveIsolation
         => VersionIsolation ?? AppConfig.Current.VersionIsolation;

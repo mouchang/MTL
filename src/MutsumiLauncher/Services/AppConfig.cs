@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MutsumiLauncher.Services;
 
@@ -13,7 +14,23 @@ public sealed class AppConfig
     public string JavaPath { get; set; } = string.Empty;
 
     /// <summary>0 表示自动。</summary>
-    public int MemoryMb { get; set; }
+    public int MemoryMb { get; set; } = 4096;
+
+    /// <summary>内存是否由「自动配置」决定（按物理内存的一半）。</summary>
+    public bool MemoryAuto { get; set; } = true;
+
+    /// <summary>实际分配的内存量（MB）：自动模式按物理内存一半，上限 12 GB。</summary>
+    [JsonIgnore]
+    public int EffectiveMemoryMb
+    {
+        get
+        {
+            if (!MemoryAuto) return MemoryMb > 0 ? MemoryMb : 4096;
+
+            var total = (int)Math.Min(int.MaxValue, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024);
+            return Math.Clamp(total / 2 / 512 * 512, 2048, 12288);
+        }
+    }
 
     public bool VersionIsolation { get; set; } = true;
 
