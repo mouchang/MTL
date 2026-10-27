@@ -203,10 +203,22 @@ public partial class LaunchPage : UserControl
         try
         {
             var account = AccountService.Current ?? AccountService.EnsureDefault();
+
+            // 正版账号：游戏令牌 24 小时过期，启动前用刷新令牌免密续期
+            if (account.IsMicrosoft && !await AccountService.EnsureFreshAsync(account))
+            {
+                var relogin = MessageDialog.Show(owner, "正版账号需要重新登录",
+                    "登录状态已过期，请到账号选择里重新登录微软账号。" + Environment.NewLine +
+                    "本次将用原账号名以离线模式启动。",
+                    "继续启动", "取消");
+
+                if (relogin != true) return;
+            }
+
             var launcher = new GameLauncher();
             var settings = InstanceSettings.Load(version);
             var options = new LaunchOptions(account.Name, account.Uuid, account.AccessToken,
-                account.IsMicrosoft, settings.EffectiveJavaPath, settings.EffectiveMemoryMb,
+                account.IsMicrosoft, account.Xuid, settings.EffectiveJavaPath, settings.EffectiveMemoryMb,
                 settings.EffectiveIsolation);
 
             var panel = new LaunchPanelView();

@@ -13,6 +13,7 @@ public sealed record LaunchProgress(double Percent, string Message);
 public sealed record LaunchResult(bool Started, string Message, string? LogPath, int ProcessId = 0);
 
 public sealed record LaunchOptions(string PlayerName, string Uuid, string AccessToken, bool IsMicrosoft,
+    string Xuid,
     string JavaPath, int MemoryMb, bool VersionIsolation);
 
 /// <summary>准备并启动一个已安装版本：解压 natives、拼 classpath、替换参数、选 Java、拉资源索引。</summary>
@@ -197,7 +198,7 @@ public sealed class GameLauncher
         if (java is null) return new LaunchResult(false, "没有可用的 Java，请先安装或指定 Java 路径。", null);
 
         var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, options.PlayerName,
-            options.Uuid, options.AccessToken, options.IsMicrosoft, options.MemoryMb);
+            options.Uuid, options.AccessToken, options.IsMicrosoft, options.Xuid, options.MemoryMb);
 
         var logDir = Path.Combine(GamePaths.Root, "logs");
         Directory.CreateDirectory(logDir);
@@ -338,7 +339,7 @@ public sealed class GameLauncher
 
     private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,
         string nativesDir, string classpath, string playerName, string uuid, string accessToken,
-        bool isMicrosoft, int memoryMb)
+        bool isMicrosoft, string xuid, int memoryMb)
     {
         if (string.IsNullOrWhiteSpace(uuid)) uuid = OfflineUuid(playerName);
 
@@ -362,7 +363,7 @@ public sealed class GameLauncher
             ["launcher_name"] = "MutsumiLauncher",
             ["launcher_version"] = AppInfo.Version,
             ["clientid"] = "0",
-            ["auth_xuid"] = "0",
+            ["auth_xuid"] = string.IsNullOrWhiteSpace(xuid) ? "0" : xuid,
         };
 
         var arguments = new List<string>

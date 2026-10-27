@@ -28,6 +28,9 @@ public partial class MicrosoftLoginDialog : Window
 
     public string? SkinPath { get; private set; }
 
+    /// <summary>刷新令牌：存下来就能免密续期 24 小时过期的游戏令牌。</summary>
+    public string? RefreshToken { get; private set; }
+
     private void PlayOpen()
     {
         var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180))
@@ -74,10 +77,11 @@ public partial class MicrosoftLoginDialog : Window
                                   " 已打开浏览器；如果没有弹出，请点右侧「打开」。";
             }
 
-            var msaToken = await MicrosoftAuth.WaitForTokenAsync(_clientId, code, _cts.Token);
+            var msa = await MicrosoftAuth.WaitForTokenAsync(_clientId, code, _cts.Token);
+            RefreshToken = msa.RefreshToken;
 
             HintText.Text = "授权成功，正在验证 Xbox 账号…";
-            var profile = await MicrosoftAuth.LoginMinecraftAsync(msaToken, _cts.Token);
+            var profile = await MicrosoftAuth.LoginMinecraftAsync(msa.AccessToken, _cts.Token);
 
             HintText.Text = "正在获取皮肤…";
             if (!string.IsNullOrWhiteSpace(profile.SkinUrl))

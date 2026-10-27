@@ -15,8 +15,21 @@ public sealed class Account
 
     public string AccessToken { get; set; } = string.Empty;
 
+    /// <summary>微软刷新令牌（正版账号才有），用于免密续期。</summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    /// <summary>游戏令牌过期时间（ISO 8601）。</summary>
+    public string ExpiresAt { get; set; } = string.Empty;
+
+    /// <summary>Xbox 用户 ID（正版账号启动参数里的 auth_xuid）。</summary>
+    public string Xuid { get; set; } = string.Empty;
+
     /// <summary>缓存的皮肤文件（用于显示正脸）。</summary>
     public string SkinPath { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public DateTimeOffset? Expiry =>
+        DateTimeOffset.TryParse(ExpiresAt, out var value) ? value : null;
 
     [JsonIgnore]
     public bool IsMicrosoft => Type.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
@@ -85,7 +98,8 @@ public static class AccountService
         return account;
     }
 
-    public static Account AddMicrosoft(string name, string uuid, string accessToken, string? skinPath)
+    public static Account AddMicrosoft(string name, string uuid, string accessToken,
+        string refreshToken, DateTimeOffset expiresAt, string xuid, string? skinPath)
     {
         var config = AppConfig.Current;
         var account = config.Accounts.FirstOrDefault(a => a.Uuid == uuid);
@@ -102,12 +116,49 @@ public static class AccountService
 
         account.Type = "microsoft";
         account.AccessToken = accessToken;
+        account.RefreshToken = refreshToken;
+        account.ExpiresAt = expiresAt.ToString("O");
+        account.Xuid = xuid;
         if (!string.IsNullOrWhiteSpace(skinPath)) account.SkinPath = skinPath;
 
         config.SelectedAccount = account.Name;
         config.PlayerName = account.Name;
         config.Save();
         return account;
+    }
+
+    /// <summary>游戏令牌快过期时用刷新令牌免密续期；失败就保持原样（启动时会提示重新登录）。</summary>
+    public static async Task<bool> EnsureFreshAsync(Account account,
+        CancellationToken cancellationToken = default)
+    {
+        if (!account.IsMicrosoft) return true;
+
+        if (account.Expiry is { } expiry && expiry > DateTimeOffset.UtcNow.AddMinutes(5)) return true;
+        if (string.IsNullOrWhiteSpace(account.RefreshToken)) return false;
+
+        try
+        {
+            var msa = await MicrosoftAuth.RefreshAsync(AppConfig.Current.MicrosoftClientId,
+                account.RefreshToken, cancellationToken);
+
+            var profile = await MicrosoftAuth.LoginMinecraftAsync(msa.AccessToken, cancellationToken);
+
+            account.AccessToken = profile.AccessToken;
+            account.RefreshToken = msa.RefreshToken;
+            account.ExpiresAt = profile.ExpiresAt.ToString("O");
+            account.Uuid = profile.Uuid;
+            account.Name = profile.Name;
+            account.Xuid = profile.Xuid;
+
+            AppConfig.Current.Save();
+            AppLog.Info($"microsoft token refreshed for {account.Name}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "microsoft token refresh");
+            return false;
+        }
     }
 
     public static void Select(string name)

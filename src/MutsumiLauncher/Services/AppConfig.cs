@@ -21,7 +21,11 @@ public sealed class AppConfig
 
     public string SelectedAccount { get; set; } = string.Empty;
 
-    /// <summary>微软登录用的 Azure 应用 clientId（也可用环境变量 MTL_MS_CLIENT_ID）。</summary>
+    /// <summary>
+    /// 微软登录用的 clientId（也可用环境变量 MTL_MS_CLIENT_ID）。
+    /// 留空 = 用内置的官方 id，设备码流程开箱即用；
+    /// 填自建 Azure 应用的「应用程序(客户端) ID」= 走 v2 流程。
+    /// </summary>
     public string MicrosoftClientId { get; set; } = string.Empty;
 
     /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
