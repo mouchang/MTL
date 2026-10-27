@@ -15,9 +15,16 @@
                                           Opacity="0.14" Color="#FF2E4A38" />
                     </Border.Effect>
                 </Border>
-                <Image x:Name="AvatarImage" Source="/Assets/avatar.png" Width="64" Height="64"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform"
-                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                <!-- 圆角方形头像：图片按圆角裁切，离线史蒂夫也走同一套 -->
+                <Border Width="88" Height="88" CornerRadius="22" Background="Transparent"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border.Clip>
+                        <RectangleGeometry Rect="0,0,88,88" RadiusX="22" RadiusY="22" />
+                    </Border.Clip>
+                    <Image x:Name="AvatarImage" Source="/Assets/avatar.png"
+                           Stretch="UniformToFill"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                </Border>
             </Grid>
 
             <!-- 正版 / 用户名 / 切换账号 -->
