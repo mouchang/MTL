@@ -17,8 +17,8 @@
             <Button Style="{StaticResource GhostButton}" Padding="8,4" Click="Back_Click">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="14"
-                               Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" />
-                    <TextBlock Text="返回" FontSize="13" Foreground="{StaticResource InkSoft}"
+                               Foreground="{DynamicResource InkSoft}" VerticalAlignment="Center" />
+                    <TextBlock Text="返回" FontSize="13" Foreground="{DynamicResource InkSoft}"
                                Margin="6,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
@@ -32,7 +32,7 @@
                     <Image Source="/Assets/grass.png" Width="52" Height="52"
                            RenderOptions.BitmapScalingMode="NearestNeighbor" VerticalAlignment="Center" />
                     <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="VersionText" FontSize="22" Foreground="{StaticResource Ink}" />
+                        <TextBlock x:Name="VersionText" FontSize="22" Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="VersionCaption" Style="{StaticResource Caption}" Margin="0,4,0,0" />
                     </StackPanel>
                 </StackPanel>
@@ -64,12 +64,12 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Fabric" FontSize="14" Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="Fabric" FontSize="14" Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="FabricStatus" Grid.Column="1" Text="可以添加" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                         <TextBlock x:Name="FabricChevron" Grid.Column="2" Text="&#xE76C;"
                                    FontFamily="{StaticResource IconFont}" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
                 <Border x:Name="FabricVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
@@ -99,12 +99,12 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Forge" FontSize="14" Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="Forge" FontSize="14" Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="ForgeStatus" Grid.Column="1" Text="可以添加" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                         <TextBlock x:Name="ForgeChevron" Grid.Column="2" Text="&#xE76C;"
                                    FontFamily="{StaticResource IconFont}" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
                 <Border x:Name="ForgeVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
@@ -126,12 +126,12 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="NeoForge" FontSize="14" Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="NeoForge" FontSize="14" Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="NeoForgeStatus" Grid.Column="1" Text="可以添加" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                         <TextBlock x:Name="NeoForgeChevron" Grid.Column="2" Text="&#xE76C;"
                                    FontFamily="{StaticResource IconFont}" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
                 <Border x:Name="NeoForgeVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">
@@ -153,12 +153,12 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="OptiFine" FontSize="14" Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="OptiFine" FontSize="14" Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="OptiFineStatus" Grid.Column="1" Text="可以添加" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                         <TextBlock x:Name="OptiFineChevron" Grid.Column="2" Text="&#xE76C;"
                                    FontFamily="{StaticResource IconFont}" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource InkMute}" VerticalAlignment="Center" />
                     </Grid>
                 </Button>
                 <Border x:Name="OptiFineVersionsPanel" Visibility="Collapsed" Margin="8,0,8,8">

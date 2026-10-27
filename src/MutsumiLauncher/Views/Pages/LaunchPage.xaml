@@ -9,10 +9,10 @@
 
             <!-- 头像：水平中心与下方用户名胶囊对齐（位置在代码里算） -->
             <Grid x:Name="AvatarHost" Width="116" Height="116" HorizontalAlignment="Left">
-                <Border CornerRadius="24" Background="#59FFFFFF" BorderBrush="#8CFFFFFF" BorderThickness="1">
+                <Border CornerRadius="24" Background="{DynamicResource AvatarCard}" BorderBrush="{DynamicResource GlassMedium}" BorderThickness="1">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270"
-                                          Opacity="0.14" Color="#FF2E4A38" />
+                                          Opacity="0.14" Color="{DynamicResource ShadowColorSoft}" />
                     </Border.Effect>
                 </Border>
                 <!-- 圆角方形头像：图片按圆角裁切，离线史蒂夫也走同一套 -->
@@ -28,21 +28,21 @@
             </Grid>
 
             <!-- 正版 / 用户名 / 切换账号 -->
-            <Border x:Name="NameCard" Background="#8CFFFFFF" CornerRadius="14" Padding="10,6,12,6"
+            <Border x:Name="NameCard" Background="{DynamicResource GlassMedium}" CornerRadius="14" Padding="10,6,12,6"
                     Margin="0,20,0,0" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
-                    <Border Background="{StaticResource Accent}" CornerRadius="6" Padding="7,2"
+                    <Border Background="{DynamicResource Accent}" CornerRadius="6" Padding="7,2"
                             VerticalAlignment="Center">
                         <TextBlock x:Name="AccountTypeBadge" Text="离线" Foreground="White"
                                    FontSize="12" FontWeight="SemiBold" />
                     </Border>
                     <TextBlock x:Name="AccountNameText" Text="Player" FontSize="17"
-                               Foreground="{StaticResource Ink}" Margin="9,0,0,0"
+                               Foreground="{DynamicResource Ink}" Margin="9,0,0,0"
                                VerticalAlignment="Center" />
                     <Button Style="{StaticResource LinkIconButton}" Margin="8,0,0,0"
                             Click="SwitchAccount_Click" ToolTip="切换账号">
                         <Path Data="M2.5,4.5 L12,4.5 M9.5,2 L12,4.5 L9.5,7 M13.5,11.5 L4,11.5 M6.5,9 L4,11.5 L6.5,14"
-                              Stroke="{StaticResource InkSoft}" StrokeThickness="1.3"
+                              Stroke="{DynamicResource InkSoft}" StrokeThickness="1.3"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                               StrokeLineJoin="Round" />
                     </Button>
@@ -50,16 +50,16 @@
             </Border>
 
             <!-- 版本 -->
-            <Border Background="#73FFFFFF" CornerRadius="22" Height="44" Padding="10,0,10,0"
+            <Border Background="{DynamicResource PillBg}" CornerRadius="22" Height="44" Padding="10,0,10,0"
                     Margin="0,12,0,0" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="VersionPill" Style="{StaticResource GhostButton}" Padding="4,0"
                             Click="VersionPill_Click" ToolTip="切换启动版本">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock x:Name="VersionText" Text="未安装版本" FontSize="15"
-                                       Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" />
+                                       Foreground="{DynamicResource InkSoft}" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="9"
-                                       Margin="7,1,0,0" Foreground="{StaticResource InkMute}"
+                                       Margin="7,1,0,0" Foreground="{DynamicResource InkMute}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

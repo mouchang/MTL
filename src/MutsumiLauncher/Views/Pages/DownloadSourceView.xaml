@@ -9,8 +9,8 @@
             <Button Style="{StaticResource GhostButton}" Padding="8,4" Click="Back_Click">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFont}" FontSize="14"
-                               Foreground="{StaticResource InkSoft}" VerticalAlignment="Center" />
-                    <TextBlock Text="返回" FontSize="13" Foreground="{StaticResource InkSoft}"
+                               Foreground="{DynamicResource InkSoft}" VerticalAlignment="Center" />
+                    <TextBlock Text="返回" FontSize="13" Foreground="{DynamicResource InkSoft}"
                                Margin="6,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
@@ -32,13 +32,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="测速后决定使用官方还是 BMCLAPI"
-                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       FontSize="11" Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="VanillaAutoCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -51,13 +51,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="官方源" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="官方源" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="Mojang（piston-meta / launcher.mojang.com），国内可能较慢"
-                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       FontSize="11" Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="VanillaOfficialCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -70,13 +70,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="镜像源（BMCLAPI）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="镜像源（BMCLAPI）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="bmclapi2.bangbang93.com，国内加速，推荐" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="VanillaMirrorCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -97,13 +97,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="测速后决定，失败自动换另一个源"
-                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       FontSize="11" Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ListAutoCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -116,13 +116,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="官方源" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="官方源" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="launchermeta.mojang.com，国内可能较慢"
-                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       FontSize="11" Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ListOfficialCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -135,13 +135,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="镜像源（BMCLAPI）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="镜像源（BMCLAPI）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="bmclapi2.bangbang93.com，国内加速" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ListMirrorCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -162,13 +162,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="自动选择（推荐）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="官方优先，失败自动走自建镜像"
-                                       FontSize="11" Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       FontSize="11" Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ModAutoCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -181,13 +181,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="官方源" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="官方源" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="api.modrinth.com / cdn.modrinth.com" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ModOfficialCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -212,13 +212,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="自动（推荐）" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="自动（推荐）" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="系统代理可用时走代理，否则直连" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ProxyAutoCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -231,13 +231,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="直接连接" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="直接连接" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="不使用任何代理，镜像源可直连" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ProxyDirectCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -251,13 +251,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="跟随系统代理" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="跟随系统代理" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="使用 Windows 的代理设置" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ProxySystemCheck" Grid.Column="2" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -270,13 +270,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="自定义代理" FontSize="14" Foreground="{StaticResource Ink}" />
+                            <TextBlock Text="自定义代理" FontSize="14" Foreground="{DynamicResource Ink}" />
                             <TextBlock Text="例如 Clash 的 127.0.0.1:7890" FontSize="11"
-                                       Foreground="{StaticResource InkMute}" Margin="0,2,0,0" />
+                                       Foreground="{DynamicResource InkMute}" Margin="0,2,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="ProxyCustomCheck" Grid.Column="1" Text="&#xE73E;"
                                    FontFamily="{StaticResource IconFont}" FontSize="14"
-                                   Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                    Visibility="Collapsed" />
                     </Grid>
                 </Button>
@@ -309,7 +309,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="BuiltInStatus" VerticalAlignment="Center" FontSize="12"
-                               Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
+                               Foreground="{DynamicResource InkSoft}" TextWrapping="Wrap" />
                     <Button x:Name="BuiltInTest" Grid.Column="1" Style="{StaticResource GhostButton}"
                             Content="测试" Padding="12,6" Margin="8,0,0,0" Click="BuiltInTest_Click" />
                     <Button x:Name="BuiltInToggle" Grid.Column="2" Style="{StaticResource PrimaryButton}"

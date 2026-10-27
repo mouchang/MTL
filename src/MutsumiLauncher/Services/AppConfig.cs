@@ -56,6 +56,15 @@ public sealed class AppConfig
     /// <summary>下载限速（KB/s），0 表示不限速。</summary>
     public int MaxDownloadSpeedKbps { get; set; }
 
+    /// <summary>主题：light（默认）/ dark / custom。</summary>
+    public string ThemeMode { get; set; } = "light";
+
+    /// <summary>自定义主题的主色（#AARRGGBB）。</summary>
+    public string ThemeAccent { get; set; } = ThemeService.DefaultAccent;
+
+    /// <summary>自定义主题的底色：light / dark。</summary>
+    public string ThemeBase { get; set; } = "light";
+
     /// <summary>内置代理（自带 mihomo 内核）。默认开启，只控制功能开关，不控制内核启停。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;
 

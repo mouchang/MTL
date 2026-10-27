@@ -4,126 +4,295 @@
              FontFamily="{StaticResource UiFont}">
 
     <Grid>
-    <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Width="760" HorizontalAlignment="Left" Margin="24,4,24,24">
-            <TextBlock Text="设置" Style="{StaticResource H1}" Margin="4,0,0,10" />
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="184" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock Text="Java 运行时" Style="{StaticResource H2}" />
-                        <Button x:Name="RefreshButton" Style="{StaticResource SecondaryButton}"
-                                Content="重新检测" Height="30" Padding="14,0"
-                                HorizontalAlignment="Right" Click="RefreshJava_Click" />
-                    </Grid>
-
-                    <TextBlock x:Name="JavaStatus" Style="{StaticResource Caption}"
-                               Margin="0,6,0,0" Text="正在检测本机 Java…" TextWrapping="Wrap" />
-
-                    <ItemsControl x:Name="JavaList" Margin="0,8,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Padding="0,9" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding DisplayVersion}" FontSize="14"
-                                                       Foreground="{StaticResource Ink}" />
-                                            <TextBlock Text="{Binding Source}" FontSize="11"
-                                                       Foreground="{StaticResource InkMute}"
-                                                       Margin="10,0,0,0" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding ExecutablePath}" FontSize="11"
-                                                   Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
-                                                   TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock Text="下载源" Style="{StaticResource H2}" />
-                        <TextBlock Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                   Foreground="{StaticResource InkMute}" HorizontalAlignment="Right"
-                                   VerticalAlignment="Center" />
-                    </Grid>
-                    <TextBlock x:Name="SourceSummary" Style="{StaticResource Caption}" Margin="0,6,0,0"
-                               Text="正在读取…" />
-                    <Button Style="{StaticResource SecondaryButton}" Content="更改下载源"
-                            Height="32" Padding="16,0" Margin="0,10,0,0"
-                            HorizontalAlignment="Left" Click="OpenSource_Click" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="内存分配" Style="{StaticResource H2}" />
-                    <TextBlock x:Name="MemoryHint" Style="{StaticResource Caption}" Margin="0,4,0,10"
-                               TextWrapping="Wrap" />
-
+        <!-- ============ 左侧分类 ============ -->
+        <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10"
+                VerticalAlignment="Top" Margin="0,4,0,0">
+            <StackPanel>
+                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="basic"
+                             IsChecked="True" Checked="Nav_Checked">
                     <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="MemoryAutoRadio" Style="{StaticResource SegmentItem}"
-                                     GroupName="MemoryMode" Content="自动配置"
-                                     Checked="MemoryMode_Checked" />
-                        <RadioButton x:Name="MemoryManualRadio" Style="{StaticResource SegmentItem}"
-                                     GroupName="MemoryMode" Content="自定义"
-                                     Margin="11,0,0,0" Checked="MemoryMode_Checked" />
-                        <TextBlock x:Name="MemoryValueText" FontSize="14" Margin="16,0,0,0"
-                                   VerticalAlignment="Center" Foreground="{StaticResource AccentDeep}" />
+                        <TextBlock Text="&#xE790;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
+                        <TextBlock Text="基础" VerticalAlignment="Center" />
                     </StackPanel>
+                </RadioButton>
 
-                    <Slider x:Name="MemorySlider" Style="{StaticResource MtlSlider}"
-                            Minimum="512" Maximum="65536" SmallChange="512"
-                            LargeChange="1024" TickFrequency="512" IsSnapToTickEnabled="True"
-                            Margin="0,12,0,0" ValueChanged="MemorySlider_ValueChanged" />
+                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="launch"
+                             Checked="Nav_Checked">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
+                        <TextBlock Text="启动" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="download"
+                             Checked="Nav_Checked">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
+                        <TextBlock Text="下载" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="about"
+                             Checked="Nav_Checked">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE946;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
+                        <TextBlock Text="其他" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ 右侧内容 ============ -->
+        <Grid Grid.Column="1" Margin="16,4,0,0">
+            <ScrollViewer x:Name="BasicScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,4,20">
+                    <!-- 内存 -->
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18">
+                        <StackPanel>
+                            <TextBlock Text="内存分配" Style="{StaticResource H2}" />
+                            <TextBlock x:Name="MemoryHint" Style="{StaticResource Caption}" Margin="0,4,0,12"
+                                       TextWrapping="Wrap" />
+
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="MemoryAutoRadio" Style="{StaticResource SegmentItem}"
+                                             GroupName="MemoryMode" Content="自动配置"
+                                             Checked="MemoryMode_Checked" />
+                                <RadioButton x:Name="MemoryManualRadio" Style="{StaticResource SegmentItem}"
+                                             GroupName="MemoryMode" Content="自定义"
+                                             Margin="11,0,0,0" Checked="MemoryMode_Checked" />
+                                <TextBlock x:Name="MemoryValueText" FontSize="14" Margin="16,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentDeep}" />
+                            </StackPanel>
+
+                            <Slider x:Name="MemorySlider" Style="{StaticResource MtlSlider}"
+                                    Minimum="512" Maximum="65536" SmallChange="512"
+                                    LargeChange="1024" TickFrequency="512" IsSnapToTickEnabled="True"
+                                    Margin="0,14,0,0" ValueChanged="MemorySlider_ValueChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 主题 -->
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                        <StackPanel>
+                            <TextBlock Text="外观主题" Style="{StaticResource H2}" />
+                            <TextBlock Text="换主题只改配色，布局和功能都不动；改动立刻生效。"
+                                       Style="{StaticResource Caption}" Margin="0,4,0,12" />
+
+                            <WrapPanel>
+                                <RadioButton x:Name="ThemeLightRadio" Style="{StaticResource SegmentItem}"
+                                             GroupName="ThemeMode" Content="明亮"
+                                             Margin="0,0,8,0" Checked="ThemeMode_Checked" />
+                                <RadioButton x:Name="ThemeDarkRadio" Style="{StaticResource SegmentItem}"
+                                             GroupName="ThemeMode" Content="暗色"
+                                             Margin="0,0,8,0" Checked="ThemeMode_Checked" />
+                                <RadioButton x:Name="ThemeCustomRadio" Style="{StaticResource SegmentItem}"
+                                             GroupName="ThemeMode" Content="自定义"
+                                             Checked="ThemeMode_Checked" />
+                            </WrapPanel>
+
+                            <StackPanel x:Name="ThemeCustomPanel" Margin="0,16,0,0"
+                                        Visibility="Collapsed">
+                                <TextBlock Text="底色" Style="{StaticResource FieldLabel}" Margin="0,0,0,8" />
+                                <WrapPanel>
+                                    <RadioButton x:Name="ThemeBaseLightRadio"
+                                                 Style="{StaticResource SegmentItem}" GroupName="ThemeBase"
+                                                 Content="浅色" Margin="0,0,8,0"
+                                                 Checked="ThemeBase_Checked" />
+                                    <RadioButton x:Name="ThemeBaseDarkRadio"
+                                                 Style="{StaticResource SegmentItem}" GroupName="ThemeBase"
+                                                 Content="深色" Checked="ThemeBase_Checked" />
+                                </WrapPanel>
+
+                                <TextBlock Text="主色" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
+                                <WrapPanel x:Name="AccentSwatches" />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                    <TextBox x:Name="AccentHexBox" Style="{StaticResource MtlTextBox}"
+                                             Width="130" Height="34" VerticalContentAlignment="Center" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="应用这个色值"
+                                            Height="34" Padding="16,0" Margin="10,0,0,0"
+                                            Click="ApplyAccent_Click" />
+                                    <TextBlock x:Name="AccentHint" Style="{StaticResource Caption}"
+                                               Margin="12,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-            </Border>
+            </ScrollViewer>
 
-            <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock Text="缓存" Style="{StaticResource H2}" />
-                        <Button x:Name="ClearCacheButton" Style="{StaticResource SecondaryButton}"
-                                Content="清理缓存" Height="30" Padding="14,0"
-                                HorizontalAlignment="Right" Click="ClearCache_Click" />
-                    </Grid>
-                    <TextBlock x:Name="CacheSizeText" Style="{StaticResource Caption}"
-                               Margin="0,6,0,0" Text="正在统计…" />
-                    <TextBlock x:Name="CachePathText" FontSize="11"
-                               Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
-                               TextTrimming="CharacterEllipsis" />
+            <ScrollViewer x:Name="LaunchScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                <StackPanel Margin="0,0,4,20">
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="Java 运行时" Style="{StaticResource H2}" />
+                                <Button x:Name="RefreshButton" Style="{StaticResource SecondaryButton}"
+                                        Content="重新检测" Height="30" Padding="14,0"
+                                        HorizontalAlignment="Right" Click="RefreshJava_Click" />
+                            </Grid>
+
+                            <TextBlock x:Name="JavaStatus" Style="{StaticResource Caption}"
+                                       Margin="0,6,0,0" Text="正在检测本机 Java…" TextWrapping="Wrap" />
+
+                            <ItemsControl x:Name="JavaList" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="0,9" BorderThickness="0,0,0,1"
+                                                BorderBrush="{DynamicResource Divider}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayVersion}" FontSize="14"
+                                                               Foreground="{DynamicResource Ink}" />
+                                                    <TextBlock Text="{Binding Source}" FontSize="11"
+                                                               Foreground="{DynamicResource InkMute}"
+                                                               Margin="10,0,0,0" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding ExecutablePath}" FontSize="11"
+                                                           Foreground="{DynamicResource InkSoft}" Margin="0,2,0,0"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                        <StackPanel>
+                            <TextBlock Text="版本隔离" Style="{StaticResource H2}" />
+                            <TextBlock Text="新装的版本默认把存档、mods、配置放在自己的实例目录里。版本设置里可以给单个实例改。"
+                                       Style="{StaticResource Caption}" Margin="0,4,0,12" TextWrapping="Wrap" />
+                            <ComboBox x:Name="IsolationCombo" Style="{StaticResource MtlComboBox}"
+                                      Width="220" HorizontalAlignment="Left"
+                                      SelectionChanged="Isolation_Changed">
+                                <ComboBoxItem Content="隔离所有版本" />
+                                <ComboBoxItem Content="共用同一个游戏目录" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-            </Border>
+            </ScrollViewer>
 
-            <Border Style="{StaticResource GlassCard}" Padding="22,18">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock Text="关于" Style="{StaticResource H2}" />
-                        <Button x:Name="CheckUpdateButton" Style="{StaticResource SecondaryButton}"
-                                Content="检查更新" Height="30" Padding="14,0"
-                                HorizontalAlignment="Right" Click="CheckUpdate_Click" />
-                    </Grid>
-                    <TextBlock x:Name="VersionText" Text="Mutsumi Launcher" Style="{StaticResource Body}"
-                               Margin="0,8,0,0" />
-                    <TextBlock x:Name="UpdateStatus" Text="WPF · .NET 10 · 开源" Style="{StaticResource Caption}"
-                               Margin="0,2,0,0" TextWrapping="Wrap" />
+            <ScrollViewer x:Name="DownloadScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                <StackPanel Margin="0,0,4,20">
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18">
+                        <StackPanel>
+                            <TextBlock Text="下载源" Style="{StaticResource H2}" />
+                            <TextBlock x:Name="SourceSummary" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                       Text="正在读取…" TextWrapping="Wrap" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="更改下载源与网络"
+                                    Height="32" Padding="16,0" Margin="0,12,0,0"
+                                    HorizontalAlignment="Left" Click="OpenSource_Click" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="缓存" Style="{StaticResource H2}" />
+                                <Button x:Name="ClearCacheButton" Style="{StaticResource SecondaryButton}"
+                                        Content="清理缓存" Height="30" Padding="14,0"
+                                        HorizontalAlignment="Right" Click="ClearCache_Click" />
+                            </Grid>
+                            <TextBlock x:Name="CacheSizeText" Style="{StaticResource Caption}"
+                                       Margin="0,6,0,0" Text="正在统计…" />
+                            <TextBlock x:Name="CachePathText" FontSize="11"
+                                       Foreground="{DynamicResource InkSoft}" Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+            </ScrollViewer>
 
-    <!-- 下载源子界面：从右侧滑入 -->
-    <ContentControl x:Name="SourceHost" Visibility="Collapsed" Opacity="0"
-                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top"
-                    Panel.ZIndex="10">
-        <ContentControl.RenderTransform>
-            <TranslateTransform x:Name="SourceSlide" X="0" />
-        </ContentControl.RenderTransform>
-    </ContentControl>
+            <ScrollViewer x:Name="AboutScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                <StackPanel Margin="0,0,4,20">
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="关于" Style="{StaticResource H2}" />
+                                <Button x:Name="CheckUpdateButton" Style="{StaticResource SecondaryButton}"
+                                        Content="检查更新" Height="30" Padding="14,0"
+                                        HorizontalAlignment="Right" Click="CheckUpdate_Click" />
+                            </Grid>
+                            <TextBlock x:Name="VersionText" Text="Mutsumi Launcher" Style="{StaticResource Body}"
+                                       Margin="0,8,0,0" />
+                            <TextBlock x:Name="UpdateStatus" Text="WPF · .NET 10 · 开源"
+                                       Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                        <StackPanel>
+                            <TextBlock Text="数据位置" Style="{StaticResource H2}" />
+                            <TextBlock Text="游戏文件、配置和日志分别放在这些目录里。"
+                                       Style="{StaticResource Caption}" Margin="0,4,0,12" />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="游戏目录" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="GameDirText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="打开"
+                                        Height="28" Padding="12,0" Click="OpenGameDir_Click" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="配置目录" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="DataDirText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="打开"
+                                        Height="28" Padding="12,0" Click="OpenDataDir_Click" />
+                            </Grid>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="运行日志" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="LogPathText" Grid.Column="1" FontSize="12"
+                                           Foreground="{DynamicResource InkSoft}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="打开"
+                                        Height="28" Padding="12,0" Click="OpenLogDir_Click" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 下载源子界面：从右侧滑入 -->
+            <ContentControl x:Name="SourceHost" Visibility="Collapsed" Opacity="0"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top"
+                            Panel.ZIndex="10">
+                <ContentControl.RenderTransform>
+                    <TranslateTransform x:Name="SourceSlide" X="0" />
+                </ContentControl.RenderTransform>
+            </ContentControl>
+        </Grid>
     </Grid>
 </UserControl>

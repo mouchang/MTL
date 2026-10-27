@@ -33,6 +33,10 @@ public partial class App : Application
             NormalizePath();
             GamePaths.MigrateFromAppDataIfNeeded();
 
+            // 必须在主窗口创建之前套主题，否则第一帧会闪一下浅色
+            ThemeService.ApplyFromConfig();
+            ThemeService.Verify();
+
             base.OnStartup(e);
             AppLog.Info($"启动 Mutsumi Launcher，.NET {Environment.Version}");
             Exit += (_, _) => _singleInstance?.ReleaseMutex();

@@ -3,14 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <Border Background="#F2F7FBF4" ClipToBounds="True">
+    <Border Background="{DynamicResource PaneBg}" ClipToBounds="True">
         <Grid>
             <Image Source="/Assets/background.jpg" Stretch="UniformToFill" Margin="-90">
                 <Image.Effect>
                     <BlurEffect Radius="34" KernelType="Gaussian" />
                 </Image.Effect>
             </Image>
-            <Border Background="#40FFFFFF" />
+            <Border Background="{DynamicResource BackdropVeil}" />
 
             <Grid>
                 <Grid.RowDefinitions>
@@ -22,7 +22,7 @@
                 <Grid Grid.Row="0" Margin="26,12,26,0" Background="Transparent"
                       MouseLeftButtonDown="Header_MouseLeftButtonDown">
                     <TextBlock x:Name="TitleText" Text="版本设置" FontSize="16"
-                               Foreground="{StaticResource Ink}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Ink}" VerticalAlignment="Center"
                                Margin="0,0,60,0" />
                     <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"
                             HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -35,7 +35,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Background="#4DFFFFFF" CornerRadius="18" Padding="10">
+                    <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
                         <StackPanel>
                             <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
                                          Tag="overview" IsChecked="True" Checked="Nav_Checked">

@@ -12,7 +12,7 @@
                            RenderOptions.BitmapScalingMode="NearestNeighbor" VerticalAlignment="Center" />
                     <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
                         <TextBlock x:Name="NameText" Text="—" FontSize="19" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Ink}" />
+                                   Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="CaptionText" Text="正在读取…" Style="{StaticResource Caption}"
                                    Margin="0,3,0,0" />
                     </StackPanel>
@@ -30,7 +30,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="路径" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="PathText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
+                                   Foreground="{DynamicResource InkSoft}" TextWrapping="Wrap" />
                     </Grid>
 
                     <Grid Margin="0,10,0,0">
@@ -42,10 +42,10 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="占用空间" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="SizeText" Grid.Column="1" FontSize="13"
-                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource Ink}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="Mod 数量" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="ModText" Grid.Column="3" FontSize="13"
-                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource Ink}" VerticalAlignment="Center" />
                     </Grid>
 
                     <Grid Margin="0,10,0,0">
@@ -57,11 +57,11 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="JavaText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource InkSoft}" TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="内存" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="MemoryText" Grid.Column="3" FontSize="13"
-                                   Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource Ink}" VerticalAlignment="Center" />
                     </Grid>
                 </StackPanel>
             </Border>

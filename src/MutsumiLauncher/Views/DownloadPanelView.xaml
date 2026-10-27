@@ -5,18 +5,18 @@
 
     <Grid>
         <!-- 半透明遮罩，点击空白处关闭 -->
-        <Grid Background="#26000000" MouseDown="Backdrop_MouseDown" />
+        <Grid Background="{DynamicResource ModalScrim}" MouseDown="Backdrop_MouseDown" />
 
         <!-- 右侧半页覆盖层 -->
         <Border x:Name="Card" HorizontalAlignment="Right" Width="520" Margin="0,14,14,14"
-                CornerRadius="20" Background="#F9FFFFFF" BorderBrush="#88FFFFFF" BorderThickness="1"
+                CornerRadius="20" Background="{DynamicResource SurfaceFloat}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
                 Padding="24,20" RenderTransformOrigin="0.5,0.5">
             <Border.RenderTransform>
                 <TranslateTransform x:Name="Slide" />
             </Border.RenderTransform>
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="6" Direction="270" Opacity="0.20"
-                                  Color="#FF2E4A38" />
+                                  Color="{DynamicResource ShadowColorSoft}" />
             </Border.Effect>
 
             <Grid>
@@ -43,17 +43,17 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="总进度" Style="{StaticResource Caption}" />
                         <TextBlock x:Name="TotalPercentText" Text="0%" FontSize="26"
-                                   Foreground="{StaticResource Ink}" Margin="0,2,0,0" />
+                                   Foreground="{DynamicResource Ink}" Margin="0,2,0,0" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <TextBlock Text="下载速度" Style="{StaticResource Caption}" />
                         <TextBlock x:Name="SpeedText" Text="—" FontSize="26"
-                                   Foreground="{StaticResource Ink}" Margin="0,2,0,0" />
+                                   Foreground="{DynamicResource Ink}" Margin="0,2,0,0" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="剩余任务" Style="{StaticResource Caption}" />
                         <TextBlock x:Name="RemainingText" Text="0" FontSize="26"
-                                   Foreground="{StaticResource Ink}" Margin="0,2,0,0" />
+                                   Foreground="{DynamicResource Ink}" Margin="0,2,0,0" />
                     </StackPanel>
                 </Grid>
 
@@ -61,18 +61,18 @@
                     <ItemsControl x:Name="TaskList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF">
+                                <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}">
                                     <StackPanel>
                                         <Grid>
                                             <TextBlock Text="{Binding Title}" FontSize="14"
-                                                       Foreground="{StaticResource Ink}"
+                                                       Foreground="{DynamicResource Ink}"
                                                        TextTrimming="CharacterEllipsis" Margin="0,0,80,0" />
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding SpeedText}" FontSize="11"
-                                                           Foreground="{StaticResource AccentDeep}"
+                                                           Foreground="{DynamicResource AccentDeep}"
                                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                                 <TextBlock Text="{Binding Percent, StringFormat={}{0:0}%}"
-                                                           FontSize="11" Foreground="{StaticResource InkMute}"
+                                                           FontSize="11" Foreground="{DynamicResource InkMute}"
                                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                                 <Button Content="取消" Style="{StaticResource GhostButton}"
                                                         Height="22" Padding="8,0" FontSize="11"
@@ -91,10 +91,10 @@
                                                      Margin="0,8,0,0" IsIndeterminate="{Binding Indeterminate}">
                                             <ProgressBar.Template>
                                                 <ControlTemplate TargetType="ProgressBar">
-                                                    <Grid Background="#22FFFFFF" ClipToBounds="True" Height="4">
+                                                    <Grid Background="{DynamicResource OverlayWash}" ClipToBounds="True" Height="4">
                                                         <Border x:Name="PART_Track" />
                                                         <Border x:Name="PART_Indicator"
-                                                                Background="{StaticResource AccentDeep}"
+                                                                Background="{DynamicResource AccentDeep}"
                                                                 HorizontalAlignment="Left" CornerRadius="2" />
                                                     </Grid>
                                                 </ControlTemplate>
@@ -102,7 +102,7 @@
                                         </ProgressBar>
 
                                         <TextBlock Text="{Binding Status}" FontSize="11"
-                                                   Foreground="{StaticResource InkMute}" Margin="0,5,0,0"
+                                                   Foreground="{DynamicResource InkMute}" Margin="0,5,0,0"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </Border>

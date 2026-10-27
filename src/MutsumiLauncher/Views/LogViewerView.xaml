@@ -3,12 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <Grid Background="#33000000" MouseDown="Backdrop_MouseDown">
-        <Border Margin="40,40,40,40" CornerRadius="22" Background="#FAFFFFFF"
-                BorderBrush="#88FFFFFF" BorderThickness="1" Padding="22,18">
+    <Grid Background="{DynamicResource ModalScrim}" MouseDown="Backdrop_MouseDown">
+        <Border Margin="40,40,40,40" CornerRadius="22" Background="{DynamicResource SurfaceFloat}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" Padding="22,18">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="6" Direction="270" Opacity="0.22"
-                                  Color="#FF2E4A38" />
+                                  Color="{DynamicResource ShadowColorSoft}" />
             </Border.Effect>
 
             <Grid>
@@ -28,12 +28,12 @@
                 <TextBlock x:Name="PathText" Grid.Row="1" Style="{StaticResource Caption}"
                            Margin="0,4,0,10" TextTrimming="CharacterEllipsis" />
 
-                <Border Grid.Row="2" Background="#F2F7FBF4" CornerRadius="12" Padding="12">
+                <Border Grid.Row="2" Background="{DynamicResource PaneBg}" CornerRadius="12" Padding="12">
                     <ScrollViewer x:Name="LogScroll" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Auto">
                         <TextBox x:Name="LogText" IsReadOnly="True" BorderThickness="0"
                                  Background="Transparent" FontFamily="Consolas, Courier New"
-                                 FontSize="12" Foreground="{StaticResource Ink}"
+                                 FontSize="12" Foreground="{DynamicResource Ink}"
                                  TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" />
                     </ScrollViewer>
                 </Border>

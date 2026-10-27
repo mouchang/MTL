@@ -35,7 +35,7 @@
                 <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
                     <TextBlock x:Name="SummaryText" Style="{StaticResource Caption}" Text="正在读取存档…" />
                     <TextBlock x:Name="BusyText" Style="{StaticResource Caption}" Margin="12,0,0,0"
-                               Foreground="{StaticResource AccentDeep}" />
+                               Foreground="{DynamicResource AccentDeep}" />
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -43,7 +43,7 @@
                     <ItemsControl x:Name="WorldList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF" Padding="0,10">
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}" Padding="0,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -53,7 +53,7 @@
 
                                         <!-- 世界图标：有 icon.png 就用，没有就露出下面的草方块 -->
                                         <Border Width="42" Height="42" CornerRadius="10"
-                                                Background="#2E7D4F" ClipToBounds="True"
+                                                Background="{DynamicResource AccentDeep}" ClipToBounds="True"
                                                 VerticalAlignment="Center">
                                             <Grid>
                                                 <Image Source="/Assets/grass.png" Stretch="UniformToFill"
@@ -66,13 +66,13 @@
                                         <StackPanel Grid.Column="1" Margin="12,0,12,0"
                                                     VerticalAlignment="Center">
                                             <TextBlock Text="{Binding DisplayName}" FontSize="15"
-                                                       Foreground="{StaticResource Ink}"
+                                                       Foreground="{DynamicResource Ink}"
                                                        TextTrimming="CharacterEllipsis" />
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <TextBlock Text="{Binding DetailText}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}" />
+                                                           Foreground="{DynamicResource InkMute}" />
                                                 <TextBlock Text="{Binding FolderText}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}"
+                                                           Foreground="{DynamicResource InkMute}"
                                                            Margin="10,0,0,0"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
@@ -81,7 +81,7 @@
                                         <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
                                             <TextBlock Text="{Binding BackupText}" FontSize="11"
-                                                       Foreground="{StaticResource InkMute}"
+                                                       Foreground="{DynamicResource InkMute}"
                                                        VerticalAlignment="Center" Margin="0,0,10,0" />
                                             <Button Style="{StaticResource GhostButton}" Content="备份"
                                                     Height="30" Padding="12,0" Margin="0,0,8,0"

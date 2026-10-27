@@ -6,12 +6,12 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
-    <Grid x:Name="Root" Background="#33000000" Opacity="0" MouseDown="Backdrop_MouseDown">
+    <Grid x:Name="Root" Background="{DynamicResource ModalScrim}" Opacity="0" MouseDown="Backdrop_MouseDown">
         <Border x:Name="Card" VerticalAlignment="Bottom" Margin="28,0,28,28" CornerRadius="22"
-                Background="#F9FFFFFF" BorderBrush="#88FFFFFF" BorderThickness="1" Padding="22,18">
+                Background="{DynamicResource SurfaceFloat}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" Padding="22,18">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="6" Direction="270" Opacity="0.22"
-                                  Color="#FF2E4A38" />
+                                  Color="{DynamicResource ShadowColorSoft}" />
             </Border.Effect>
             <Border.RenderTransform>
                 <TranslateTransform x:Name="Slide" Y="460" />
@@ -54,15 +54,15 @@
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0"
                                                         VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Name}" FontSize="15"
-                                                           Foreground="{StaticResource Ink}" />
+                                                           Foreground="{DynamicResource Ink}" />
                                                 <TextBlock Text="{Binding TypeLabel}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}"
+                                                           Foreground="{DynamicResource InkMute}"
                                                            Margin="0,1,0,0" />
                                             </StackPanel>
 
                                             <TextBlock Grid.Column="2" Text="&#xE73E;"
                                                        FontFamily="{StaticResource IconFont}"
-                                                       FontSize="14" Foreground="{StaticResource AccentDeep}"
+                                                       FontSize="14" Foreground="{DynamicResource AccentDeep}"
                                                        VerticalAlignment="Center" Margin="0,0,46,0"
                                                        Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVis}}" />
                                         </Grid>
@@ -73,7 +73,7 @@
                                             Margin="0,0,14,0" Tag="{Binding}" Click="Delete_Click"
                                             ToolTip="删除账号">
                                         <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}"
-                                                   FontSize="12" Foreground="{StaticResource InkMute}" />
+                                                   FontSize="12" Foreground="{DynamicResource InkMute}" />
                                     </Button>
                                 </Grid>
                             </DataTemplate>

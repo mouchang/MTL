@@ -3,11 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <Border CornerRadius="22,0,0,22" Background="#F7FFFFFF" BorderBrush="#66FFFFFF"
+    <Border CornerRadius="22,0,0,22" Background="{DynamicResource SurfaceFloat}" BorderBrush="{DynamicResource PanelBorderSoft}"
             BorderThickness="1,0,0,0" Padding="24,22">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="0" Direction="180" Opacity="0.18"
-                              Color="#FF2E4A38" />
+                              Color="{DynamicResource ShadowColorSoft}" />
         </Border.Effect>
 
         <Grid>
@@ -33,14 +33,14 @@
                 <StackPanel>
                     <Grid>
                         <TextBlock x:Name="StatusText" Text="准备中…" FontSize="13"
-                                   Foreground="{StaticResource Ink}" />
+                                   Foreground="{DynamicResource Ink}" />
                         <TextBlock x:Name="PercentText" Text="0%" FontSize="13"
-                                   Foreground="{StaticResource AccentDeep}" HorizontalAlignment="Right" />
+                                   Foreground="{DynamicResource AccentDeep}" HorizontalAlignment="Right" />
                     </Grid>
 
                     <Grid x:Name="ProgressTrack" Height="6" Margin="0,10,0,0" ClipToBounds="True">
-                        <Border Background="#22FFFFFF" CornerRadius="3" />
-                        <Border x:Name="ProgressFill" Background="{StaticResource AccentDeep}"
+                        <Border Background="{DynamicResource OverlayWash}" CornerRadius="3" />
+                        <Border x:Name="ProgressFill" Background="{DynamicResource AccentDeep}"
                                 CornerRadius="3" HorizontalAlignment="Left" Width="0" />
                     </Grid>
                 </StackPanel>
@@ -64,7 +64,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="实例" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="InstanceText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis" />
+                                   Foreground="{DynamicResource InkSoft}" TextTrimming="CharacterEllipsis" />
                     </Grid>
 
                     <Grid Margin="0,0,0,8">
@@ -74,7 +74,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Java" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="JavaText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis" />
+                                   Foreground="{DynamicResource InkSoft}" TextTrimming="CharacterEllipsis" />
                     </Grid>
 
                     <Grid Margin="0,0,0,8">
@@ -84,7 +84,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="进程" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="ProcessText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" Text="—" />
+                                   Foreground="{DynamicResource InkSoft}" Text="—" />
                     </Grid>
 
                     <Grid>
@@ -94,7 +94,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="日志" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="LogText" Grid.Column="1" FontSize="12"
-                                   Foreground="{StaticResource InkSoft}" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource InkSoft}" TextTrimming="CharacterEllipsis"
                                    Text="—" />
                     </Grid>
                 </StackPanel>
@@ -110,7 +110,7 @@
                         <TextBlock Text="实时日志" Style="{StaticResource H2}" Margin="0,0,0,8" />
                         <ScrollViewer x:Name="LogScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
                             <TextBlock x:Name="LogBody" FontFamily="Consolas" FontSize="11"
-                                       Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
+                                       Foreground="{DynamicResource InkSoft}" TextWrapping="Wrap" />
                         </ScrollViewer>
                     </Grid>
                 </Border>

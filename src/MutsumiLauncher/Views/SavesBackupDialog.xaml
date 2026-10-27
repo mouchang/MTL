@@ -10,10 +10,10 @@
         UseLayoutRounding="True" SnapsToDevicePixels="True">
 
     <Grid Margin="24">
-        <Border Background="#F7FFFFFF" CornerRadius="18">
+        <Border Background="{DynamicResource SurfaceFloat}" CornerRadius="18">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="30" ShadowDepth="6" Direction="270"
-                                  Opacity="0.25" Color="#FF1B2B22" />
+                                  Opacity="0.25" Color="{DynamicResource ShadowColor}" />
             </Border.Effect>
 
             <Grid Margin="24,20,24,20">
@@ -25,18 +25,18 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock x:Name="TitleText" FontSize="17" FontWeight="SemiBold"
-                           Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis" />
+                           Foreground="{DynamicResource Ink}" TextTrimming="CharacterEllipsis" />
                 <TextBlock x:Name="SummaryText" Grid.Row="1" Style="{StaticResource Caption}"
                            Margin="0,6,0,10" />
 
-                <Border Grid.Row="2" Background="#66FFFFFF" CornerRadius="12" Padding="14,6">
+                <Border Grid.Row="2" Background="{DynamicResource Glass}" CornerRadius="12" Padding="14,6">
                     <Grid>
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl x:Name="BackupList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderThickness="0,0,0,1" BorderBrush="#1A000000"
+                                        <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource DialogHairline}"
                                                 Padding="0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -46,12 +46,12 @@
 
                                                 <StackPanel VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding TimeText}" FontSize="14"
-                                                               Foreground="{StaticResource Ink}" />
+                                                               Foreground="{DynamicResource Ink}" />
                                                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                         <TextBlock Text="{Binding SizeText}" FontSize="11"
-                                                                   Foreground="{StaticResource InkMute}" />
+                                                                   Foreground="{DynamicResource InkMute}" />
                                                         <TextBlock Text="{Binding PathText}" FontSize="11"
-                                                                   Foreground="{StaticResource InkMute}"
+                                                                   Foreground="{DynamicResource InkMute}"
                                                                    Margin="10,0,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
@@ -82,7 +82,7 @@
 
                 <Grid Grid.Row="3" Margin="0,16,0,0">
                     <TextBlock x:Name="StatusText" Style="{StaticResource Caption}"
-                               Foreground="{StaticResource AccentDeep}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" Margin="0,0,90,0" />
                     <Button Style="{StaticResource PrimaryButton}" Content="关闭" Width="88"
                             HorizontalAlignment="Right" Click="Close_Click" />

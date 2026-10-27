@@ -6,16 +6,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,0,4,0">
 
-            <Border Background="#99DCEFE0" CornerRadius="12" Padding="16,11">
+            <Border Background="{DynamicResource AccentTintSoft}" CornerRadius="12" Padding="16,11">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Background="{StaticResource AccentDeep}" CornerRadius="2" Margin="0,0,12,0" />
+                    <Border Background="{DynamicResource AccentDeep}" CornerRadius="2" Margin="0,0,12,0" />
                     <TextBlock x:Name="InstanceHintText" Grid.Column="1"
                                Text="这些设置只对该实例生效，不影响其他版本。"
-                               FontSize="13" Foreground="{StaticResource Ink}" VerticalAlignment="Center"
+                               FontSize="13" Foreground="{DynamicResource Ink}" VerticalAlignment="Center"
                                TextWrapping="Wrap" />
                 </Grid>
             </Border>
@@ -52,8 +52,8 @@
                                   SelectedIndex="0" SelectionChanged="JavaCombo_SelectionChanged" />
                     </Grid>
 
-                    <Border Background="#99D9EEF7" CornerRadius="10" Padding="14,10" Margin="110,10,0,0">
-                        <TextBlock x:Name="JavaInfoText" FontSize="12" Foreground="#FF3E5C6E"
+                    <Border Background="{DynamicResource InfoTint}" CornerRadius="10" Padding="14,10" Margin="110,10,0,0">
+                        <TextBlock x:Name="JavaInfoText" FontSize="12" Foreground="{DynamicResource InfoInk}"
                                    TextWrapping="Wrap" Text="正在检测本机 Java…" />
                     </Border>
                 </StackPanel>
@@ -83,7 +83,7 @@
                         </Grid>
                     </StackPanel>
 
-                    <TextBlock x:Name="MemoryAllocText" FontSize="13" Foreground="{StaticResource Ink}"
+                    <TextBlock x:Name="MemoryAllocText" FontSize="13" Foreground="{DynamicResource Ink}"
                                Margin="6,14,0,0" Text="8.0 GB" />
 
                     <Button Style="{StaticResource SecondaryButton}" Content="恢复默认（跟随全局）"

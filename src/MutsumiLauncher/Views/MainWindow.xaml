@@ -14,17 +14,17 @@
         FocusVisualStyle="{x:Null}">
 
     <Grid>
-        <Border x:Name="Shell" Margin="30" CornerRadius="26" Background="{StaticResource WindowBase}">
+        <Border x:Name="Shell" Margin="30" CornerRadius="26" Background="{DynamicResource WindowBase}">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="36" ShadowDepth="8" Direction="270"
-                                  Opacity="0.28" Color="#FF1B2B22" />
+                                  Opacity="0.28" Color="{DynamicResource ShadowColor}" />
             </Border.Effect>
 
             <Grid x:Name="ShellRoot">
                 <!-- 背景 -->
                 <Image x:Name="Backdrop" Source="/Assets/background.jpg" Stretch="UniformToFill"
                        Margin="-90" RenderOptions.BitmapScalingMode="HighQuality" />
-                <Border Background="{StaticResource Scrim}" />
+                <Border Background="{DynamicResource Scrim}" />
 
                 <Grid>
                     <Grid.RowDefinitions>
@@ -40,7 +40,7 @@
                             <!-- 导航条本体：收起时就是左上按钮的形状，展开时向右生长成整条 -->
                             <Border x:Name="NavBarSurface" HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Width="40" Height="40" CornerRadius="16"
-                                    Background="#5CFFFFFF" BorderBrush="#85FFFFFF" BorderThickness="1"
+                                    Background="{DynamicResource WindowBar}" BorderBrush="{DynamicResource WindowBorder}" BorderThickness="1"
                                     IsHitTestVisible="False" />
 
                             <StackPanel x:Name="NavTabs" Orientation="Horizontal"
@@ -85,20 +85,20 @@
                                         <ColumnDefinition />
                                         <ColumnDefinition />
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Row="0" Grid.Column="0" Background="#FF35473C"
+                                    <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource WindowChrome}"
                                             CornerRadius="1.5" Margin="0,0,3,3" />
-                                    <Border Grid.Row="0" Grid.Column="1" Background="#FF35473C"
+                                    <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource WindowChrome}"
                                             CornerRadius="1.5" Margin="3,0,0,3" />
-                                    <Border Grid.Row="1" Grid.Column="0" Background="#FF35473C"
+                                    <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource WindowChrome}"
                                             CornerRadius="1.5" Margin="0,3,3,0" />
-                                    <Border Grid.Row="1" Grid.Column="1" Background="#FF35473C"
+                                    <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource WindowChrome}"
                                             CornerRadius="1.5" Margin="3,3,0,0" />
                                 </Grid>
                             </Button>
 
                             <!-- 右侧按钮的独立底片：展开时溶解，与导航条融为一体 -->
                             <Border x:Name="CloseChrome" Width="40" Height="40" CornerRadius="14"
-                                    Background="#4DFFFFFF" BorderBrush="#66FFFFFF" BorderThickness="1"
+                                    Background="{DynamicResource SidebarBg}" BorderBrush="{DynamicResource PanelBorderSoft}" BorderThickness="1"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
                                     IsHitTestVisible="False" />
 
@@ -135,19 +135,19 @@
                     <!-- 下载浮标（离开下载页时显示） -->
                     <Border x:Name="DownloadFloater" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="18"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Margin="0,0,26,26" Background="#F2FFFFFF" CornerRadius="20"
+                            Margin="0,0,26,26" Background="{DynamicResource SurfacePanel}" CornerRadius="20"
                             Padding="16,9" Cursor="Hand" Visibility="Collapsed"
                             MouseLeftButtonUp="DownloadFloater_Click">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270"
-                                              Opacity="0.2" Color="#FF2E4A38" />
+                                              Opacity="0.2" Color="{DynamicResource ShadowColorSoft}" />
                         </Border.Effect>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}"
-                                       FontSize="13" Foreground="{StaticResource AccentDeep}"
+                                       FontSize="13" Foreground="{DynamicResource AccentDeep}"
                                        VerticalAlignment="Center" />
                             <TextBlock x:Name="FloaterText" Text="下载中" FontSize="12"
-                                       Foreground="{StaticResource Ink}" Margin="8,0,0,0"
+                                       Foreground="{DynamicResource Ink}" Margin="8,0,0,0"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
@@ -177,10 +177,10 @@
                 </Grid>
 
                 <!-- 轻提示 -->
-                <Border x:Name="Toast" Background="#E62E3E35" CornerRadius="14" Padding="18,9"
+                <Border x:Name="Toast" Background="{DynamicResource ToastBg}" CornerRadius="14" Padding="18,9"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30"
                         Opacity="0" IsHitTestVisible="False">
-                    <TextBlock x:Name="ToastText" Foreground="#FFF7FBF4" FontSize="13" />
+                    <TextBlock x:Name="ToastText" Foreground="{DynamicResource InkInverse}" FontSize="13" />
                 </Border>
             </Grid>
         </Border>

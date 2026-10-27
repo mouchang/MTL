@@ -34,10 +34,10 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Border x:Name="NoLoaderHint" Background="#FFF4E5E5" CornerRadius="10" Padding="14,12"
+                <Border x:Name="NoLoaderHint" Background="{DynamicResource DangerWash}" CornerRadius="10" Padding="14,12"
                         Margin="0,0,0,10" Visibility="Collapsed">
                     <TextBlock Text="此版本不支持安装 Mod（原版没有加载器）"
-                               FontSize="15" FontWeight="SemiBold" Foreground="#FFB03A2E"
+                               FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource DangerInk}"
                                TextWrapping="Wrap" />
                 </Border>
 
@@ -61,7 +61,7 @@
                     <ItemsControl x:Name="ModList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF" Padding="0,10">
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}" Padding="0,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -85,13 +85,13 @@
 
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding DisplayName}" FontSize="15"
-                                                       Foreground="{StaticResource Ink}"
+                                                       Foreground="{DynamicResource Ink}"
                                                        TextTrimming="CharacterEllipsis" />
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <TextBlock Text="{Binding StateText}" FontSize="11"
-                                                           Foreground="{StaticResource AccentDeep}" />
+                                                           Foreground="{DynamicResource AccentDeep}" />
                                                 <TextBlock Text="{Binding SizeText}" FontSize="11"
-                                                           Foreground="{StaticResource InkMute}"
+                                                           Foreground="{DynamicResource InkMute}"
                                                            Margin="10,0,0,0" />
                                             </StackPanel>
                                         </StackPanel>
@@ -99,7 +99,7 @@
                                         <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
                                             <TextBlock Text="{Binding UpdateText}" FontSize="11"
-                                                       Foreground="{StaticResource AccentDeep}"
+                                                       Foreground="{DynamicResource AccentDeep}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0"
                                                        Visibility="{Binding UpdateVisibility}" />
                                             <Button Style="{StaticResource GhostButton}" Content="更新"

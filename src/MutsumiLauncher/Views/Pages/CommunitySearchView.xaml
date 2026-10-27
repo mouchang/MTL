@@ -101,7 +101,7 @@
                 <ItemsControl x:Name="ResultsList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF"
+                            <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}"
                                     Background="Transparent" MouseLeftButtonUp="OpenDetail_Click"
                                     Tag="{Binding}" Cursor="Hand">
                                 <Grid>
@@ -111,9 +111,9 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Grid Width="42" Height="42" VerticalAlignment="Top">
-                                        <Border CornerRadius="10" Background="#E6F2E8">
+                                        <Border CornerRadius="10" Background="{DynamicResource AccentTint}">
                                             <TextBlock Text="{Binding Initial}" FontSize="14"
-                                                       Foreground="{StaticResource AccentDeep}"
+                                                       Foreground="{DynamicResource AccentDeep}"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />
                                         </Border>
@@ -126,18 +126,18 @@
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding PrimaryTitle}" FontSize="15"
-                                                       Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+                                                       Foreground="{DynamicResource Ink}" VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Author}" FontSize="12"
-                                                       Foreground="{StaticResource InkMute}"
+                                                       Foreground="{DynamicResource InkMute}"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" />
                                             <!-- 来源：Modrinth -->
                                             <Border Tag="Modrinth" Cursor="Hand" CornerRadius="8"
                                                     Margin="10,0,0,0" VerticalAlignment="Center"
-                                                    Background="#14FFFFFF" MouseLeftButtonUp="SourceChip_Click"
+                                                    Background="{DynamicResource ChipBg}" MouseLeftButtonUp="SourceChip_Click"
                                                     Visibility="{Binding HasModrinth, Converter={StaticResource BoolToVis}}">
 
                                                 <Grid>
-                                                    <Border CornerRadius="8" Background="{StaticResource Accent}" Opacity="0">
+                                                    <Border CornerRadius="8" Background="{DynamicResource Accent}" Opacity="0">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
@@ -166,7 +166,7 @@
 
                                                     <Grid Margin="8,1">
                                                         <TextBlock Text="Modrinth" FontSize="10"
-                                                                   Foreground="#3F7F5C" HorizontalAlignment="Center">
+                                                                   Foreground="{DynamicResource SourceGreen}" HorizontalAlignment="Center">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
@@ -225,11 +225,11 @@
                                             <!-- 来源：CurseForge -->
                                             <Border Tag="CurseForge" Cursor="Hand" CornerRadius="8"
                                                     Margin="10,0,0,0" VerticalAlignment="Center"
-                                                    Background="#14FFFFFF" MouseLeftButtonUp="SourceChip_Click"
+                                                    Background="{DynamicResource ChipBg}" MouseLeftButtonUp="SourceChip_Click"
                                                     Visibility="{Binding HasCurseForge, Converter={StaticResource BoolToVis}}">
 
                                                 <Grid>
-                                                    <Border CornerRadius="8" Background="{StaticResource Accent}" Opacity="0">
+                                                    <Border CornerRadius="8" Background="{DynamicResource Accent}" Opacity="0">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
@@ -258,7 +258,7 @@
 
                                                     <Grid Margin="8,1">
                                                         <TextBlock Text="CurseForge" FontSize="10"
-                                                                   Foreground="#B45F1B" HorizontalAlignment="Center">
+                                                                   Foreground="{DynamicResource SourceOrange}" HorizontalAlignment="Center">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
@@ -351,15 +351,15 @@
                                             </StackPanel.Style>
 
                                             <TextBlock Text="{Binding SecondaryTitle}" FontSize="12"
-                                                       Foreground="{StaticResource InkSoft}" Margin="0,1,0,0"
+                                                       Foreground="{DynamicResource InkSoft}" Margin="0,1,0,0"
                                                        TextTrimming="CharacterEllipsis"
                                                        Visibility="{Binding SecondaryTitleVisibility}" />
                                             <TextBlock Text="{Binding TagsText}" FontSize="11"
-                                                       Foreground="{StaticResource AccentDeep}" Margin="0,3,0,0"
+                                                       Foreground="{DynamicResource AccentDeep}" Margin="0,3,0,0"
                                                        TextWrapping="Wrap"
                                                        Visibility="{Binding TagsVisibility}" />
                                             <TextBlock Text="{Binding Meta}" FontSize="11"
-                                                       Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
+                                                       Foreground="{DynamicResource InkMute}" Margin="0,3,0,0" />
                                         </StackPanel>
                                     </StackPanel>
 
