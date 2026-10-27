@@ -33,6 +33,10 @@ public partial class SettingsPage : UserControl
     private static int TotalMemoryMb =>
         (int)Math.Min(int.MaxValue, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024);
 
+    /// <summary>1 GB 以上显示成 x GB，以下显示 MB。</summary>
+    private static string FormatMemory(int mb) =>
+        mb >= 1024 ? $"{mb / 1024.0:0.#} GB" : $"{mb} MB";
+
     private static int AutoMemoryMb()
     {
         var half = TotalMemoryMb / 2;
@@ -55,7 +59,7 @@ public partial class SettingsPage : UserControl
 
         MemoryHint.Text = $"自动配置按物理内存（{TotalMemoryMb:N0} MB）的一半分配，上限 12 GB；" +
                           "版本设置里可以给单个实例单独指定。";
-        MemoryValueText.Text = manual ? $"{value} MB" : $"{value} MB（自动）";
+        MemoryValueText.Text = manual ? FormatMemory(value) : $"{FormatMemory(value)}（自动）";
 
         _memoryLoading = false;
     }
@@ -73,7 +77,7 @@ public partial class SettingsPage : UserControl
         AppConfig.Current.MemoryAuto = !manual;
         AppConfig.Current.Save();
 
-        MemoryValueText.Text = manual ? $"{value} MB" : $"{value} MB（自动）";
+        MemoryValueText.Text = manual ? FormatMemory(value) : $"{FormatMemory(value)}（自动）";
     }
 
     private void MemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -86,7 +90,7 @@ public partial class SettingsPage : UserControl
         AppConfig.Current.MemoryAuto = false;
         AppConfig.Current.Save();
 
-        MemoryValueText.Text = $"{value} MB";
+        MemoryValueText.Text = FormatMemory(value);
     }
 
     private async void RefreshJava_Click(object sender, RoutedEventArgs e) => await LoadJavaAsync();

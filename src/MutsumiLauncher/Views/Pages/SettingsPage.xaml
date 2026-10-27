@@ -77,7 +77,8 @@
                                    VerticalAlignment="Center" Foreground="{StaticResource AccentDeep}" />
                     </StackPanel>
 
-                    <Slider x:Name="MemorySlider" Minimum="512" Maximum="32768" SmallChange="512"
+                    <Slider x:Name="MemorySlider" Style="{StaticResource MtlSlider}"
+                            Minimum="512" Maximum="32768" SmallChange="512"
                             LargeChange="1024" TickFrequency="512" IsSnapToTickEnabled="True"
                             Margin="0,12,0,0" ValueChanged="MemorySlider_ValueChanged" />
                 </StackPanel>
