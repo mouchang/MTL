@@ -11,7 +11,7 @@
 
 装版本、下 Mod、管存档、改主题，都在一个窗口里完成。
 
-> 当前版本：**MTL beta v1.0.0 build 4**（`1.0.0-beta.4`） · [下载安装包](https://github.com/mouchang/MTL/releases/latest)
+> 当前版本：**MTL beta v1.0.0 build 5**（`1.0.0-beta.5`） · [下载安装包](https://github.com/mouchang/MTL/releases/latest)
 
 ![启动页](docs/screenshots/launch.png)
 

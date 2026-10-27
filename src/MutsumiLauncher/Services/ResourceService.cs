@@ -32,11 +32,20 @@ public sealed record ResourceSearchPage(
 /// </summary>
 public static class ResourceService
 {
-    /// <summary>聚合缓存里最多存多少条（够翻 20 页）。</summary>
-    private const int AggregateMaxItems = 400;
+    /// <summary>聚合缓存里最多存多少条。合并去重后差不多一条换半个分组，够翻 50 页。</summary>
+    private const int AggregateMaxItems = 2000;
 
     /// <summary>聚合模式最多翻到第几页。</summary>
-    private const int AggregateMaxPages = 20;
+    private const int AggregateMaxPages = 50;
+
+    /// <summary>
+    /// 聚合时 CurseForge 走的是第三方镜像，偶尔一次请求要十几秒。
+    /// 超时就先不用它，别让整个搜索页卡住 —— 已经抓到的 Modrinth 结果照常显示。
+    /// </summary>
+    private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(6);
+
+    /// <summary>单次 CurseForge 请求超过这个时间，就只留这一块结果，后面不再等它。</summary>
+    private static readonly TimeSpan SlowMirrorThreshold = TimeSpan.FromMilliseconds(2500);
 
     private const int ModrinthChunk = 100;
     private const int CurseForgeChunk = 50;
@@ -130,8 +139,9 @@ public static class ResourceService
 
         try
         {
-            // 合并会去重，所以按「两倍页大小」估需要抓多少条
-            var needed = Math.Min(AggregateMaxItems, (page + 1) * pageSize * 2);
+            // 合并会去重，按「两倍页大小」估需要抓多少条；
+            // 再往后多留两页余量，翻下一页时一般不用补抓，已经看过的页也不会因为补抓而位移
+            var needed = Math.Min(AggregateMaxItems, (page + 3) * pageSize * 2);
 
             while (bucket.Count < needed && bucket.Count < AggregateMaxItems
                    && (!bucket.ModrinthDone || !bucket.CurseForgeDone))
@@ -160,11 +170,22 @@ public static class ResourceService
 
             var hits = TakeGroups(groups, page, pageSize);
 
+            // 每个分组平均由不到两条结果合成，所以「能翻到第几页」要按条数折半算，
+            // 否则分页条会给出根本抓不到数据的页码（点进去是空的）
+            var servablePages = Math.Max(1, AggregateMaxItems / pageSize / 2);
+            var cap = Math.Min(AggregateMaxPages, servablePages);
+
             var knownPages = Math.Max(1, (groups.Count + pageSize - 1) / pageSize);
             var apiPages = (int)Math.Ceiling(
                 (bucket.ModrinthTotal + bucket.CurseForgeTotal) / (double)pageSize);
-            var pageCount = Math.Clamp(Math.Max(knownPages, Math.Min(apiPages, AggregateMaxPages)),
-                1, AggregateMaxPages);
+
+            // 两边都抓空了：页数就按实际拿到的分组算，别给出点进去是空的页码
+            var exhausted = (bucket.ModrinthDone && bucket.CurseForgeDone)
+                            || bucket.Count >= AggregateMaxItems;
+
+            var pageCount = exhausted
+                ? Math.Clamp(knownPages, 1, cap)
+                : Math.Clamp(Math.Max(knownPages, Math.Min(apiPages, cap)), 1, cap);
 
             return new ResourceSearchPage(hits, bucket.ModrinthTotal + bucket.CurseForgeTotal,
                 bucket.ModrinthTotal, bucket.CurseForgeTotal, pageCount);
@@ -175,8 +196,65 @@ public static class ResourceService
         }
     }
 
-    /// <summary>两边各补抓一块（Modrinth 100 条 / CurseForge 50 条）。</summary>
+    /// <summary>两边并发各补抓一块（Modrinth 100 条 / CurseForge 50 条）。</summary>
     private static async Task FillAsync(AggregateBucket bucket, string query, string projectType,
+        string? gameVersion, string? loader, string? category, ResourceSort sort,
+        CancellationToken cancellationToken)
+    {
+        var tasks = new List<Task>(2);
+
+        if (!bucket.ModrinthDone) tasks.Add(FillModrinthAsync(bucket, query, projectType,
+            gameVersion, loader, category, sort, cancellationToken));
+
+        if (!bucket.CurseForgeDone) tasks.Add(FillCurseForgeAsync(bucket, query, projectType,
+            gameVersion, loader, cancellationToken));
+
+        if (tasks.Count > 0) await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    private static async Task FillCurseForgeAsync(AggregateBucket bucket, string query,
+        string projectType, string? gameVersion, string? loader, CancellationToken cancellationToken)
+    {
+        var limit = Math.Min(CurseForgeChunk, AggregateMaxItems - bucket.CurseForge.Count);
+
+        if (limit <= 0)
+        {
+            bucket.CurseForgeDone = true;
+            return;
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(CurseForgeFillTimeout);
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            var result = await CurseForge.SearchAsync(query, ClassIdOf(projectType), gameVersion,
+                LoaderTypeOf(loader), bucket.CurseForgePage, limit, 6, "desc", timeout.Token);
+
+            bucket.CurseForgeTotal = result.Total;
+            bucket.CurseForgePage++;
+            bucket.CurseForge.AddRange(result.Mods.Select(mod => ToHit(mod, projectType)));
+
+            // 镜像慢得像蜗牛时，抓到一块就够了 —— 后面每翻一页都等它几秒没人受得了
+            if (result.Mods.Count < limit || clock.Elapsed > SlowMirrorThreshold)
+                bucket.CurseForgeDone = true;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // 镜像太慢：这一轮不要它了，搜索页先出 Modrinth 的结果
+            AppLog.Info("curseforge 聚合搜索超时，本次只用 Modrinth 的结果");
+            bucket.CurseForgeDone = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppLog.Error(ex, "curseforge search in aggregate");
+            bucket.CurseForgeDone = true;
+        }
+    }
+
+    private static async Task FillModrinthAsync(AggregateBucket bucket, string query, string projectType,
         string? gameVersion, string? loader, string? category, ResourceSort sort,
         CancellationToken cancellationToken)
     {
@@ -202,36 +280,6 @@ public static class ResourceService
             }
         }
 
-        if (!bucket.CurseForgeDone)
-        {
-            var limit = Math.Min(CurseForgeChunk, AggregateMaxItems - bucket.CurseForge.Count);
-
-            if (limit <= 0)
-            {
-                bucket.CurseForgeDone = true;
-            }
-            else
-            {
-                try
-                {
-                    var result = await CurseForge.SearchAsync(query, ClassIdOf(projectType),
-                        gameVersion, LoaderTypeOf(loader), bucket.CurseForgePage, limit,
-                        SortFieldOf(sort), "desc", cancellationToken);
-
-                    bucket.CurseForgeTotal = result.Total;
-                    bucket.CurseForgePage++;
-                    bucket.CurseForge.AddRange(result.Mods.Select(mod => ToHit(mod, projectType)));
-
-                    if (result.Mods.Count < limit) bucket.CurseForgeDone = true;
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    // CurseForge 挂了不影响 Modrinth 的结果
-                    AppLog.Error(ex, "curseforge search in aggregate");
-                    bucket.CurseForgeDone = true;
-                }
-            }
-        }
     }
 
     private static ResourceHit ToHit(CurseForgeMod mod, string projectType)
