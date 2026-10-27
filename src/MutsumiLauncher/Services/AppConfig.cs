@@ -57,6 +57,9 @@ public sealed class AppConfig
     /// <summary>设备标识，首次运行生成，用于订阅网关白名单。</summary>
     public string DeviceId { get; set; } = "";
 
+    /// <summary>是否已经做过首次启动的代理自检（只做一次）。</summary>
+    public bool ProxySelfTestDone { get; set; }
+
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";
 

@@ -55,6 +55,8 @@ public partial class MainWindow : Window
             {
                 OpenVersionSettings();
             }
+
+            _ = RunFirstProxySelfTestAsync();
         };
         SizeChanged += (_, _) => UpdateShellClip();
     }
@@ -418,6 +420,37 @@ public partial class MainWindow : Window
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
+    }
+
+    /// <summary>首次启动时自动跑一次代理自检：成功/失败都在全局提示一次。</summary>
+    private async Task RunFirstProxySelfTestAsync()
+    {
+        var config = AppConfig.Current;
+        if (config.ProxySelfTestDone || !config.BuiltInProxyEnabled) return;
+
+        try
+        {
+            // 等窗口稳定一点再开始，别和首屏动画抢资源
+            await Task.Delay(1500);
+
+            var (ok, milliseconds, message) = await ProxyCore.Shared.RunSelfTestAsync();
+
+            if (ok)
+            {
+                ShowToast($"内置代理连接成功 · {message}（{milliseconds} ms）");
+            }
+            else
+            {
+                ShowToast($"内置代理连接失败：{message}　可到「设置 → 下载源 → 内置代理」重新测试");
+            }
+
+            config.ProxySelfTestDone = true;
+            config.Save();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "first proxy self test");
+        }
     }
 
     public void ShowToast(string message)
