@@ -5,15 +5,30 @@ using System.Text.Json.Nodes;
 
 namespace MutsumiLauncher.Services;
 
-public sealed record InstanceInfo(
-    string Name,
-    string VersionId,
-    string? InheritsFrom,
-    string GameVersion,
-    string Loader,
-    string Path,
-    long SizeBytes,
-    int ModCount);
+public sealed class InstanceInfo
+{
+    private long? _sizeBytes;
+
+    public required string Name { get; init; }
+
+    public required string VersionId { get; init; }
+
+    public string? InheritsFrom { get; init; }
+
+    public required string GameVersion { get; init; }
+
+    public required string Loader { get; init; }
+
+    public required string Path { get; init; }
+
+    public required int ModCount { get; init; }
+
+    /// <summary>
+    /// 实例占用空间。递归扫盘很贵（大实例几千个文件），所以第一次访问才算，
+    /// 只想知道加载器 / 名字的地方（比如 Mod 管理页）就不用白扫一遍。
+    /// </summary>
+    public long SizeBytes => _sizeBytes ??= InstanceService.DirectorySize(Path);
+}
 
 /// <summary>实例（versions/&lt;name&gt;）的读取、重命名、删除和文件夹打开。</summary>
 public static class InstanceService
@@ -66,8 +81,16 @@ public static class InstanceService
             AppLog.Error(ex, "read instance json");
         }
 
-        return new InstanceInfo(name, versionId, inheritsFrom,
-            baseVersion ?? inheritsFrom ?? versionId, loader, dir, DirectorySize(dir), CountMods(name));
+        return new InstanceInfo
+        {
+            Name = name,
+            VersionId = versionId,
+            InheritsFrom = inheritsFrom,
+            GameVersion = baseVersion ?? inheritsFrom ?? versionId,
+            Loader = loader,
+            Path = dir,
+            ModCount = CountMods(name),
+        };
     }
 
     private static string DetectLoader(string name, string mainClass)
@@ -90,7 +113,7 @@ public static class InstanceService
         return "原版";
     }
 
-    private static long DirectorySize(string dir)
+    internal static long DirectorySize(string dir)
     {
         if (!Directory.Exists(dir)) return 0;
 

@@ -8,6 +8,7 @@ namespace MutsumiLauncher.Views;
 public partial class VersionSettingsView : UserControl
 {
     private readonly Dictionary<string, UserControl> _pages = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _loaded = new(StringComparer.Ordinal);
     private string _version = string.Empty;
 
     public VersionSettingsView()
@@ -35,8 +36,11 @@ public partial class VersionSettingsView : UserControl
         _version = version;
         TitleText.Text = string.IsNullOrWhiteSpace(version) ? "版本设置" : $"版本设置 · {version}";
 
-        foreach (var page in _pages.Values.OfType<IInstancePage>())
-            page.SetInstance(version);
+        // 只初始化当前看得见的那一页：版本设置里每页都要扫盘（Mod 列表、存档、导出统计），
+        // 一次性全加载会让打开浮层卡上好几百毫秒
+        _loaded.Clear();
+
+        if (CurrentPageKey() is { } key) InitializePage(key);
 
         // 调试用：MTL_VERSION_TAB=overview|launch|mods|saves|export 直接进某个标签页
         var tab = Environment.GetEnvironmentVariable("MTL_VERSION_TAB");
@@ -53,10 +57,27 @@ public partial class VersionSettingsView : UserControl
         }
     }
 
+    private string? CurrentPageKey()
+        => _pages.FirstOrDefault(pair => ReferenceEquals(pair.Value, PageHost.Content)).Key;
+
+    private void InitializePage(string key)
+    {
+        if (!_pages.TryGetValue(key, out var page)) return;
+        if (page is not IInstancePage instancePage) return;
+        if (!_loaded.Add(key)) return;
+
+        instancePage.SetInstance(_version);
+    }
+
     private void OnRenamed(string newName)
     {
         _version = newName;
         TitleText.Text = $"版本设置 · {newName}";
+
+        // 换名字后所有页的数据都要重读，先清标记，当前页立刻刷新
+        _loaded.Clear();
+        if (CurrentPageKey() is { } key) InitializePage(key);
+
         InstanceChanged?.Invoke(newName);
     }
 
@@ -72,6 +93,8 @@ public partial class VersionSettingsView : UserControl
     private void ShowPage(string key)
     {
         if (!_pages.TryGetValue(key, out var page)) return;
+
+        InitializePage(key);
 
         PageHost.Content = page;
         page.Opacity = 0;

@@ -100,8 +100,11 @@ public partial class ModrinthDetailView : UserControl
         BreadcrumbText.Text = $"社区资源 / {item.Title}";
         TitleText.Text = item.Title;
 
-        ShowChineseTitle(item.Title);
-        _ = LoadMcmodAsync(item.Title);
+        if (IsMod(item.Hit.ProjectType))
+        {
+            ShowChineseTitle(item.Title);
+            _ = LoadMcmodAsync(item.Title);
+        }
         AuthorText.Text = item.Author;
         DescriptionText.Text = item.Description;
         InitialText.Text = item.Initial;
@@ -131,7 +134,9 @@ public partial class ModrinthDetailView : UserControl
                 if (!string.IsNullOrWhiteSpace(_project.Title))
                 {
                     TitleText.Text = _project.Title;
-                    _ = LoadMcmodAsync(_project.Title);
+
+                    if (IsMod(item.Hit.ProjectType))
+                        _ = LoadMcmodAsync(_project.Title);
                 }
 
                 MetaText.Text = BuildMeta(_project, item.Platform);
@@ -532,6 +537,10 @@ public partial class ModrinthDetailView : UserControl
     }
 
     /// <summary>标题下方补一行译名表里的中文名。</summary>
+    /// <summary>译名表只覆盖 Mod，光影 / 资源包 / 整合包不显示中文副标题。</summary>
+    private static bool IsMod(string? projectType)
+        => string.Equals(projectType, "mod", StringComparison.OrdinalIgnoreCase);
+
     private void ShowChineseTitle(string title)
     {
         var chinese = TranslationTable.ChineseFor(title);

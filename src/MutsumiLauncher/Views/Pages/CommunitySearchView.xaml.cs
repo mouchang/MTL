@@ -58,6 +58,10 @@ public partial class CommunitySearchView : UserControl
         _ = RunSearchAsync(0);
     }
 
+    /// <summary>译名表只覆盖 Mod，其它资源类型不套中文名。</summary>
+    private static bool IsMod(string? projectType)
+        => string.Equals(projectType, "mod", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>「类型」下拉：按平台标签动态填充（Modrinth 的分类接口）。</summary>
     private async Task LoadCategoriesAsync()
     {
@@ -176,7 +180,11 @@ public partial class CommunitySearchView : UserControl
                 .Select(group =>
                 {
                     var card = new SearchResultCard(group);
-                    card.ChineseTitle = TranslationTable.ChineseFor(card.Title);
+
+                    // 译名表只有 Mod 这一套数据，光影 / 资源包 / 整合包不套用
+                    if (IsMod(card.Current.Hit.ProjectType))
+                        card.ChineseTitle = TranslationTable.ChineseFor(card.Title);
+
                     return card;
                 })
                 .ToList();
@@ -237,9 +245,8 @@ public partial class CommunitySearchView : UserControl
 
         AddPageButton("上一页", Math.Max(0, _page - 1), enabled: _page > 0);
 
-        var start = Math.Max(0, _page - 3);
-        var end = Math.Min(totalPages - 1, start + 6);
-        start = Math.Max(0, end - 6);
+        // 每轮 6 页；走到本轮最后一页时整轮后移，停在第 6 页也能直接看到 6-11
+        var (start, end) = PageWindow.Range(_page, totalPages);
 
         for (var i = start; i <= end; i++)
         {

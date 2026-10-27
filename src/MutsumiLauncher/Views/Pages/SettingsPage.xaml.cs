@@ -19,9 +19,21 @@ public partial class SettingsPage : UserControl
     private bool _isolationLoading;
     private readonly List<Border> _swatches = [];
 
+    /// <summary>拖内存滑块会连续触发 ValueChanged，攒一下再落盘，别每跳一格就写一次配置。</summary>
+    private readonly System.Windows.Threading.DispatcherTimer _saveDebounce = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(500),
+    };
+
     public SettingsPage()
     {
         InitializeComponent();
+
+        _saveDebounce.Tick += (_, _) =>
+        {
+            _saveDebounce.Stop();
+            AppConfig.Current.Save();
+        };
 
         VersionText.Text = AppInfo.DisplayName;
         UpdateStatus.Text = $"版本 {AppInfo.Version} · WPF · .NET 10 · 开源";
@@ -146,7 +158,9 @@ public partial class SettingsPage : UserControl
 
         AppConfig.Current.MemoryMb = value;
         AppConfig.Current.MemoryAuto = false;
-        AppConfig.Current.Save();
+
+        _saveDebounce.Stop();
+        _saveDebounce.Start();
 
         MemoryValueText.Text = FormatMemory(value);
     }
