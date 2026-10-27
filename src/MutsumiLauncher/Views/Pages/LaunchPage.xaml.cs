@@ -140,6 +140,9 @@ public partial class LaunchPage : UserControl
         }
     }
 
+    /// <summary>头像显示尺寸（与 XAML 里的卡片一致），按这个尺寸生成位图才能 1:1 清晰。</summary>
+    private const int AvatarSize = 116;
+
     private void ApplyAccount()
     {
         var account = AccountService.EnsureDefault();
@@ -148,7 +151,7 @@ public partial class LaunchPage : UserControl
 
         // 微软账号显示皮肤正脸，离线默认史蒂夫
         if (!string.IsNullOrWhiteSpace(account.SkinPath) && File.Exists(account.SkinPath)
-            && SkinService.CreateFace(account.SkinPath) is { } face)
+            && SkinService.CreateFace(account.SkinPath, AvatarSize) is { } face)
         {
             AvatarImage.Source = face;
         }
