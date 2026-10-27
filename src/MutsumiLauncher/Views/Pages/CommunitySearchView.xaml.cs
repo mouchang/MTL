@@ -127,7 +127,12 @@ public partial class CommunitySearchView : UserControl
 
             // 同一个资源在 Modrinth / CurseForge 的两条结果合并成一张卡片（顶部来源标签切换）
             var items = ResourceService.GroupResults(result.Hits)
-                .Select(group => new SearchResultCard(group))
+                .Select(group =>
+                {
+                    var card = new SearchResultCard(group);
+                    card.ChineseTitle = TranslationTable.ChineseFor(card.Title);
+                    return card;
+                })
                 .ToList();
 
             ResultsList.ItemsSource = items;

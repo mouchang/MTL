@@ -52,6 +52,9 @@
                         <TextBlock x:Name="AuthorText" FontSize="12" Foreground="{StaticResource InkMute}"
                                    Margin="10,0,0,2" VerticalAlignment="Bottom" />
                     </StackPanel>
+                    <TextBlock x:Name="ChineseTitleText" FontSize="12"
+                               Foreground="{StaticResource InkMute}" Margin="0,2,0,0"
+                               Visibility="Collapsed" />
                     <TextBlock x:Name="DescriptionText" FontSize="13" Foreground="{StaticResource InkSoft}"
                                Margin="0,4,0,0" TextWrapping="Wrap" MaxHeight="44"
                                TextTrimming="CharacterEllipsis" />

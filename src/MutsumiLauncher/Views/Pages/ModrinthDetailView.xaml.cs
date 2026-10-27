@@ -100,6 +100,7 @@ public partial class ModrinthDetailView : UserControl
         BreadcrumbText.Text = $"社区资源 / {item.Title}";
         TitleText.Text = item.Title;
 
+        ShowChineseTitle(item.Title);
         _ = LoadMcmodAsync(item.Title);
         AuthorText.Text = item.Author;
         DescriptionText.Text = item.Description;
@@ -530,6 +531,15 @@ public partial class ModrinthDetailView : UserControl
         {
             AppLog.Error(ex, "open project page");
         }
+    }
+
+    /// <summary>标题下方补一行译名表里的中文名。</summary>
+    private void ShowChineseTitle(string title)
+    {
+        var chinese = TranslationTable.ChineseFor(title);
+
+        ChineseTitleText.Text = chinese ?? string.Empty;
+        ChineseTitleText.Visibility = chinese is null ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private string? _mcmodUrl;

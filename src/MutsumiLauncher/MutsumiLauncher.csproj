@@ -14,7 +14,9 @@
 
   <ItemGroup>
     <None Remove="Assets\**\*" />
-    <Resource Include="Assets\**\*" />
+    <Resource Include="Assets\**\*" Exclude="Assets\mcmod-zh.json.gz" />
+    <!-- MC百科译名表（离线，来自 tools/mcmod-crawler），走嵌入资源方便直接读流 -->
+    <EmbeddedResource Include="Assets\mcmod-zh.json.gz" />
   </ItemGroup>
 
   <!-- 精简版 Windows 可能没有 VC++ 运行库：发布时放进程序目录，避免“缺少 vcruntime140.dll” -->

@@ -44,7 +44,16 @@ public static class ResourceService
         int page, int pageSize, ResourceSort sort = ResourceSort.Downloads,
         CancellationToken cancellationToken = default)
     {
+        // 中文查询：用内置译名表换成英文名（离线，不联网）
         var effective = query;
+        var english = TranslationTable.TranslateToEnglish(query);
+
+        if (!string.IsNullOrWhiteSpace(english)
+            && !english.Equals(query, StringComparison.OrdinalIgnoreCase))
+        {
+            effective = english;
+            AppLog.Info($"search translated: {query} -> {english}");
+        }
 
         return await SearchCoreAsync(platform, effective, projectType, gameVersion, loader,
             category, page, pageSize, sort, cancellationToken);
