@@ -146,7 +146,7 @@ public static class ResourceService
             var sorted = sort switch
             {
                 ResourceSort.Updated => bucket.Hits().OrderByDescending(hit => hit.Updated).ToList(),
-                ResourceSort.Relevance => bucket.Hits().ToList(),
+                ResourceSort.Relevance => Interleave(bucket.Modrinth, bucket.CurseForge).ToList(),
                 _ => bucket.Hits().OrderByDescending(hit => hit.Hit.Downloads).ToList(),
             };
 
