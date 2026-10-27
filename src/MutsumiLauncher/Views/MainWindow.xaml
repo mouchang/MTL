@@ -10,7 +10,8 @@
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="Grayscale"
         UseLayoutRounding="True"
-        SnapsToDevicePixels="True">
+        SnapsToDevicePixels="True"
+        FocusVisualStyle="{x:Null}">
 
     <Grid>
         <Border x:Name="Shell" Margin="30" CornerRadius="26" Background="{StaticResource WindowBase}">

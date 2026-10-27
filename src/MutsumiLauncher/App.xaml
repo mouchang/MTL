@@ -11,8 +11,13 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!-- 去掉键盘焦点虚线框（截图时会出现很难看的选中矩形） -->
-            <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}">
-                <Setter Property="Control.Template" Value="{x:Null}" />
+            <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}" TargetType="{x:Type Control}">
+                <Setter Property="Template" Value="{x:Null}" />
+            </Style>
+
+            <!-- 全局兜底：任何控件都不再画焦点框 -->
+            <Style TargetType="{x:Type Control}" x:Key="NoFocusVisual">
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>
