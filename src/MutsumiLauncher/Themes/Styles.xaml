@@ -387,51 +387,6 @@
         </Setter>
     </Style>
 
-    <!-- 圆角滑块：细轨道 + 白底描边圆点，比系统默认干净 -->
-    <Style x:Key="MtlSlider" TargetType="Slider">
-        <Setter Property="Height" Value="26" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Slider">
-                    <Grid VerticalAlignment="Center">
-                        <Border Height="6" CornerRadius="3" Background="#22000000" />
-                        <Track x:Name="PART_Track">
-                            <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="RepeatButton">
-                                            <Border Height="6" CornerRadius="3"
-                                                    Background="{StaticResource AccentDeep}" />
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.DecreaseRepeatButton>
-                            <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="RepeatButton">
-                                            <Border Height="6" Background="Transparent" />
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.IncreaseRepeatButton>
-                            <Track.Thumb>
-                                <Thumb Width="18" Height="18" Cursor="Hand">
-                                    <Thumb.Template>
-                                        <ControlTemplate TargetType="Thumb">
-                                            <Ellipse Fill="#FFFFFFFF" Stroke="{StaticResource AccentDeep}"
-                                                     StrokeThickness="2.5" />
-                                        </ControlTemplate>
-                                    </Thumb.Template>
-                                </Thumb>
-                            </Track.Thumb>
-                        </Track>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <!-- 白色浮层上的输入框：实底 + 更明显的描边 -->
     <Style x:Key="SheetTextBox" TargetType="TextBox">
         <Setter Property="Height" Value="38" />
