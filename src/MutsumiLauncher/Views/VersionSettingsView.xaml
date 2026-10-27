@@ -36,7 +36,7 @@
                     </Grid.ColumnDefinitions>
 
                     <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
-                        <StackPanel>
+                        <StackPanel x:Name="NavPanel">
                             <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
                                          Tag="overview" IsChecked="True" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">

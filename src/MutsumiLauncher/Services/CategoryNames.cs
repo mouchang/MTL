@@ -97,7 +97,7 @@ public static class CategoryNames
     private static readonly HashSet<string> Noise = new(StringComparer.OrdinalIgnoreCase)
     {
         // 加载器
-        "fabric", "forge", "neoforge", "quilt", "liteloader", "rift",
+        "fabric", "forge", "neoforge", "quilt", "liteloader", "rift", "modloader",
         "iris", "optifine", "canvas", "bukkit", "spigot", "paper", "purpur", "folia",
         // 项目类型 / 平台标记
         "minecraft", "datapack", "mod", "modpack", "resourcepack", "shader", "plugin",

@@ -68,10 +68,23 @@ jobs:
           $target = "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe"
           Move-Item $source.FullName $target -Force
 
+      - name: Build portable zip
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $target = "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-portable.zip"
+          [IO.Compression.ZipFile]::CreateFromDirectory(
+            (Resolve-Path "dist/publish").Path,
+            (Join-Path (Get-Location) $target),
+            [IO.Compression.CompressionLevel]::Optimal, $false)
+          if (-not (Test-Path $target)) { throw "没有产出便携包" }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.title }}
           body_path: .github/release-notes.md
-          files: dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe
+          files: |
+            dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe
+            dist/MutsumiLauncher-${{ steps.version.outputs.version }}-portable.zip

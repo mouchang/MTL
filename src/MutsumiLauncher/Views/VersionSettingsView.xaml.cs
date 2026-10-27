@@ -37,6 +37,20 @@ public partial class VersionSettingsView : UserControl
 
         foreach (var page in _pages.Values.OfType<IInstancePage>())
             page.SetInstance(version);
+
+        // 调试用：MTL_VERSION_TAB=overview|launch|mods|saves|export 直接进某个标签页
+        var tab = Environment.GetEnvironmentVariable("MTL_VERSION_TAB");
+        if (string.IsNullOrWhiteSpace(tab)) return;
+
+        foreach (var item in NavPanel.Children)
+        {
+            if (item is RadioButton { Tag: string tag } radio
+                && tag.Equals(tab, StringComparison.OrdinalIgnoreCase))
+            {
+                radio.IsChecked = true;
+                break;
+            }
+        }
     }
 
     private void OnRenamed(string newName)

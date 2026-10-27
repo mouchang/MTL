@@ -42,6 +42,21 @@ public partial class SettingsPage : UserControl
         RepoText.Text = _repoUrl.Replace("https://", string.Empty, StringComparison.OrdinalIgnoreCase);
         LicenseText.Text = "MIT · 可自由使用与修改（保留版权声明）";
 
+        // 调试用：MTL_SETTINGS_TAB=basic|launch|download|about 直接进某个分类
+        var tab = Environment.GetEnvironmentVariable("MTL_SETTINGS_TAB");
+        if (!string.IsNullOrWhiteSpace(tab))
+        {
+            foreach (var item in NavPanel.Children)
+            {
+                if (item is RadioButton { Tag: string tag } radio
+                    && tag.Equals(tab, StringComparison.OrdinalIgnoreCase))
+                {
+                    radio.IsChecked = true;
+                    break;
+                }
+            }
+        }
+
         GameDirText.Text = GamePaths.Root;
         DataDirText.Text = AppPaths.DataRoot;
         LogPathText.Text = AppLog.LogPath;
