@@ -36,17 +36,15 @@ public partial class SettingsPage : UserControl
     private static string FormatMemory(int mb) =>
         mb >= 1024 ? $"{mb / 1024.0:0.#} GB" : $"{mb} MB";
 
-    private static int AutoMemoryMb()
-    {
-        return Math.Clamp(TotalMemoryMb / 2 / 512 * 512, 2048, TotalMemoryMb);
-    }
+    private static int AutoMemoryMb() => SystemMemory.AutoMb;
 
     private void LoadMemoryInfo()
     {
         _memoryLoading = true;
 
         var config = AppConfig.Current;
-        var manual = config.MemoryMb > 0;
+        // 以 MemoryAuto 为准：自动模式下 MemoryMb 存的也是那个算出来的值（>0），不能再拿它判断模式
+        var manual = !config.MemoryAuto;
 
         MemoryManualRadio.IsChecked = manual;
         MemoryAutoRadio.IsChecked = !manual;

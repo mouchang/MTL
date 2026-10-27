@@ -26,8 +26,16 @@ public sealed class InstanceSettings
     public string EffectiveJavaPath
         => JavaPath ?? AppConfig.Current.JavaPath;
 
+    /// <summary>
+    /// 实际下发给 JVM 的内存：&gt; 0 自定义，&lt; 0 自动（不指定 -Xmx，由 JVM 决定），0 跟随全局。
+    /// </summary>
     public int EffectiveMemoryMb
-        => MemoryMb > 0 ? MemoryMb : AppConfig.Current.EffectiveMemoryMb;
+        => MemoryMb switch
+        {
+            > 0 => MemoryMb,
+            < 0 => 0,
+            _ => AppConfig.Current.EffectiveMemoryMb,
+        };
 
     public bool EffectiveIsolation
         => VersionIsolation ?? AppConfig.Current.VersionIsolation;

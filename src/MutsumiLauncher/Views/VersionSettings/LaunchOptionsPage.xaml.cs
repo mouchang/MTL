@@ -165,8 +165,10 @@ public partial class LaunchOptionsPage : UserControl, IInstancePage
 
         if (MemoryFollowRadio.IsChecked == true)
         {
-            var global = AppConfig.Current.MemoryMb;
-            MemoryAllocText.Text = global > 0 ? $"跟随全局：{global} MB" : "跟随全局：自动分配";
+            var global = AppConfig.Current;
+            MemoryAllocText.Text = global.MemoryAuto
+                ? $"跟随全局：自动配置 {global.EffectiveMemoryMb} MB"
+                : $"跟随全局：{global.EffectiveMemoryMb} MB";
         }
         else if (MemoryAutoRadio.IsChecked == true)
         {

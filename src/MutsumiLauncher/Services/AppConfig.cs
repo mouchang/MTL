@@ -13,24 +13,15 @@ public sealed class AppConfig
 
     public string JavaPath { get; set; } = string.Empty;
 
-    /// <summary>0 表示自动。</summary>
+    /// <summary>手动配置时使用的内存（MB）；是否生效由 <see cref="MemoryAuto"/> 决定。</summary>
     public int MemoryMb { get; set; } = 4096;
 
     /// <summary>内存是否由「自动配置」决定（按物理内存的一半）。</summary>
     public bool MemoryAuto { get; set; } = true;
 
-    /// <summary>实际分配的内存量（MB）：自动模式按物理内存一半，上限 12 GB。</summary>
+    /// <summary>实际分配的内存量（MB）：自动模式取 <see cref="SystemMemory.AutoMb"/>。</summary>
     [JsonIgnore]
-    public int EffectiveMemoryMb
-    {
-        get
-        {
-            if (!MemoryAuto) return MemoryMb > 0 ? MemoryMb : 4096;
-
-            var total = SystemMemory.TotalMb;
-            return Math.Clamp(total / 2 / 512 * 512, 2048, total);
-        }
-    }
+    public int EffectiveMemoryMb => MemoryAuto || MemoryMb <= 0 ? SystemMemory.AutoMb : MemoryMb;
 
     public bool VersionIsolation { get; set; } = true;
 

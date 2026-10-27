@@ -65,7 +65,12 @@ public partial class OverviewPage : UserControl, IInstancePage
             ? "跟随全局"
             : Path.GetFileName(Path.GetDirectoryName(settings.JavaPath)) ?? settings.JavaPath;
 
-        MemoryText.Text = settings.MemoryMb > 0 ? $"{settings.MemoryMb} MB" : "跟随全局";
+        MemoryText.Text = settings.MemoryMb switch
+        {
+            > 0 => $"{settings.MemoryMb} MB",
+            < 0 => "自动分配",
+            _ => "跟随全局",
+        };
     }
 
     private async void Rename_Click(object sender, RoutedEventArgs e)
