@@ -66,8 +66,16 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
     public string Meta => $"{MetaWithoutSource} · {SourceLabel}";
 
-    /// <summary>平台上的标签（Modrinth/CurseForge 的 categories）。</summary>
-    public string TagsText => string.Join(" · ", Hit.Categories.Take(5).Select(CategoryNames.Chinese));
+    private static readonly HashSet<string> LoaderTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "fabric", "forge", "neoforge", "quilt", "liteloader", "rift",
+    };
+
+    /// <summary>平台上的标签（去掉加载器，加载器在详情页看就够了）。</summary>
+    public string TagsText => string.Join(" · ", Hit.Categories
+        .Where(tag => !LoaderTags.Contains(tag))
+        .Take(5)
+        .Select(CategoryNames.Chinese));
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }
