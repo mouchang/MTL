@@ -271,12 +271,29 @@ public sealed class ProxyCore
         catch (Exception ex)
         {
             AppLog.Error(ex, "proxy self test");
-            return (false, 0, ex.Message);
+            return (false, 0, DescribeSelfTestFailure(ex));
         }
         finally
         {
             Stop("自检结束");
         }
+    }
+
+    /// <summary>把自检失败的异常翻译成人话，界面上别直接甩英文堆栈。</summary>
+    private static string DescribeSelfTestFailure(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is System.Security.Authentication.AuthenticationException
+                or System.Net.Sockets.SocketException
+                or System.IO.IOException
+                or System.Net.Http.HttpRequestException)
+            {
+                return "连不上节点（订阅可能已失效，或者节点在维护）";
+            }
+        }
+
+        return exception.Message;
     }
 
     /// <summary>按需启动内核。并发调用会串行化。</summary>

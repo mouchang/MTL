@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -6,15 +7,12 @@ namespace MutsumiLauncher.Services;
 
 /// <summary>
 /// 统一的 HttpClient 工厂。
-/// 每条请求都会在「直连」和「代理」（有代理时）之间自动兜底：
-/// 国内镜像域名优先直连，其余域名按设置出牌，第一条路失败自动换另一条。
+/// 每条请求都会在「直连」和「代理」之间自动兜底：国内镜像域名优先直连，其余域名先走代理。
+/// 代理是**每次请求现查**的（15 秒缓存），所以中途启动 Clash 不用重开启动器也能用上。
 /// </summary>
 public static class HttpUtil
 {
     public static string DefaultUserAgent => $"MutsumiLauncher/{AppInfo.Version} (github.com/mouchang/MTL)";
-
-    private static readonly object ProbeLock = new();
-    private static bool? _systemProxyReachable;
 
     public static string Mode => (AppConfig.Current.NetworkMode ?? "auto").Trim().ToLowerInvariant();
 
@@ -24,112 +22,20 @@ public static class HttpUtil
         || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
         || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>探测本机系统代理是否真的可用（端口能连上）。结果缓存到进程结束。</summary>
-    public static bool SystemProxyReachable()
-    {
-        if (_systemProxyReachable is { } cached) return cached;
-
-        lock (ProbeLock)
-        {
-            if (_systemProxyReachable is { } again) return again;
-
-            _systemProxyReachable = ProbeSystemProxy();
-            AppLog.Info($"system proxy available: {_systemProxyReachable}");
-            return _systemProxyReachable.Value;
-        }
-    }
-
-    private static bool ProbeSystemProxy()
-    {
-        try
-        {
-            var proxy = WebRequest.GetSystemWebProxy()
-                .GetProxy(new Uri("https://www.example.com"));
-
-            if (proxy is null || proxy.Port <= 0) return false;
-            if (proxy.Host.Contains("example.com", StringComparison.OrdinalIgnoreCase)) return false;
-
-            using var client = new TcpClient();
-            var connect = client.ConnectAsync(proxy.Host, proxy.Port);
-
-            return connect.Wait(TimeSpan.FromMilliseconds(700)) && client.Connected;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
+    /// <summary>常见本地代理端口（Clash / v2ray / Shadowsocks 客户端）。</summary>
     private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
 
-    /// <summary>
-    /// 用户在跑 Clash 但没开「系统代理」（或用的是 TUN）时，系统代理探测会失败。
-    /// 这里再试几个常见本地端口，能连上就当代理用——只影响境外域名。
-    /// </summary>
-    private static WebProxy? DetectLocalProxy()
-    {
-        foreach (var port in CommonProxyPorts)
-        {
-            try
-            {
-                using var client = new TcpClient();
-                var connect = client.ConnectAsync(System.Net.IPAddress.Loopback, port);
+    private static readonly TimeSpan ProxyTtl = TimeSpan.FromSeconds(15);
 
-                if (connect.Wait(TimeSpan.FromMilliseconds(300)) && client.Connected)
-                {
-                    AppLog.Info($"detected local proxy on 127.0.0.1:{port}");
-                    return new WebProxy("http://127.0.0.1:" + port);
-                }
-            }
-            catch
-            {
-                // 没开就下一个
-            }
-        }
-
-        return null;
-    }
+    /// <summary>按 host:port 复用代理客户端，避免每次探测都新建 handler。</summary>
+    private static readonly ConcurrentDictionary<string, HttpClient> ProxyClients =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <param name="forceDirect">忽略设置强制直连（诊断用）。</param>
     public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
         bool forceDirect = false)
     {
-        var config = AppConfig.Current;
-        var mode = forceDirect ? "direct" : Mode;
-
-        var direct = NewHandler();
-        SocketsHttpHandler? proxy = null;
-
-        switch (mode)
-        {
-            case "auto" when SystemProxyReachable():
-            case "system":
-                proxy = NewHandler();
-                proxy.UseProxy = true;
-                proxy.Proxy = WebRequest.GetSystemWebProxy();
-                break;
-
-            case "auto":
-            {
-                // 系统代理没开，但本机可能有 Clash 在跑
-                var local = DetectLocalProxy();
-                if (local is null) break;
-
-                proxy = NewHandler();
-                proxy.UseProxy = true;
-                proxy.Proxy = local;
-                break;
-            }
-
-            case "custom" when !string.IsNullOrWhiteSpace(ProxyHostOf(config)):
-                proxy = NewHandler();
-                proxy.UseProxy = true;
-                proxy.Proxy = new WebProxy(ProxyHostOf(config).Trim(),
-                    config.ProxyPort <= 0 ? 7890 : config.ProxyPort);
-                break;
-        }
-
-        var client = new HttpClient(new RouteHandler(mode, direct, proxy))
+        var client = new HttpClient(new RouteHandler(forceDirect ? "direct" : Mode))
         {
             Timeout = timeout ?? TimeSpan.FromMinutes(2),
         };
@@ -141,14 +47,99 @@ public static class HttpUtil
         return client;
     }
 
-    private static string ProxyHostOf(AppConfig config) => config.ProxyHost ?? "";
-
     private static SocketsHttpHandler NewHandler() => new()
     {
         ConnectTimeout = TimeSpan.FromSeconds(15),
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
         AutomaticDecompression = DecompressionMethods.All,
     };
+
+    /// <summary>从系统代理设置里读一个 endpoint；没配置时返回 null。</summary>
+    private static (string Host, int Port)? SystemProxyEndpoint()
+    {
+        try
+        {
+            var proxy = WebRequest.GetSystemWebProxy().GetProxy(new Uri("https://www.example.com"));
+
+            if (proxy is null || proxy.Port <= 0) return null;
+
+            // 没配置系统代理时，GetProxy 会把原地址返回
+            if (proxy.Host.Contains("example.com", StringComparison.OrdinalIgnoreCase)) return null;
+
+            return (proxy.Host, proxy.Port);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>试连一下，能连上才算可用（避免配置了代理但没开的情况）。</summary>
+    private static async Task<bool> CanConnectAsync(string host, int port, int timeoutMs,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            var connect = client.ConnectAsync(host, port, cancellationToken).AsTask();
+
+            var completed = await Task.WhenAny(connect, Task.Delay(timeoutMs, cancellationToken))
+                .ConfigureAwait(false);
+
+            return completed == connect && connect.IsCompletedSuccessfully && client.Connected;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>按当前模式找一个可用代理；找不到返回 null（只用直连）。</summary>
+    private static async Task<(string Host, int Port)?> FindProxyAsync(string mode,
+        CancellationToken cancellationToken)
+    {
+        if (mode is "auto" or "system")
+        {
+            if (SystemProxyEndpoint() is { } system
+                && await CanConnectAsync(system.Host, system.Port, 400, cancellationToken))
+                return system;
+        }
+
+        if (mode == "custom")
+        {
+            var config = AppConfig.Current;
+            var host = string.IsNullOrWhiteSpace(config.ProxyHost) ? "127.0.0.1" : config.ProxyHost.Trim();
+            var port = config.ProxyPort <= 0 ? 7890 : config.ProxyPort;
+
+            return await CanConnectAsync(host, port, 500, cancellationToken) ? (host, port) : null;
+        }
+
+        if (mode == "auto")
+        {
+            foreach (var port in CommonProxyPorts)
+            {
+                if (await CanConnectAsync("127.0.0.1", port, 200, cancellationToken))
+                    return ("127.0.0.1", port);
+            }
+        }
+
+        return null;
+    }
+
+    private static HttpClient ProxyClientFor(string host, int port)
+    {
+        var key = host + ":" + port;
+
+        return ProxyClients.GetOrAdd(key, _ =>
+        {
+            var handler = NewHandler();
+            handler.UseProxy = true;
+            handler.Proxy = new WebProxy(host, port);
+
+            AppLog.Info($"代理：使用 {key}");
+            return new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        });
+    }
 
     /// <summary>单次尝试的上限：一条路卡死时不要拖垮整个请求，好歹给另一条路一次机会。</summary>
     private static readonly TimeSpan AttemptTimeout = TimeSpan.FromSeconds(25);
@@ -158,76 +149,137 @@ public static class HttpUtil
     {
         private readonly string _mode;
         private readonly HttpClient _direct;
-        private readonly HttpClient? _proxy;
+        private readonly object _sync = new();
 
-        public RouteHandler(string mode, SocketsHttpHandler direct, SocketsHttpHandler? proxy)
+        private HttpClient? _proxyClient;
+        private string? _proxyKey;
+        private DateTime _proxyResolvedAt = DateTime.MinValue;
+        private bool _proxyProbeFailed;
+
+        /// <summary>内置代理失败后的冷却时间（静态：所有请求共享，别每次都白等一遍）。</summary>
+        private static long _builtInDownUntilTicks;
+
+        public RouteHandler(string mode)
         {
             _mode = mode;
-            _direct = new HttpClient(direct, disposeHandler: false)
+            _direct = new HttpClient(NewHandler(), disposeHandler: false)
             {
                 Timeout = Timeout.InfiniteTimeSpan,
             };
+        }
 
-            _proxy = proxy is null
-                ? null
-                : new HttpClient(proxy, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan };
+        /// <summary>现查一次代理（15 秒内复用），中途开 Clash 也能用上。</summary>
+        private async Task<HttpClient?> ProxyAsync(CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                if (DateTime.UtcNow - _proxyResolvedAt < ProxyTtl) return _proxyClient;
+            }
+
+            (string Host, int Port)? endpoint = null;
+
+            if (_mode is "auto" or "system" or "custom")
+                endpoint = await FindProxyAsync(_mode, cancellationToken).ConfigureAwait(false);
+
+            lock (_sync)
+            {
+                _proxyResolvedAt = DateTime.UtcNow;
+
+                if (endpoint is { } found)
+                {
+                    var key = found.Host + ":" + found.Port;
+                    if (!string.Equals(key, _proxyKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _proxyClient = ProxyClientFor(found.Host, found.Port);
+                        _proxyKey = key;
+                    }
+
+                    _proxyProbeFailed = false;
+                }
+                else
+                {
+                    _proxyClient = null;
+                    _proxyKey = null;
+
+                    if (!_proxyProbeFailed)
+                    {
+                        _proxyProbeFailed = true;
+                        AppLog.Info("代理：没找到可用的系统代理 / 本机端口，先只用直连");
+                    }
+                }
+
+                return _proxyClient;
+            }
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             var url = request.RequestUri?.ToString() ?? string.Empty;
-            var routes = BuildRoutes(url);
+            var proxy = await ProxyAsync(cancellationToken).ConfigureAwait(false);
 
-            // 内置代理优先：只有境外资源域名会命中；内核不可用时自动回落直连
-            var builtIn = await ProxyCore.Shared.TryGetClientAsync(url, cancellationToken)
-                .ConfigureAwait(false);
+            var routes = BuildRoutes(url, proxy);
 
-            if (builtIn is not null)
+            // 内置代理优先：只有境外资源域名会命中；最近失败过就先别用它
+            HttpClient? builtIn = null;
+
+            if (DateTime.UtcNow.Ticks >= Interlocked.Read(ref _builtInDownUntilTicks))
             {
-                routes.Insert(0, builtIn);
-                ProxyCore.Shared.EnterRequest();
+                builtIn = await ProxyCore.Shared.TryGetClientAsync(url, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (builtIn is not null)
+                {
+                    routes.Insert(0, builtIn);
+                    ProxyCore.Shared.EnterRequest();
+                }
             }
 
             try
             {
-            byte[]? body = request.Content is null
-                ? null
-                : await request.Content.ReadAsByteArrayAsync(cancellationToken);
+                var body = request.Content is null
+                    ? null
+                    : await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 
-            Exception? last = null;
+                Exception? last = null;
 
-            foreach (var route in routes)
-            {
-                var clone = Clone(request, body);
-                var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(AttemptTimeout);
-
-                try
+                foreach (var route in routes)
                 {
-                    var response = await route.SendAsync(clone, HttpCompletionOption.ResponseHeadersRead,
-                        timeout.Token);
+                    var clone = Clone(request, body);
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeout.CancelAfter(AttemptTimeout);
 
-                    // 成功后不能释放 timeout：ResponseHeadersRead 的后续读取还挂着这个 token
-                    return response;
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    timeout.Dispose();
-                    clone.Dispose();
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    timeout.Dispose();
-                    clone.Dispose();
-                    last = ex;
+                    try
+                    {
+                        // 成功后不能释放 timeout：ResponseHeadersRead 的后续读取还挂着这个 token
+                        return await route.SendAsync(clone, HttpCompletionOption.ResponseHeadersRead,
+                            timeout.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        clone.Dispose();
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        clone.Dispose();
+                        last = ex;
 
-                    AppLog.Info($"网络失败，换下一条路（{(ReferenceEquals(route, _proxy) ? "代理" : "直连")}）：{url} -> {ex.Message}");
-                }
-            }
+                        var label = ReferenceEquals(route, builtIn) ? "内置代理"
+                            : ReferenceEquals(route, proxy) ? "代理"
+                            : "直连";
 
-            throw new HttpRequestException($"请求失败（直连 / 代理都试过了）：{last?.Message}", last);
+                        AppLog.Info($"网络失败，换下一条路（{label}）：{url} -> {ex.Message}");
+
+                        // 内置代理挂了就别让它继续挡在前面
+                        if (ReferenceEquals(route, builtIn))
+                            Interlocked.Exchange(ref _builtInDownUntilTicks,
+                                DateTime.UtcNow.AddMinutes(2).Ticks);
+                    }
+                }
+
+                throw new HttpRequestException(
+                    BuildFailureMessage(last, proxy, builtIn), last);
             }
             finally
             {
@@ -235,11 +287,29 @@ public static class HttpUtil
             }
         }
 
-        private List<HttpClient> BuildRoutes(string url)
+        private string BuildFailureMessage(Exception? last, HttpClient? proxy, HttpClient? builtIn)
+        {
+            var message = $"请求失败（直连 / 代理都试过了）：{last?.Message}";
+
+            if (proxy is null && builtIn is null)
+            {
+                message += Environment.NewLine +
+                           "提示：没检测到可用代理（系统代理没开，本机 7890 / 7897 / 10808 / 1080 也连不上）。" +
+                           "这类域名在国内通常直连不通，可以打开 Clash 后重试，或在「设置 → 下载 → 更改下载源与网络」里指定代理。";
+            }
+            else if (builtIn is not null)
+            {
+                message += Environment.NewLine + "提示：内置代理也没连上，可能是订阅节点暂时不可用。";
+            }
+
+            return message;
+        }
+
+        private List<HttpClient> BuildRoutes(string url, HttpClient? proxy)
         {
             var routes = new List<HttpClient>(2);
 
-            if (_proxy is null)
+            if (proxy is null)
             {
                 routes.Add(_direct);
                 return routes;
@@ -249,20 +319,13 @@ public static class HttpUtil
             {
                 // 国内镜像：先直连，真不行再考虑代理
                 routes.Add(_direct);
-                routes.Add(_proxy);
+                routes.Add(proxy);
                 return routes;
             }
 
-            if (_mode is "auto" or "system" or "custom")
-            {
-                // 有代理可用时先走代理（这类域名在国内基本直连不通）
-                routes.Add(_proxy);
-                routes.Add(_direct);
-                return routes;
-            }
-
+            // 其余情况先走代理（这类域名在国内基本直连不通）
+            routes.Add(proxy);
             routes.Add(_direct);
-            routes.Add(_proxy);
             return routes;
         }
 
@@ -280,14 +343,22 @@ public static class HttpUtil
             if (body is not null)
             {
                 clone.Content = new ByteArrayContent(body);
-                if (source.Content is not null)
-                {
-                    foreach (var header in source.Content.Headers)
-                        clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                }
+
+                foreach (var header in source.Content!.Headers)
+                    clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
             return clone;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _direct.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }
