@@ -36,12 +36,30 @@ public static class UpdateService
 
     private static string DirectApi => string.Format(GitHubApi, Repo);
 
+    private static string? _currentVersion;
+
+    /// <summary>完整版本号，带预发布后缀（1.0.0-beta）。比较更新时不能用截断过的数字版本。</summary>
     public static string CurrentVersion
     {
         get
         {
+            if (_currentVersion is not null) return _currentVersion;
+
+            // csproj 里通过 AssemblyMetadata 写进来的是 $(Version)，含 -beta 这类后缀
+            var metadata = Assembly.GetExecutingAssembly()
+                .GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(attribute => attribute.Key == "Version")
+                ?.Value;
+
+            if (!string.IsNullOrWhiteSpace(metadata))
+            {
+                _currentVersion = metadata.Trim();
+                return _currentVersion;
+            }
+
             var version = Assembly.GetExecutingAssembly().GetName().Version;
-            return version is null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
+            _currentVersion = version is null ? "1.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
+            return _currentVersion;
         }
     }
 
@@ -211,14 +229,10 @@ public static class UpdateService
         System.Windows.Application.Current.Shutdown();
     }
 
+    /// <summary>
+    /// 完整版本比较：`1.0.0-beta` 与 `1.0.0` 不再算同一个版本，
+    /// `1.0.0-beta` &lt; `1.0.0-beta.2` &lt; `1.0.0` &lt; `1.0.1`。
+    /// </summary>
     private static int CompareVersion(string left, string right)
-    {
-        static Version Parse(string text)
-        {
-            var cleaned = new string(text.Trim().TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
-            return Version.TryParse(cleaned, out var version) ? version : new Version(0, 0);
-        }
-
-        return Parse(left).CompareTo(Parse(right));
-    }
+        => Semver.Parse(left).CompareTo(Semver.Parse(right));
 }

@@ -12,4 +12,9 @@
     <Deterministic>true</Deterministic>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 程序集版本（AssemblyVersion）存不下 -beta 这类后缀，单独写一份完整版本给更新检查用 -->
+    <AssemblyMetadata Include="Version" Value="$(Version)" />
+  </ItemGroup>
 </Project>
