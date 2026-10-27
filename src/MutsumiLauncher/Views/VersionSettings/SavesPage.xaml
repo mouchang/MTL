@@ -1,0 +1,113 @@
+<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.SavesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:MutsumiLauncher.Controls"
+             FontFamily="{StaticResource UiFont}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <controls:MtlSearchBox x:Name="SearchBox" Placeholder="搜索存档名或文件夹"
+                               TextChanged="SearchBox_TextChanged" />
+
+        <WrapPanel Grid.Row="1" Margin="0,10,0,0">
+            <Button Style="{StaticResource SecondaryButton}" Content="备份全部" Width="120"
+                    Margin="0,0,10,0" Click="BackupAll_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="打开存档文件夹" Width="150"
+                    Margin="0,0,10,0" Click="OpenSavesFolder_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="打开备份文件夹" Width="150"
+                    Margin="0,0,10,0" Click="OpenBackupsFolder_Click" />
+            <Button Style="{StaticResource SecondaryButton}" Content="刷新" Width="110"
+                    Click="Refresh_Click" />
+        </WrapPanel>
+
+        <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
+                    <TextBlock x:Name="SummaryText" Style="{StaticResource Caption}" Text="正在读取存档…" />
+                    <TextBlock x:Name="BusyText" Style="{StaticResource Caption}" Margin="12,0,0,0"
+                               Foreground="{StaticResource AccentDeep}" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="WorldList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,0,0,1" BorderBrush="#1AFFFFFF" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 世界图标：有 icon.png 就用，没有就露出下面的草方块 -->
+                                        <Border Width="42" Height="42" CornerRadius="10"
+                                                Background="#2E7D4F" ClipToBounds="True"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <Image Source="/Assets/grass.png" Stretch="UniformToFill"
+                                                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                                <Image Source="{Binding Icon}" Stretch="UniformToFill"
+                                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                            </Grid>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Margin="12,0,12,0"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="15"
+                                                       Foreground="{StaticResource Ink}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <TextBlock Text="{Binding DetailText}" FontSize="11"
+                                                           Foreground="{StaticResource InkMute}" />
+                                                <TextBlock Text="{Binding FolderText}" FontSize="11"
+                                                           Foreground="{StaticResource InkMute}"
+                                                           Margin="10,0,0,0"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding BackupText}" FontSize="11"
+                                                       Foreground="{StaticResource InkMute}"
+                                                       VerticalAlignment="Center" Margin="0,0,10,0" />
+                                            <Button Style="{StaticResource GhostButton}" Content="备份"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Tag="{Binding}" Click="Backup_Click" />
+                                            <Button Style="{StaticResource GhostButton}" Content="还原"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Tag="{Binding}" Click="Restore_Click"
+                                                    Visibility="{Binding RestoreVisibility}" />
+                                            <Button Style="{StaticResource GhostButton}" Content="打开"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Tag="{Binding}" Click="Open_Click" />
+                                            <Button Style="{StaticResource GhostButton}" Content="删除"
+                                                    Height="30" Padding="12,0"
+                                                    Tag="{Binding}" Click="Delete_Click" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBlock x:Name="EmptyText" Grid.Row="1" Text="这个实例还没有存档。"
+                           Style="{StaticResource Caption}" HorizontalAlignment="Center"
+                           VerticalAlignment="Center" Visibility="Collapsed" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

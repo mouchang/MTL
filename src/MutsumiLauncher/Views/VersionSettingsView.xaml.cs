@@ -21,6 +21,7 @@ public partial class VersionSettingsView : UserControl
         _pages["overview"] = overview;
         _pages["launch"] = new LaunchOptionsPage();
         _pages["mods"] = new ModManagePage();
+        _pages["saves"] = new SavesPage();
         _pages["export"] = new ExportPage();
 
         ShowPage("overview");

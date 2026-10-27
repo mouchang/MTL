@@ -59,6 +59,13 @@
                                 </StackPanel>
                             </RadioButton>
                             <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
+                                         Tag="saves" Checked="Nav_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE774;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
+                                    <TextBlock Text="存档" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
                                          Tag="export" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
