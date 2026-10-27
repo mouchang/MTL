@@ -58,22 +58,6 @@ public partial class CommunitySearchView : UserControl
         _ = RunSearchAsync(0);
     }
 
-    private static readonly Dictionary<string, string> CategoryNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["optimization"] = "优化", ["adventure"] = "冒险", ["technology"] = "科技",
-        ["magic"] = "魔法", ["decoration"] = "装饰", ["utility"] = "实用",
-        ["worldgen"] = "世界生成", ["library"] = "前置库", ["api"] = "前置库",
-        ["storage"] = "存储", ["equipment"] = "装备", ["food"] = "食物",
-        ["game-mechanics"] = "游戏机制", ["mobs"] = "生物", ["transportation"] = "交通",
-        ["mining"] = "挖掘", ["building"] = "建筑", ["cosmetic"] = "装饰",
-        ["creation"] = "创造", ["management"] = "管理", ["social"] = "社交",
-        ["economy"] = "经济", ["challenge"] = "挑战", ["combat"] = "战斗",
-        ["environment"] = "环境", ["misc"] = "杂项", ["font"] = "字体",
-        ["theme"] = "主题", ["audio"] = "音效", ["gui"] = "界面",
-        ["realistic"] = "写实", ["simplistic"] = "简约", ["tweaks"] = "微调",
-        ["cartoon"] = "卡通", ["8x-"] = "8x-", ["core-shaders"] = "核心",
-    };
-
     /// <summary>「类型」下拉：按平台标签动态填充（Modrinth 的分类接口）。</summary>
     private async Task LoadCategoriesAsync()
     {
@@ -91,7 +75,7 @@ public partial class CommunitySearchView : UserControl
             {
                 TypeCombo.Items.Add(new ComboBoxItem
                 {
-                    Content = CategoryNames.TryGetValue(name, out var label) ? label : name,
+                    Content = CategoryNames.Chinese(name),
                     Tag = name,
                 });
             }
@@ -246,7 +230,7 @@ public partial class CommunitySearchView : UserControl
         }
 
         PageBar.Visibility = Visibility.Visible;
-        PageInfo.Text = $"第 {_page + 1} / {totalPages} 页 · 共 {_totalHits:N0} 个结果";
+        PageInfo.Text = $"共 {_totalHits:N0} 个结果";
         PagePanel.Children.Clear();
 
         AddPageButton("上一页", Math.Max(0, _page - 1), enabled: _page > 0);

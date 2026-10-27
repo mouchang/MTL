@@ -423,8 +423,7 @@ public partial class VersionDetailView : UserControl
 
     private Progress<InstallProgress> CreateProgress(DownloadTask task) => new(p =>
     {
-        ProgressText.Text = $"{_entry?.Name}：{p.Message}";
-        ProgressFill.Width = ProgressTrack.ActualWidth * Math.Clamp(p.Percent, 0, 100) / 100.0;
+        // 进度只报给下载中心（右下角浮标 + 任务面板），页面里不再有内联进度条
         DownloadCenter.Report(task, p.Message, p.Percent, p.Bytes);
     });
 
@@ -440,9 +439,6 @@ public partial class VersionDetailView : UserControl
         }
 
         StartButton.IsEnabled = false;
-        ProgressCard.Visibility = Visibility.Visible;
-        ProgressText.Text = string.Empty;
-        ProgressFill.Width = 0;
 
         var instanceName = InstanceNameBox.Text.Trim();
         if (instanceName.Length == 0) instanceName = _entry.Name;
@@ -473,7 +469,6 @@ public partial class VersionDetailView : UserControl
 
                 if (vanillaWasMissing)
                 {
-                    ProgressText.Text = $"先安装原版 {_entry.Name}…";
                     await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
                         installAssets: false, cancellationToken: task.Token);
                 }
@@ -527,7 +522,6 @@ public partial class VersionDetailView : UserControl
 
                     if (file is not null)
                     {
-                        ProgressText.Text = "下载 Fabric API…";
                         DownloadCenter.Report(task, "下载 Fabric API…", 96);
 
                         var modsDir = Path.Combine(InstanceService.GameDirFor(id), "mods");
@@ -538,7 +532,6 @@ public partial class VersionDetailView : UserControl
                     }
                 }
 
-                ProgressText.Text = $"已安装 {id}";
                 if (Status(_selectedLoader!) is { } status) status.Text = "已安装";
                 DownloadCenter.Complete(task, $"已安装 {id}");
                 NotifyInstalled(id);
@@ -548,7 +541,6 @@ public partial class VersionDetailView : UserControl
 
             await new VersionInstaller().InstallAsync(_entry.Name, _entry.Url, progress,
                 instanceName: instanceName, cancellationToken: task.Token);
-            ProgressText.Text = $"{instanceName} 安装完成";
             HintText.Text = "可以在启动页切换到该版本并启动。";
             DownloadCenter.Complete(task, "安装完成");
             NotifyInstalled(instanceName);
@@ -556,7 +548,6 @@ public partial class VersionDetailView : UserControl
         }
         catch (OperationCanceledException)
         {
-            ProgressText.Text = "已取消安装";
             DownloadCenter.Complete(task, "已取消");
             _toast?.Invoke("已取消安装");
         }
@@ -569,7 +560,6 @@ public partial class VersionDetailView : UserControl
                 && !reason.Contains(ex.InnerException.Message, StringComparison.Ordinal))
                 reason += "（" + ex.InnerException.Message + "）";
 
-            ProgressText.Text = "安装失败：" + reason;
             DownloadCenter.Complete(task, "失败：" + reason);
             _toast?.Invoke("安装失败：" + reason);
         }

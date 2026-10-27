@@ -67,7 +67,7 @@ public sealed class ModrinthItem : INotifyPropertyChanged
     public string Meta => $"{MetaWithoutSource} · {SourceLabel}";
 
     /// <summary>平台上的标签（Modrinth/CurseForge 的 categories）。</summary>
-    public string TagsText => string.Join(" · ", Hit.Categories.Take(5));
+    public string TagsText => string.Join(" · ", Hit.Categories.Take(5).Select(CategoryNames.Chinese));
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }

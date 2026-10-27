@@ -173,18 +173,6 @@
             </StackPanel>
         </Border>
 
-        <Border x:Name="ProgressCard" Grid.Row="3" Style="{StaticResource GlassCard}" Padding="18,12"
-                Margin="0,14,0,0" Visibility="Collapsed">
-            <StackPanel>
-                <TextBlock x:Name="ProgressText" FontSize="13" Foreground="{StaticResource Ink}" />
-                <Border x:Name="ProgressTrack" Height="4" CornerRadius="2" Background="#33FFFFFF"
-                        Margin="0,8,0,0" ClipToBounds="True">
-                    <Border x:Name="ProgressFill" Background="{StaticResource AccentDeep}" CornerRadius="2"
-                            HorizontalAlignment="Left" Width="0" />
-                </Border>
-            </StackPanel>
-        </Border>
-
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,16,0,0">
             <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}" Content="下载"
                     MinWidth="150" Height="42" Padding="20,0" Click="StartDownload_Click" />

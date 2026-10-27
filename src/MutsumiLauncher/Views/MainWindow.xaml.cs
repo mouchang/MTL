@@ -202,6 +202,8 @@ public partial class MainWindow : Window
 
     private void DownloadFloater_Click(object sender, MouseButtonEventArgs e)
     {
+        if (DownloadPanelHost.Content is not null) return;
+
         var panel = new DownloadPanelView();
         panel.Closed += () =>
         {

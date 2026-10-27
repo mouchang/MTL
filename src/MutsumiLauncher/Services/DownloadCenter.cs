@@ -40,6 +40,9 @@ public sealed class DownloadTask : INotifyPropertyChanged
         }
     }
 
+    /// <summary>最近一次测得的下载速度（MB/s），用于汇总。</summary>
+    public double SpeedMb { get; set; }
+
     public string SpeedText
     {
         get => _speedText;
@@ -141,7 +144,10 @@ public static class DownloadCenter
             if (seconds >= 0.5 && bytes > last.Bytes)
             {
                 var mbPerSecond = (bytes - last.Bytes) / 1048576.0 / seconds;
-                task.SpeedText = $"{mbPerSecond:0.0} MB/s";
+                task.SpeedMb = mbPerSecond;
+                task.SpeedText = mbPerSecond >= 1
+                    ? $"{mbPerSecond:0.0} MB/s"
+                    : $"{mbPerSecond * 1024:0} KB/s";
                 SpeedSamples[task.Id] = (now, bytes);
             }
         }

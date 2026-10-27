@@ -20,7 +20,6 @@ public partial class LaunchPage : UserControl
         InitializeComponent();
         Loaded += (_, _) =>
         {
-            AlignAvatar();
             RefreshVersions();
             StartWatchingVersions();
 
@@ -33,7 +32,6 @@ public partial class LaunchPage : UserControl
 
             ApplyAccount();
         };
-        NameCard.SizeChanged += (_, _) => AlignAvatar();
         Unloaded += (_, _) => StopWatchingVersions();
     }
 
@@ -99,16 +97,6 @@ public partial class LaunchPage : UserControl
         {
             // 忽略
         }
-    }
-
-    /// <summary>头像中心与用户名胶囊中心对齐。</summary>
-    private void AlignAvatar()
-    {
-        var width = NameCard.ActualWidth;
-        if (width <= 0) return;
-
-        var offset = Math.Max(0, (width - AvatarHost.Width) / 2);
-        AvatarHost.Margin = new Thickness(offset, 0, 0, 0);
     }
 
     /// <summary>重新读取版本列表和账号信息（切回启动页 / 安装完成后调用）。</summary>
