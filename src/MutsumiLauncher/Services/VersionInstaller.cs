@@ -100,6 +100,9 @@ public sealed class VersionInstaller
         IProgress<InstallProgress>? progress = null, bool installAssets = true,
         string? instanceName = null, CancellationToken cancellationToken = default)
     {
+        // 最多两个项目同时进行，第三个开始排队（进度里会显示排队位次）
+        using var slot = await InstallGate.EnterAsync(progress, cancellationToken);
+
         GamePaths.EnsureCreated();
 
         // 每次安装重新扫一遍本地文件，才能复用刚才装好的 jar / 库
