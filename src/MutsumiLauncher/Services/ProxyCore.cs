@@ -433,9 +433,12 @@ public sealed class ProxyCore
                     {
                         AppLog.Info($"proxy core: 下载内核 {url}");
 
-                        await using var stream = await http.GetStreamAsync(url, cancellationToken);
-                        await using var file = File.Create(zipPath);
-                        await stream.CopyToAsync(file, cancellationToken);
+                        // 必须先把文件关掉再校验：File.Create 拿的是独占句柄，sha256 读同一个文件会失败
+                        await using (var stream = await http.GetStreamAsync(url, cancellationToken))
+                        await using (var file = File.Create(zipPath))
+                        {
+                            await stream.CopyToAsync(file, cancellationToken);
+                        }
 
                         if (MatchesSha256(zipPath))
                         {

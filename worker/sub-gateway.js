@@ -82,7 +82,9 @@ export default {
       return json(403, { enabled: false, reason: "device-not-allowed" });
     }
 
-    const config = await loadConfig(env, ctx);
+    // fresh=1：跳过边缘缓存，直接从 KV / 上游取（发布新订阅后客户端用它破缓存）
+    const force = url.searchParams.get("fresh") === "1";
+    const config = await loadConfig(env, ctx, force);
     if (!config) {
       return json(502, { enabled: false, reason: "upstream" });
     }
@@ -105,12 +107,14 @@ export default {
 
 // ---------------------------------------------------------------- 配置缓存
 
-async function loadConfig(env, ctx) {
+async function loadConfig(env, ctx, force = false) {
   const cache = caches.default;
   const key = new Request(CONFIG_CACHE_KEY);
 
-  const hit = await cache.match(key);
-  if (hit) return hit;
+  if (!force) {
+    const hit = await cache.match(key);
+    if (hit) return hit;
+  }
 
   // 优先用 /sub/publish 上传的副本：订阅端经常直接拒绝 Cloudflare 出口 IP（403），
   // 由你自己的电脑拉一次再推上来，Worker 就永远只读 KV。
