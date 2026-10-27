@@ -17,13 +17,15 @@ public partial class LaunchPanelView : UserControl
     public LaunchPanelView()
     {
         InitializeComponent();
-        _timer.Tick += (_, _) => CheckProcess();
+        _timer.Tick += (_, _) =>
+        {
+            CheckProcess();
+            PumpLog();
+        };
         Unloaded += (_, _) => _timer.Stop();
     }
 
     public event Action? Closed;
-
-    public event Action<string>? LogRequested;
 
     public void Start(string instance, string javaPath)
     {
@@ -38,7 +40,8 @@ public partial class LaunchPanelView : UserControl
         ProcessText.Text = "—";
         LogText.Text = "—";
         KillButton.IsEnabled = false;
-        LogButton.IsEnabled = false;
+        LogBody.Text = string.Empty;
+        _logOffset = 0;
         _running = false;
         _timer.Start();
     }
@@ -66,7 +69,8 @@ public partial class LaunchPanelView : UserControl
 
         _logPath = logPath ?? string.Empty;
         LogText.Text = string.IsNullOrWhiteSpace(_logPath) ? "—" : Path.GetFileName(_logPath);
-        LogButton.IsEnabled = !string.IsNullOrWhiteSpace(_logPath);
+        _logOffset = 0;
+        PumpLog();
 
         _timer.Start();
     }
@@ -107,7 +111,7 @@ public partial class LaunchPanelView : UserControl
         StatusText.Text = "游戏异常退出";
         SubtitleText.Text = $"退出代码 {exitCode}";
         KillButton.IsEnabled = false;
-        LogButton.IsEnabled = !string.IsNullOrWhiteSpace(_logPath);
+        PumpLog();
     }
 
     private void Kill_Click(object sender, RoutedEventArgs e)
@@ -119,15 +123,38 @@ public partial class LaunchPanelView : UserControl
         Closed?.Invoke();
     }
 
-    private void Log_Click(object sender, RoutedEventArgs e)
-    {
-        if (!string.IsNullOrWhiteSpace(_logPath))
-        {
-            LogRequested?.Invoke(_instance);
-            return;
-        }
+    private long _logOffset;
 
-        LogRequested?.Invoke(_instance);
+    /// <summary>每秒把日志文件新增的内容追加到面板上（最多保留最近 200 行）。</summary>
+    private void PumpLog()
+    {
+        if (string.IsNullOrWhiteSpace(_logPath) || !File.Exists(_logPath)) return;
+
+        try
+        {
+            using var stream = new FileStream(_logPath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+
+            if (stream.Length < _logOffset) _logOffset = 0; // 文件被截断
+            if (stream.Length == _logOffset) return;
+
+            stream.Seek(_logOffset, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream);
+            var chunk = reader.ReadToEnd();
+            _logOffset = stream.Position;
+
+            if (chunk.Length == 0) return;
+
+            var lines = (LogBody.Text + chunk).Split('\n');
+            var trimmed = lines.Length > 200 ? lines[^200..] : lines;
+
+            LogBody.Text = string.Join("\n", trimmed);
+            LogScroll.ScrollToEnd();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "launch panel log");
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Closed?.Invoke();

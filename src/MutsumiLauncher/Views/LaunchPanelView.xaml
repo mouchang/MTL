@@ -46,9 +46,14 @@
                 </StackPanel>
             </Border>
 
-            <!-- 运行信息 -->
-            <Border Grid.Row="3" Style="{StaticResource GlassCard}" Padding="18,16" Margin="0,14,0,0"
-                    VerticalAlignment="Top">
+            <!-- 运行信息 + 实时日志 -->
+            <Grid Grid.Row="3" Margin="0,14,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource GlassCard}" Padding="18,16" VerticalAlignment="Top">
                 <StackPanel>
                     <TextBlock Text="运行信息" Style="{StaticResource H2}" Margin="0,0,0,10" />
 
@@ -95,12 +100,26 @@
                 </StackPanel>
             </Border>
 
+                <Border Grid.Row="1" Style="{StaticResource GlassCard}" Padding="14,12" Margin="0,12,0,0"
+                        MinHeight="180">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="实时日志" Style="{StaticResource H2}" Margin="0,0,0,8" />
+                        <ScrollViewer x:Name="LogScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <TextBlock x:Name="LogBody" FontFamily="Consolas" FontSize="11"
+                                       Foreground="{StaticResource InkSoft}" TextWrapping="Wrap" />
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+
             <!-- 操作 -->
             <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,16,0,0">
                 <Button x:Name="KillButton" Style="{StaticResource DangerButton}" Content="强制关闭"
                         Width="130" IsEnabled="False" Click="Kill_Click" />
-                <Button x:Name="LogButton" Style="{StaticResource SecondaryButton}" Content="查看日志"
-                        Width="120" Margin="10,0,0,0" Click="Log_Click" />
                 <Button Style="{StaticResource SecondaryButton}" Content="关闭面板"
                         Width="120" Margin="10,0,0,0" Click="Close_Click" />
             </StackPanel>

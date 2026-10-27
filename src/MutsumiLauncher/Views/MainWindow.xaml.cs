@@ -124,7 +124,7 @@ public partial class MainWindow : Window
     private void UpdateDownloadFloater()
     {
         var active = DownloadCenter.ActiveCount;
-        var show = active > 0 && _currentPage != "download";
+        var show = active > 0 && DownloadPanelHost.Visibility != Visibility.Visible;
         DownloadFloater.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
 
         if (!show) return;
@@ -152,7 +152,6 @@ public partial class MainWindow : Window
     public void ShowLaunchPanel(LaunchPanelView panel)
     {
         panel.Closed += HideLaunchPanel;
-        panel.LogRequested += instance => OpenLogViewer(instance);
 
         LaunchPanelHost.Width = Math.Max(480, ActualWidth * 0.52);
         LaunchPanelHost.Content = panel;

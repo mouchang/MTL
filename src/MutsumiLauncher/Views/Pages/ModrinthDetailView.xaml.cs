@@ -427,7 +427,6 @@ public partial class ModrinthDetailView : UserControl
         if (_installing) return;
 
         _installing = true;
-        Loading.IsActive = true;
         var task = DownloadCenter.Begin($"安装 {row.Version.Name}", indeterminate: true);
         task.RetryAction = () => InstallFile_Click(sender, new RoutedEventArgs());
 
@@ -474,7 +473,6 @@ public partial class ModrinthDetailView : UserControl
         finally
         {
             _installing = false;
-            Loading.IsActive = false;
         }
     }
 
