@@ -4,7 +4,8 @@
              FontFamily="{StaticResource UiFont}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
-    <StackPanel>
+    <StackPanel MaxWidth="760" HorizontalAlignment="Left"
+                Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
             <Button Style="{StaticResource GhostButton}" Padding="8,4" Click="Back_Click">
                 <StackPanel Orientation="Horizontal">

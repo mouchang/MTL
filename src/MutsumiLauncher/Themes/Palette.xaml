@@ -74,6 +74,9 @@
     <SolidColorBrush x:Key="SourceGreen" Color="#FF3F7F5C" />
     <SolidColorBrush x:Key="SourceOrange" Color="#FFB45F1B" />
 
+    <!-- 背景图：深色主题换成压暗过的那张 -->
+    <BitmapImage x:Key="BackdropImage" UriSource="/Assets/background.jpg" CacheOption="OnLoad" />
+
     <!-- 阴影 -->
     <SolidColorBrush x:Key="ShadowTint" Color="#FF1B2B22" />
     <Color x:Key="ShadowColor">#FF1B2B22</Color>

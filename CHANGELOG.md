@@ -81,7 +81,10 @@
 - 整套配色抽成语义色键（`Ink` / `Glass` / `SurfacePanel` / `Divider` …），
   24 个界面文件里 213 处 `StaticResource` 改成 `DynamicResource`、
   132 处硬编码色值换成色键，换主题时整棵界面树跟着重绘
-- 深色主题下背景图会被压暗（新增 `BackdropVeil`），不会出现黑卡片压在亮底图上
+- **深色主题换用压暗过的底图** `Assets/background-dark.jpg`（`tools/backgrounds/make-dark.py`
+  生成：压暗 + 去饱和 + 往主题深绿底上靠），窗口和版本设置浮层都跟着换
+- 底图改为主题资源 `BackdropImage`，深浅主题各一张；遮罩只做轻微压暗
+- 设置页内容区限宽 760（跟随滚动视口 / 上限 760），超宽屏幕不再一路拉满
 - 字体从色板里拆到 `Typography.xaml`，换主题时不必重建字体资源
 
 ### 存档管理（备份 / 还原）

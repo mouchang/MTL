@@ -51,7 +51,8 @@
         <Grid Grid.Column="1" Margin="16,4,0,0">
             <ScrollViewer x:Name="BasicScroll" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="0,0,4,20">
+                <StackPanel Margin="0,0,4,20" MaxWidth="760" HorizontalAlignment="Left"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
                     <!-- 内存 -->
                     <Border Style="{StaticResource GlassCard}" Padding="22,18">
                         <StackPanel>
@@ -130,7 +131,8 @@
 
             <ScrollViewer x:Name="LaunchScroll" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
-                <StackPanel Margin="0,0,4,20">
+                <StackPanel Margin="0,0,4,20" MaxWidth="760" HorizontalAlignment="Left"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
                     <Border Style="{StaticResource GlassCard}" Padding="22,18">
                         <StackPanel>
                             <Grid>
@@ -185,7 +187,8 @@
 
             <ScrollViewer x:Name="DownloadScroll" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
-                <StackPanel Margin="0,0,4,20">
+                <StackPanel Margin="0,0,4,20" MaxWidth="760" HorizontalAlignment="Left"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
                     <Border Style="{StaticResource GlassCard}" Padding="22,18">
                         <StackPanel>
                             <TextBlock Text="下载源" Style="{StaticResource H2}" />
@@ -217,7 +220,8 @@
 
             <ScrollViewer x:Name="AboutScroll" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
-                <StackPanel Margin="0,0,4,20">
+                <StackPanel Margin="0,0,4,20" MaxWidth="760" HorizontalAlignment="Left"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
                     <Border Style="{StaticResource GlassCard}" Padding="22,18">
                         <StackPanel>
                             <Grid>

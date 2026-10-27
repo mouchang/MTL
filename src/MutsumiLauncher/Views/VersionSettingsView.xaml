@@ -5,7 +5,7 @@
 
     <Border Background="{DynamicResource PaneBg}" ClipToBounds="True">
         <Grid>
-            <Image Source="/Assets/background.jpg" Stretch="UniformToFill" Margin="-90">
+            <Image Source="{DynamicResource BackdropImage}" Stretch="UniformToFill" Margin="-90">
                 <Image.Effect>
                     <BlurEffect Radius="34" KernelType="Gaussian" />
                 </Image.Effect>

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace MutsumiLauncher.Services;
 
@@ -81,7 +82,7 @@ public static class ThemeService
             _ => LightPalette(),
         };
 
-        Install(BuildDictionary(colors));
+        Install(BuildDictionary(colors, IsDark));
         Changed?.Invoke();
     }
 
@@ -110,9 +111,9 @@ public static class ThemeService
         _installed = theme;
     }
 
-    private static ResourceDictionary BuildDictionary(IReadOnlyDictionary<string, Color> colors)
+    private static ResourceDictionary BuildDictionary(IReadOnlyDictionary<string, Color> colors, bool dark)
     {
-        var dictionary = new ResourceDictionary();
+        var dictionary = new ResourceDictionary { ["BackdropImage"] = LoadBackdrop(dark) };
 
         foreach (var (key, color) in colors)
         {
@@ -133,6 +134,33 @@ public static class ThemeService
         dictionary["ShadowColor"] = colors.TryGetValue("ShadowTint", out var shadow) ? shadow : Colors.Black;
 
         return dictionary;
+    }
+
+    /// <summary>窗口底图：深色主题换成压暗过的那张（tools/backgrounds/make-dark.py 生成）。</summary>
+    private static ImageSource LoadBackdrop(bool dark)
+    {
+        var image = new BitmapImage();
+
+        try
+        {
+            image.BeginInit();
+            // OnLoad + Freeze：读进内存后不再占文件句柄，可以安全共用
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+            // 写全程序集名，别依赖「入口程序集就是启动器」这个前提
+            image.UriSource = new Uri(
+                "pack://application:,,,/MutsumiLauncher;component/Assets/" +
+                (dark ? "background-dark.jpg" : "background.jpg"),
+                UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "load backdrop");
+        }
+
+        return image;
     }
 
     /// <summary>启动时自查一次：暗色色板少键的话，切过去会出现浅色漏底，写日志方便发现。</summary>
@@ -310,8 +338,8 @@ public static class ThemeService
         ["PillBg"] = Hex("#2E3B34"),
         ["ToastBg"] = Hex("#20302A"),
         ["ModalScrim"] = Hex("#66000000"),
-        ["Scrim"] = Hex("#C0000000"),
-        ["BackdropVeil"] = Hex("#C6000000"),
+        ["Scrim"] = Hex("#33000000"),
+        ["BackdropVeil"] = Hex("#4D000000"),
 
         ["CardBorder"] = Hex("#2EFFFFFF"),
         ["PanelBorderSoft"] = Hex("#24FFFFFF"),

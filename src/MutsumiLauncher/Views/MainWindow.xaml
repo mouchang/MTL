@@ -22,7 +22,7 @@
 
             <Grid x:Name="ShellRoot">
                 <!-- 背景 -->
-                <Image x:Name="Backdrop" Source="/Assets/background.jpg" Stretch="UniformToFill"
+                <Image x:Name="Backdrop" Source="{DynamicResource BackdropImage}" Stretch="UniformToFill"
                        Margin="-90" RenderOptions.BitmapScalingMode="HighQuality" />
                 <Border Background="{DynamicResource Scrim}" />
 
