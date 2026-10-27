@@ -185,7 +185,6 @@ MutsumiLauncher/
 - [x] 存档备份与还原
 - [ ] 微软登录等待 Mojang 应用复核
 - [ ] CurseForge 官方 API
-- [ ] 聚合结果「只显示一条」去重模式
 
 ## 许可
 
