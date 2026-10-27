@@ -140,8 +140,8 @@ public partial class LaunchPage : UserControl
         }
     }
 
-    /// <summary>头像显示尺寸（与 XAML 里的卡片一致），按这个尺寸生成位图才能 1:1 清晰。</summary>
-    private const int AvatarSize = 116;
+    /// <summary>头像显示尺寸，按这个尺寸生成位图才能 1:1 清晰。</summary>
+    private const int AvatarSize = 64;
 
     private void ApplyAccount()
     {

@@ -20,6 +20,7 @@ public partial class CommunitySearchView : UserControl
     private string _projectType = "mod";
     private int _page;
     private long _totalHits;
+    private int _pageCount = 1;
     private string? _presetGameVersion;
     private string? _presetLoader;
 
@@ -53,7 +54,65 @@ public partial class CommunitySearchView : UserControl
         SearchNameBox.Text = string.Empty;
         _page = 0;
         _ = LoadVersionsAsync();
+        _ = LoadCategoriesAsync();
         _ = RunSearchAsync(0);
+    }
+
+    private static readonly Dictionary<string, string> CategoryNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["optimization"] = "优化", ["adventure"] = "冒险", ["technology"] = "科技",
+        ["magic"] = "魔法", ["decoration"] = "装饰", ["utility"] = "实用",
+        ["worldgen"] = "世界生成", ["library"] = "前置库", ["api"] = "前置库",
+        ["storage"] = "存储", ["equipment"] = "装备", ["food"] = "食物",
+        ["game-mechanics"] = "游戏机制", ["mobs"] = "生物", ["transportation"] = "交通",
+        ["mining"] = "挖掘", ["building"] = "建筑", ["cosmetic"] = "装饰",
+        ["creation"] = "创造", ["management"] = "管理", ["social"] = "社交",
+        ["economy"] = "经济", ["challenge"] = "挑战", ["combat"] = "战斗",
+        ["environment"] = "环境", ["misc"] = "杂项", ["font"] = "字体",
+        ["theme"] = "主题", ["audio"] = "音效", ["gui"] = "界面",
+        ["realistic"] = "写实", ["simplistic"] = "简约", ["tweaks"] = "微调",
+        ["cartoon"] = "卡通", ["8x-"] = "8x-", ["core-shaders"] = "核心",
+    };
+
+    /// <summary>「类型」下拉：按平台标签动态填充（Modrinth 的分类接口）。</summary>
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            var categories = await ResourceService.GetCategoriesAsync(_projectType);
+
+            var loaded = TypeCombo.SelectedItem as ComboBoxItem;
+            var current = loaded?.Tag as string ?? string.Empty;
+
+            TypeCombo.Items.Clear();
+            TypeCombo.Items.Add(new ComboBoxItem { Content = "全部", Tag = string.Empty });
+
+            foreach (var name in categories)
+            {
+                TypeCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = CategoryNames.TryGetValue(name, out var label) ? label : name,
+                    Tag = name,
+                });
+            }
+
+            var index = 0;
+
+            for (var i = 0; i < TypeCombo.Items.Count; i++)
+            {
+                if (TypeCombo.Items[i] is ComboBoxItem item && (item.Tag as string) == current)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            TypeCombo.SelectedIndex = index;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "load categories");
+        }
     }
 
     /// <summary>预选游戏版本 / 加载器并立即搜索（从版本设置的 Mod 管理跳转过来）。</summary>
@@ -124,6 +183,7 @@ public partial class CommunitySearchView : UserControl
                 _projectType, GameVersion(), Loader(), Category(), _page, PageSize, SortOption());
 
             _totalHits = result.Total;
+            _pageCount = result.PageCount;
 
             // 同一个资源在 Modrinth / CurseForge 的两条结果合并成一张卡片（顶部来源标签切换）
             var items = ResourceService.GroupResults(result.Hits)
@@ -175,11 +235,9 @@ public partial class CommunitySearchView : UserControl
 
     private void BuildPageBar()
     {
-        var totalPages = (int)Math.Ceiling(_totalHits / (double)PageSize);
+        // 页数由服务端算好：聚合模式按合并后的卡片数，单平台按接口返回的总数
+        var totalPages = Math.Max(1, _pageCount);
 
-        // 聚合模式只预取前 AggregateMaxItems 条，页数同步封顶
-        if (SourcePlatform() is null)
-            totalPages = Math.Min(totalPages, 100 / PageSize);
         if (totalPages <= 1)
         {
             PageBar.Visibility = Visibility.Collapsed;

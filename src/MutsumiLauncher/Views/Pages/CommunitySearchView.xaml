@@ -67,13 +67,7 @@
                     <ComboBox x:Name="TypeCombo" Grid.Row="1" Grid.Column="5" Style="{StaticResource MtlComboBox}"
                               Margin="0,10,0,0" SelectedIndex="0">
                         <ComboBoxItem Content="全部" Tag="" />
-                        <ComboBoxItem Content="优化" Tag="optimization" />
-                        <ComboBoxItem Content="冒险" Tag="adventure" />
-                        <ComboBoxItem Content="科技" Tag="technology" />
-                        <ComboBoxItem Content="魔法" Tag="magic" />
-                        <ComboBoxItem Content="装饰" Tag="decoration" />
-                        <ComboBoxItem Content="实用" Tag="utility" />
-                        <ComboBoxItem Content="世界生成" Tag="worldgen" />
+                        <!-- 其余选项在 LoadCategoriesAsync 里按平台标签填充 -->
                     </ComboBox>
 
                     <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal"
@@ -130,11 +124,8 @@
                                     </Grid>
 
                                     <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                        <TextBlock Text="{Binding ChineseTitle}" FontSize="12"
-                                                   Foreground="{StaticResource InkMute}" Margin="0,0,0,2"
-                                                   Visibility="{Binding ChineseTitleVisibility}" />
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Title}" FontSize="15"
+                                            <TextBlock Text="{Binding PrimaryTitle}" FontSize="15"
                                                        Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Author}" FontSize="12"
                                                        Foreground="{StaticResource InkMute}"
@@ -359,9 +350,14 @@
                                                 </Style>
                                             </StackPanel.Style>
 
-                                            <TextBlock Text="{Binding Description}" FontSize="12"
-                                                       Foreground="{StaticResource InkSoft}" Margin="0,2,0,0"
-                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding SecondaryTitle}" FontSize="12"
+                                                       Foreground="{StaticResource InkSoft}" Margin="0,1,0,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding SecondaryTitleVisibility}" />
+                                            <TextBlock Text="{Binding TagsText}" FontSize="11"
+                                                       Foreground="{StaticResource AccentDeep}" Margin="0,3,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="{Binding TagsVisibility}" />
                                             <TextBlock Text="{Binding Meta}" FontSize="11"
                                                        Foreground="{StaticResource InkMute}" Margin="0,3,0,0" />
                                         </StackPanel>

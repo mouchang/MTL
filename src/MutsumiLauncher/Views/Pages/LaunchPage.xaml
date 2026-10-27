@@ -14,10 +14,10 @@
                         <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270"
                                           Opacity="0.14" Color="#FF2E4A38" />
                     </Border.Effect>
-                    <!-- 撑满卡片，最近邻放大保持像素感（原来的 64px 会被放大并插值，显得糊） -->
-                    <Image x:Name="AvatarImage" Source="/Assets/avatar.png" Stretch="UniformToFill"
-                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
                 </Border>
+                <Image x:Name="AvatarImage" Source="/Assets/avatar.png" Width="64" Height="64"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
             </Grid>
 
             <!-- 正版 / 用户名 / 切换账号 -->

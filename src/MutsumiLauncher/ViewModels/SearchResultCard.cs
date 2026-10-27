@@ -51,13 +51,40 @@ public sealed class SearchResultCard : INotifyPropertyChanged
             if (_chineseTitle == value) return;
 
             _chineseTitle = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChineseTitle)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChineseTitleVisibility)));
+            foreach (var name in new[]
+                     {
+                         nameof(ChineseTitle), nameof(ChineseTitleVisibility),
+                         nameof(PrimaryTitle), nameof(SecondaryTitle), nameof(SecondaryTitleVisibility),
+                     })
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
         }
     }
 
     public System.Windows.Visibility ChineseTitleVisibility =>
         string.IsNullOrWhiteSpace(_chineseTitle)
+            ? System.Windows.Visibility.Collapsed
+            : System.Windows.Visibility.Visible;
+
+    /// <summary>主标题：有中文名时用中文，否则用原名。</summary>
+    public string PrimaryTitle =>
+        string.IsNullOrWhiteSpace(_chineseTitle) ? _current.Title : _chineseTitle!;
+
+    /// <summary>副标题：有中文名时下面显示原名。</summary>
+    public string SecondaryTitle =>
+        string.IsNullOrWhiteSpace(_chineseTitle) ? string.Empty : _current.Title;
+
+    public System.Windows.Visibility SecondaryTitleVisibility =>
+        string.IsNullOrWhiteSpace(_chineseTitle)
+            ? System.Windows.Visibility.Collapsed
+            : System.Windows.Visibility.Visible;
+
+    /// <summary>平台标签（替代原来的简介）。</summary>
+    public string TagsText => _current.TagsText;
+
+    public System.Windows.Visibility TagsVisibility =>
+        string.IsNullOrWhiteSpace(TagsText)
             ? System.Windows.Visibility.Collapsed
             : System.Windows.Visibility.Visible;
 

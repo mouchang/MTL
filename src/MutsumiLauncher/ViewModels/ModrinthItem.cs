@@ -60,14 +60,14 @@ public sealed class ModrinthItem : INotifyPropertyChanged
                 _ => Hit.Downloads.ToString("N0"),
             };
 
-            var categories = string.Join(" · ", Hit.Categories.Take(3));
-            return string.IsNullOrEmpty(categories)
-                ? $"{downloads} 次下载"
-                : $"{downloads} 次下载 · {categories}";
+            return $"{downloads} 次下载";
         }
     }
 
     public string Meta => $"{MetaWithoutSource} · {SourceLabel}";
+
+    /// <summary>平台上的标签（Modrinth/CurseForge 的 categories）。</summary>
+    public string TagsText => string.Join(" · ", Hit.Categories.Take(5));
 
     public event PropertyChangedEventHandler? PropertyChanged;
 }

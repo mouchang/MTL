@@ -23,7 +23,8 @@ public sealed record ResourceSearchPage(
     IReadOnlyList<ResourceHit> Hits,
     long Total,
     long ModrinthTotal,
-    long CurseForgeTotal);
+    long CurseForgeTotal,
+    int PageCount);
 
 /// <summary>
 /// 资源获取统一入口（参考 PCL2 的 ResourceSearcher / ResourceProject / ResourceVersion）：
@@ -38,6 +39,7 @@ public static class ResourceService
 
     private static readonly ConcurrentDictionary<string, ModrinthProject> ProjectCache = new();
     private static readonly ConcurrentDictionary<string, IReadOnlyList<ModrinthVersion>> VersionCache = new();
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<string>> CategoryCache = new();
 
     public static async Task<ResourceSearchPage> SearchAsync(ResourcePlatform? platform,
         string query, string projectType, string? gameVersion, string? loader, string? category,
@@ -69,8 +71,9 @@ public static class ResourceService
         long modrinthTotal = 0;
         long curseForgeTotal = 0;
 
+        // 聚合模式固定抓同一个窗口：窗口随页码变大会让合并/排序结果漂移，翻页就会重复
         var aggregate = platform is null;
-        var fetchLimit = aggregate ? Math.Min(AggregateMaxItems, (page + 1) * pageSize) : pageSize;
+        var fetchLimit = aggregate ? AggregateMaxItems : pageSize;
         var modrinthLimit = Math.Min(100, fetchLimit);
         var curseForgeLimit = Math.Min(50, fetchLimit);
         var modrinthOffset = aggregate ? 0 : page * pageSize;
@@ -123,6 +126,7 @@ public static class ResourceService
         }
 
         List<ResourceHit> hits;
+        var pageCount = Math.Max(1, (int)Math.Ceiling(total0(modrinthTotal, curseForgeTotal, aggregate, platform) / (double)pageSize));
 
         if (!aggregate)
         {
@@ -148,14 +152,43 @@ public static class ResourceService
             else if (sort == ResourceSort.Downloads)
                 groups = groups.OrderByDescending(group => group.Max(hit => hit.Hit.Downloads)).ToList();
 
-            hits = TakePage(groups, page, pageSize);
+            hits = TakeGroups(groups, page, pageSize);
+            pageCount = Math.Max(1, (groups.Count + pageSize - 1) / pageSize);
         }
 
         var total = aggregate
             ? modrinthTotal + curseForgeTotal
             : platform == ResourcePlatform.CurseForge ? curseForgeTotal : modrinthTotal;
 
-        return new ResourceSearchPage(hits, total, modrinthTotal, curseForgeTotal);
+        return new ResourceSearchPage(hits, total, modrinthTotal, curseForgeTotal, pageCount);
+    }
+
+    private static long total0(long modrinthTotal, long curseForgeTotal, bool aggregate,
+        ResourcePlatform? platform) => aggregate
+        ? modrinthTotal + curseForgeTotal
+        : platform == ResourcePlatform.CurseForge ? curseForgeTotal : modrinthTotal;
+
+    private static List<ResourceHit> TakeGroups(IReadOnlyList<List<ResourceHit>> groups, int page, int pageSize)
+        => groups.Skip(page * pageSize).Take(pageSize).SelectMany(group => group).ToList();
+
+    /// <summary>当前项目类型的全部分类标签（Modrinth 提供，CurseForge 也用同一套）。</summary>
+    public static async Task<IReadOnlyList<string>> GetCategoriesAsync(string projectType,
+        CancellationToken cancellationToken = default)
+    {
+        var key = $"categories:{projectType}";
+        if (CategoryCache.TryGetValue(key, out var cached)) return cached;
+
+        var all = await Modrinth.GetCategoriesAsync(cancellationToken);
+
+        var list = all
+            .Where(item => item.ProjectType.Equals(projectType, StringComparison.OrdinalIgnoreCase))
+            .Select(item => item.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        CategoryCache[key] = list;
+        return list;
     }
 
     public static async Task<ModrinthProject?> GetProjectAsync(ResourcePlatform platform, string projectId,
