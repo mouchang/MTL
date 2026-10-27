@@ -29,9 +29,8 @@ public partial class SettingsPage : UserControl
 
     private bool _memoryLoading;
 
-    /// <summary>机器物理内存（MB），用来算「自动配置」的建议值。</summary>
-    private static int TotalMemoryMb =>
-        (int)Math.Min(int.MaxValue, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024);
+    /// <summary>机器物理内存（MB），滑块上限就是它，自动值取一半。</summary>
+    private static int TotalMemoryMb => SystemMemory.TotalMb;
 
     /// <summary>1 GB 以上显示成 x GB，以下显示 MB。</summary>
     private static string FormatMemory(int mb) =>
@@ -39,8 +38,7 @@ public partial class SettingsPage : UserControl
 
     private static int AutoMemoryMb()
     {
-        var half = TotalMemoryMb / 2;
-        return Math.Clamp(half / 512 * 512, 2048, 12288);
+        return Math.Clamp(TotalMemoryMb / 2 / 512 * 512, 2048, TotalMemoryMb);
     }
 
     private void LoadMemoryInfo()
@@ -53,13 +51,14 @@ public partial class SettingsPage : UserControl
         MemoryManualRadio.IsChecked = manual;
         MemoryAutoRadio.IsChecked = !manual;
 
-        var value = manual ? config.MemoryMb : AutoMemoryMb();
-        MemorySlider.Value = Math.Clamp(value, 512, 32768);
+        MemorySlider.Maximum = Math.Max(4096, TotalMemoryMb);
+        MemorySlider.Value = Math.Clamp(manual ? config.MemoryMb : AutoMemoryMb(), 512, MemorySlider.Maximum);
         MemorySlider.IsEnabled = manual;
 
-        MemoryHint.Text = $"自动配置按物理内存（{TotalMemoryMb:N0} MB）的一半分配，上限 12 GB；" +
-                          "版本设置里可以给单个实例单独指定。";
-        MemoryValueText.Text = manual ? FormatMemory(value) : $"{FormatMemory(value)}（自动）";
+        MemoryHint.Text = $"检测到物理内存 {FormatMemory(TotalMemoryMb)}：自动配置取一半，" +
+                          $"手动最多可以拉到 {FormatMemory(TotalMemoryMb)}。版本设置里可以给单个实例单独指定。";
+        var shown = (int)MemorySlider.Value;
+        MemoryValueText.Text = manual ? FormatMemory(shown) : $"{FormatMemory(shown)}（自动）";
 
         _memoryLoading = false;
     }

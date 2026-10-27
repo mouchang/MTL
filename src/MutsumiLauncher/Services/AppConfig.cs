@@ -27,8 +27,8 @@ public sealed class AppConfig
         {
             if (!MemoryAuto) return MemoryMb > 0 ? MemoryMb : 4096;
 
-            var total = (int)Math.Min(int.MaxValue, GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1024 / 1024);
-            return Math.Clamp(total / 2 / 512 * 512, 2048, 12288);
+            var total = SystemMemory.TotalMb;
+            return Math.Clamp(total / 2 / 512 * 512, 2048, total);
         }
     }
 
