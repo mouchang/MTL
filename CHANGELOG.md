@@ -73,6 +73,16 @@
 - 桌面图标换成新设计稿，导出 16/24/32/48/64/128/256 七个尺寸；
   生成脚本放进 `tools/icon/make-ico.py`，以后换图重跑一次即可
 
+### 内置代理：Worker 重做（订阅 + 内核合并）
+- 订阅网关与内核镜像合并成一个 Worker（`worker/proxy-gateway.js`）：
+  `/sub/config`、`/sub/status`、`/sub/publish`、`/core/mihomo.zip`、`/core/status`、`/core/publish`
+- **内核存进 KV**：不再让 Worker 现去 GitHub 拉（那条路又慢又容易被掐），
+  22 MB 存一次，之后所有客户端从 Cloudflare 边缘拿；下载支持 `Range` 断点续传
+- 订阅回调带 `X-MTL-Source`（kv / upstream），客户端日志里能直接看出走的哪条
+- 客户端新增 `publish-core.ps1`，部署与排查步骤写进 `worker/PROXY-SETUP.md`
+- 内核下载失败时提示改成「内核下载失败（网络不稳定，或两个下载源都连不上）」，
+  不再笼统报「内核启动失败」
+
 ### 内置代理：内核下载
 - 内核改成**断点续传**：先写 `.part`，校验通过再改名。以前是 `File.Create` 直接覆盖，
   镜像慢、连接被掐断一次就把已经下好的部分全截断，21 MB 永远下不完

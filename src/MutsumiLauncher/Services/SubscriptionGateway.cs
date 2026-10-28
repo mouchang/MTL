@@ -36,14 +36,19 @@ public static class SubscriptionGateway
 
             var yaml = await response.Content.ReadAsStringAsync(cancellationToken);
 
+            // 网关会告诉我们这份配置是 KV 里的副本还是回源拿的，排查时很有用
+            var source = response.Headers.TryGetValues("X-MTL-Source", out var values)
+                ? values.FirstOrDefault() ?? "?"
+                : "?";
+
             if (!ClashConfigBuilder.LooksLikeClash(yaml))
             {
-                AppLog.Info($"subscription gateway: 返回内容不是 Clash 配置（{yaml.Length} 字符）");
+                AppLog.Info($"subscription gateway: 返回内容不是 Clash 配置（{yaml.Length} 字符，来源 {source}）");
                 return (null, "网关返回的不是 Clash 配置");
             }
 
             _lastPublished = version;
-            AppLog.Info($"subscription gateway: {yaml.Length} 字符（发布版本 {version}，fresh={fresh}）");
+            AppLog.Info($"subscription gateway: {yaml.Length} 字符（来源 {source}，发布版本 {version}，fresh={fresh}）");
             return (yaml, "ok");
         }
         catch (OperationCanceledException)

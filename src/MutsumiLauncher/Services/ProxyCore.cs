@@ -317,7 +317,12 @@ public sealed class ProxyCore
             }
 
             var core = await EnsureCoreAsync(cancellationToken).ConfigureAwait(false);
-            if (core is null) return false;
+
+            if (core is null)
+            {
+                LastError = "内核下载失败（网络不稳定，或两个下载源都连不上）";
+                return false;
+            }
 
             var (yaml, reason) = await SubscriptionGateway.FetchAsync(cancellationToken).ConfigureAwait(false);
 

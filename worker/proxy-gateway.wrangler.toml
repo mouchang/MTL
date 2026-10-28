@@ -1,0 +1,25 @@
+name = "mtl-proxy"
+main = "proxy-gateway.js"
+compatibility_date = "2026-10-01"
+
+# 两条路由都指向同一个 Worker；比 mtl.dpdns.org/* 更具体，
+# 不会影响现有的 /gh、/maven.neoforged.net、/cdn.modrinth.com 那几个
+routes = [
+  { pattern = "mtl.dpdns.org/sub/*", zone_name = "mtl.dpdns.org" },
+  { pattern = "mtl.dpdns.org/core/*", zone_name = "mtl.dpdns.org" }
+]
+
+[vars]
+SUB_ENABLED = "1"
+
+# 存订阅副本与内核 zip 的 KV（不绑也能跑，只是没有 KV 副本、内核只能回源）
+#   npx wrangler kv namespace create SUB_KV
+# 把返回的 id 填进来：
+#
+# [[kv_namespaces]]
+# binding = "SUB_KV"
+# id = "<namespace id>"
+
+# Secret（不要写在这里）：
+#   npx wrangler secret put SUB_URL       订阅回源地址
+#   npx wrangler secret put PUBLISH_KEY   上传校验用的 key

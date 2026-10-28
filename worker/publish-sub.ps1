@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   把订阅内容推送到 MTL 订阅网关（绕开「订阅端拒绝 Cloudflare 出口 IP」）。
 
@@ -14,7 +14,7 @@ param(
     [Parameter(Mandatory = $true)][string]$SubscriptionUrl,
     [Parameter(Mandatory = $true)][string]$PublishKey,
     [string]$Gateway = "https://mtl.dpdns.org/sub",
-    [string]$UserAgent = "clash-verge/v2.0.0"
+    [string]$UserAgent = "clash.meta"
 )
 
 $ErrorActionPreference = "Stop"

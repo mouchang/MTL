@@ -25,110 +25,29 @@
 更具体的路由（`mtl.dpdns.org/cdn.modrinth.com/*`）优先于 `mtl.dpdns.org/*`，
 所以不会影响 NeoForge maven 那条。客户端不需要改任何配置。
 
-## 订阅网关（内置代理用）
+## 订阅网关与内核镜像（内置代理用）
 
-[`sub-gateway.js`](sub-gateway.js) 让启动器**永远拿不到订阅链接**：
+这两个功能已经合并成一个 Worker：`proxy-gateway.js`。
 
-```
-启动器（只知道 Worker 地址 + 设备 ID）
-   └─ GET /sub/config?did=<deviceId>
-        Worker 用 SUB_URL（secret）去拉订阅 → 缓存 55 分钟 → 返回 Clash YAML
-```
+| 路径 | 用途 | 谁在用 |
+|---|---|---|
+| `/sub/config?did=...` | 下发 Clash YAML（订阅链接不出 Cloudflare） | SubscriptionGateway |
+| `/sub/status` | 网关状态：来源（kv/upstream）、发布时间、节点数 | 排查用 |
+| `/sub/publish` | 上传订阅（X-Publish-Key） | publish-sub.ps1 |
+| `/core/mihomo.zip` | 内核 zip，支持 Range 断点续传 | ProxyCore |
+| `/core/status` | 内核版本 / 大小 / SHA-256 | 排查用 |
+| `/core/publish` | 上传内核 zip（X-Publish-Key） | publish-core.ps1 |
 
-| 响应 | 含义 |
-|---|---|
-| `200 text/yaml` | 正常，正文为 Clash 配置；`subscription-userinfo` 头带流量信息 |
-| `400 {"enabled":false,"reason":"bad-device"}` | deviceId 格式不对 |
-| `403 {"enabled":false,"reason":"device-not-allowed"}` | 白名单模式且该设备未授权 |
-| `502 {"enabled":false,"reason":"upstream"}` | 订阅端拉取失败（有缓存时会用缓存） |
-| `503 {"enabled":false,"reason":"disabled"}` | 已被远程停用 |
+**部署步骤、日常换订阅、排查手册都在 [PROXY-SETUP.md](PROXY-SETUP.md)**
 
-### 部署
+要点：
 
-```bash
-cd worker
-npx wrangler secret put SUB_URL          # 粘贴订阅链接，只存 Cloudflare
-npx wrangler deploy -c sub-gateway.wrangler.toml
-```
+- 内核 zip 存在 KV 里（22 MB < 25 MB 上限），不再让 Worker 现去 GitHub 拉 ——
+  国内用户第一次下载也不会卡在 GitHub 上
+- 客户端会校验内核的 SHA-256（7aaf636a…864d），镜像被篡改也装不上
+- 订阅优先级：KV 副本 → 回源 SUB_URL
 
-### 订阅端 403 时：改用「本机上传」
-
-很多机场会直接屏蔽 **Cloudflare 的出口 IP（AS13335）**，Worker 回源会拿到
-`403`（`/sub/status?probe=1` 里的 `probe.status` 就能看到）。
-这种订阅链接用本机/代理是能正常拉取的，所以改成「本机拉一次，推到 KV」：
-
-1. 建 KV 并绑定（必须，上传的副本存在这里）：
-
-```bash
-npx wrangler kv namespace create SUB_KV   # 把返回的 id 写进 sub-gateway.wrangler.toml
-npx wrangler secret put PUBLISH_KEY       # 随便一个长随机串，上传时要校验
-```
-
-2. 本机执行上传（PowerShell，Windows 自带 curl）：
-
-```powershell
-.\publish-sub.ps1 -SubscriptionUrl "https://你的机场/api/v1/pq/xxxx" -PublishKey "上一步的 PUBLISH_KEY"
-```
-
-脚本会：用 `clash` UA 拉订阅 → 校验像不像 Clash YAML → POST 到 `/sub/publish` → 再拉一次 `/sub/config` 自检。
-
-3. 之后 Worker 永远只读 KV：
-
-| 端点 | 行为 |
-|---|---|
-| `GET /sub/config?did=...` | 优先 KV 副本（`X-Sub-Source: kv`），没有时才回源 |
-| `POST /sub/publish` | 需要 `X-Publish-Key: <PUBLISH_KEY>`，体为 Clash YAML |
-| `GET /sub/status` | 多了 `published` / `publishedAt` 两个字段 |
-
-> 节点更新后重新跑一次脚本即可（建议每周一次，或换节点时）。
-
-路由 `mtl.dpdns.org/sub/*` 写在 `sub-gateway.wrangler.toml` 里，比 `mtl.dpdns.org/*` 更具体，
-不会影响 NeoForge / Modrinth 那两个 Worker。
-
-> 订阅端按 UA 返回不同格式：网关固定用 `User-Agent: clash-verge/...` 请求，
-> 否则拿到的是面板 HTML 而不是 Clash YAML。
-
-### 开关与白名单（可选 KV）
-
-不绑 KV 就是**开放模式**（任何合法 deviceId 都能拿配置），先跑通再收紧：
-
-```bash
-npx wrangler kv namespace create SUB_KV    # 把返回的 id 写进 sub-gateway.wrangler.toml
-
-# 1) 全员停用（客户端自动回退直连）
-npx wrangler kv key put --binding SUB_KV enabled "0"
-
-# 2) 切到白名单模式
-npx wrangler kv key put --binding SUB_KV mode "closed"
-
-# 3) 放行某台设备（设备 ID 在启动器「设置 → 下载源 → 内置代理」里显示）
-npx wrangler kv key put --binding SUB_KV "allow:3f2a1c40-..." "1"
-```
-
-### 验证
-
-```bash
-curl -s "https://mtl.dpdns.org/sub/status"
-curl -s -o clash.yaml -w "%{http_code} %{size_download}\n" \
-  "https://mtl.dpdns.org/sub/config?did=test-device-0001"
-head -3 clash.yaml
-```
-
-## 内核镜像（内置代理用）
-
-[`core-mirror.js`](core-mirror.js) 把 `mihomo-windows-amd64-compatible-v1.19.33.zip`（约 22.5 MB）
-缓存在 Cloudflare 边缘，启动器优先从这里下载内核，GitHub 作为兜底：
-
-1. Workers & Pages → 新建 Worker，命名 `mtl-core`，粘贴 [`core-mirror.js`](core-mirror.js)
-2. 该 Worker → 设置 → 域和路由 → 添加路由：`mtl.dpdns.org/core/*`
-3. 验证：
-
-```bash
-curl -sI "https://mtl.dpdns.org/core/mihomo.zip" | head -5      # 200 + application/zip
-curl -sI "https://mtl.dpdns.org/core/mihomo.zip" | grep -i x-mtl-cache   # 第二次应为 HIT
-```
-
-客户端下载后会校验 ZIP 的 **SHA-256**（`7aaf636a…864d`），镜像被篡改也装不上。
+---
 
 ## 部署
 
@@ -170,11 +89,8 @@ NeoForge CDN 已经硬编码为 `https://mtl.dpdns.org/maven.neoforged.net`，�
 ```bash
 curl https://mtl.dpdns.org/gh/latest
 curl -I https://mtl.dpdns.org/maven.neoforged.net/releases/net/neoforged/neoforge/21.1.66/neoforge-21.1.66-installer.jar
-
-# Modrinth 文件镜像（第一次回源，之后 CF-Cache-Status: HIT）
-curl -o /dev/null -w "%{http_code} %{size_download}\n" \
-  "https://mtl.dpdns.org/cdn.modrinth.com/data/P7dR8mSH/versions/tCBJwbEV/fabric-api-0.165.0%2B26.4.jar"
-curl -I "https://mtl.dpdns.org/cdn.modrinth.com/data/P7dR8mSH/versions/tCBJwbEV/fabric-api-0.165.0%2B26.4.jar" | grep -i cf-cache-status
+curl -s https://mtl.dpdns.org/sub/status
+curl -s https://mtl.dpdns.org/core/status
 ```
 
 ## 路由冲突排查

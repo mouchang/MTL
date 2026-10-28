@@ -1,7 +1,0 @@
-name = "mtl-core"
-main = "core-mirror.js"
-compatibility_date = "2026-10-01"
-
-routes = [
-  { pattern = "mtl.dpdns.org/core/*", zone_name = "mtl.dpdns.org" }
-]
