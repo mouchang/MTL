@@ -183,7 +183,6 @@ MutsumiLauncher/
 - [x] 微软正版登录
 - [x] 明亮 / 暗色 / 自定义主题
 - [x] 存档备份与还原
-- [ ] 微软登录等待 Mojang 应用复核
 - [ ] CurseForge 官方 API
 
 ## 许可
