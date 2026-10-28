@@ -24,7 +24,8 @@ public sealed record ResourceSearchPage(
     long Total,
     long ModrinthTotal,
     long CurseForgeTotal,
-    int PageCount);
+    int PageCount,
+    bool CurseForgePending = false);
 
 /// <summary>
 /// 资源获取统一入口（参考 PCL2 的 ResourceSearcher / ResourceProject / ResourceVersion）：
@@ -42,10 +43,7 @@ public static class ResourceService
     /// 聚合时 CurseForge 走的是第三方镜像，偶尔一次请求要十几秒。
     /// 超时就先不用它，别让整个搜索页卡住 —— 已经抓到的 Modrinth 结果照常显示。
     /// </summary>
-    private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(6);
-
-    /// <summary>单次 CurseForge 请求超过这个时间，就只留这一块结果，后面不再等它。</summary>
-    private static readonly TimeSpan SlowMirrorThreshold = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(45);
 
     private const int ModrinthChunk = 100;
     private const int CurseForgeChunk = 50;
@@ -175,9 +173,13 @@ public static class ResourceService
             {
                 var before = bucket.Count;
                 await FillAsync(bucket, query, projectType, gameVersion, loader, category, sort,
-                    cancellationToken);
+                    page, cancellationToken);
 
-                if (bucket.Count == before) break;  // 没抓到新东西，别死循环
+                // CurseForge 现在是后台抓的，它还没回来时不能因为「这一轮没长」就退出
+                var curseForgePending = !bucket.CurseForgeDone;
+
+                if (bucket.Count == before && !curseForgePending) break;  // 真没东西了
+                if (bucket.Count == before && curseForgePending) break;   // 剩下的交给后台，别卡住页面
             }
 
             var sorted = sort switch
@@ -214,8 +216,11 @@ public static class ResourceService
                 ? Math.Clamp(knownPages, 1, cap)
                 : Math.Clamp(Math.Max(knownPages, Math.Min(apiPages, cap)), 1, cap);
 
+            var pending = !bucket.CurseForgeDone
+                          && bucket.CurseForgeTask is { IsCompleted: false };
+
             return new ResourceSearchPage(hits, bucket.ModrinthTotal + bucket.CurseForgeTotal,
-                bucket.ModrinthTotal, bucket.CurseForgeTotal, pageCount);
+                bucket.ModrinthTotal, bucket.CurseForgeTotal, pageCount, pending);
         }
         finally
         {
@@ -223,26 +228,79 @@ public static class ResourceService
         }
     }
 
-    /// <summary>两边并发各补抓一块（Modrinth 100 条 / CurseForge 50 条）。</summary>
+    /// <summary>
+    /// 补抓一块。Modrinth 很快，等它；CurseForge 走第三方镜像，实测一次要 20 秒左右
+    /// （mod 类目 50 条响应 1.4 MB），所以只在前台等一小会儿，剩下的丢后台继续抓，
+    /// 抓到了下一次翻页/刷新就能看见 —— 不能因为镜像慢就整块不显示。
+    /// </summary>
     private static async Task FillAsync(AggregateBucket bucket, string query, string projectType,
-        string? gameVersion, string? loader, string? category, ResourceSort sort,
+        string? gameVersion, string? loader, string? category, ResourceSort sort, int page,
         CancellationToken cancellationToken)
     {
-        var tasks = new List<Task>(2);
+        if (!bucket.ModrinthDone)
+        {
+            await FillModrinthAsync(bucket, query, projectType, gameVersion, loader, category, sort,
+                cancellationToken).ConfigureAwait(false);
+        }
 
-        if (!bucket.ModrinthDone) tasks.Add(FillModrinthAsync(bucket, query, projectType,
-            gameVersion, loader, category, sort, cancellationToken));
+        var grace = page == 0 ? CurseForgeFirstPageGrace : TimeSpan.Zero;
+        await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader, grace,
+            cancellationToken).ConfigureAwait(false);
+    }
 
-        if (!bucket.CurseForgeDone) tasks.Add(FillCurseForgeAsync(bucket, query, projectType,
-            gameVersion, loader, cancellationToken));
+    /// <summary>
+    /// 第一页最多等 CurseForge 这么久（实测镜像一次要 19 秒上下），等不到先出 Modrinth 的结果，
+    /// 抓完再由界面自动补一次。整页只等一次，不能每轮补抓都等。
+    /// </summary>
+    private static readonly TimeSpan CurseForgeFirstPageGrace = TimeSpan.FromSeconds(3);
 
-        if (tasks.Count > 0) await Task.WhenAll(tasks).ConfigureAwait(false);
+    private static async Task EnsureCurseForgeAsync(AggregateBucket bucket, string query,
+        string projectType, string? gameVersion, string? loader, TimeSpan grace,
+        CancellationToken cancellationToken)
+    {
+        if (bucket.CurseForgeDone) return;
+
+        Task? task;
+
+        lock (bucket.Sync)
+        {
+            if (bucket.CurseForgeTask is null || bucket.CurseForgeTask.IsCompleted)
+            {
+                bucket.CurseForgeTask = Task.Run(
+                    () => FillCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
+                        bucket.Lifetime.Token),
+                    CancellationToken.None);
+            }
+
+            task = bucket.CurseForgeTask;
+        }
+
+        if (task is null || task.IsCompleted) return;
+        if (grace <= TimeSpan.Zero) return;
+
+        // 整页只等一次：补抓循环会来回好几轮，每轮都等就变成几十秒了
+        lock (bucket.Sync)
+        {
+            if (bucket.CurseForgeGraceUsed) return;
+            bucket.CurseForgeGraceUsed = true;
+        }
+
+        var finished = await Task.WhenAny(task, Task.Delay(grace, cancellationToken))
+            .ConfigureAwait(false);
+
+        if (finished != task)
+            AppLog.Info("curseforge 聚合：镜像较慢，先在后台抓，本次只返回 Modrinth 结果");
     }
 
     private static async Task FillCurseForgeAsync(AggregateBucket bucket, string query,
         string projectType, string? gameVersion, string? loader, CancellationToken cancellationToken)
     {
-        var limit = Math.Min(CurseForgeChunk, AggregateMaxItems - bucket.CurseForge.Count);
+        int limit;
+
+        lock (bucket.Sync)
+        {
+            limit = Math.Min(CurseForgeChunk, AggregateMaxItems - bucket.CurseForge.Count);
+        }
 
         if (limit <= 0)
         {
@@ -253,26 +311,33 @@ public static class ResourceService
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(CurseForgeFillTimeout);
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-
         try
         {
+            var page = 0;
+            long total;
+
+            lock (bucket.Sync)
+            {
+                page = bucket.CurseForgePage;
+            }
+
             var result = await CurseForge.SearchAsync(query, ClassIdOf(projectType), gameVersion,
-                LoaderTypeOf(loader), bucket.CurseForgePage, limit, 6, "desc", timeout.Token);
+                LoaderTypeOf(loader), page, limit, 6, "desc", timeout.Token);
 
-            bucket.CurseForgeTotal = result.Total;
-            bucket.CurseForgePage++;
-            bucket.CurseForge.AddRange(result.Mods.Select(mod => ToHit(mod, projectType)));
+            lock (bucket.Sync)
+            {
+                total = result.Total;
+                bucket.CurseForgeTotal = total;
+                bucket.CurseForgePage = page + 1;
+                bucket.CurseForge.AddRange(result.Mods.Select(mod => ToHit(mod, projectType)));
+            }
 
-            // 镜像慢得像蜗牛时，抓到一块就够了 —— 后面每翻一页都等它几秒没人受得了
-            if (result.Mods.Count < limit || clock.Elapsed > SlowMirrorThreshold)
-                bucket.CurseForgeDone = true;
+            if (result.Mods.Count < limit) bucket.CurseForgeDone = true;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // 镜像太慢：这一轮不要它了，搜索页先出 Modrinth 的结果
-            AppLog.Info("curseforge 聚合搜索超时，本次只用 Modrinth 的结果");
-            bucket.CurseForgeDone = true;
+            // 45 秒还没回来：记一笔，不要永久放弃，下次翻页再试
+            AppLog.Info("curseforge 聚合搜索超时，稍后重试");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -330,7 +395,15 @@ public static class ResourceService
     {
         public readonly List<ResourceHit> Modrinth = [];
         public readonly List<ResourceHit> CurseForge = [];
+
+        /// <summary>翻页互斥：一次只让一个请求改 bucket。</summary>
         public readonly SemaphoreSlim Gate = new(1, 1);
+
+        /// <summary>CurseForge 是在后台线程里追加的，读写都得拿这把锁。</summary>
+        public readonly object Sync = new();
+
+        /// <summary>bucket 被淘汰时取消还在跑的 CurseForge 请求。</summary>
+        public readonly CancellationTokenSource Lifetime = new();
 
         public int ModrinthOffset;
         public int CurseForgePage;
@@ -339,14 +412,39 @@ public static class ResourceService
         public bool ModrinthDone;
         public bool CurseForgeDone;
 
-        public int Count => Modrinth.Count + CurseForge.Count;
+        /// <summary>后台正在跑的 CurseForge 抓取（同时只允许一个）。</summary>
+        public Task? CurseForgeTask;
 
-        public IEnumerable<ResourceHit> Hits() => Modrinth.Concat(CurseForge);
+        /// <summary>已经为这个缓存等过一次 CurseForge，后面不再卡前台。</summary>
+        public bool CurseForgeGraceUsed;
+
+        public int Count
+        {
+            get
+            {
+                lock (Sync) return Modrinth.Count + CurseForge.Count;
+            }
+        }
+
+        public IEnumerable<ResourceHit> Hits()
+        {
+            lock (Sync) return Modrinth.Concat(CurseForge).ToList();
+        }
     }
 
     private static AggregateBucket GetBucket(string key)
     {
-        if (AggregateCache.Count > 6) AggregateCache.Clear();
+        if (AggregateCache.Count > 6)
+        {
+            foreach (var stale in AggregateCache.Values)
+            {
+                try { stale.Lifetime.Cancel(); }
+                catch { /* 已经释放 */ }
+            }
+
+            AggregateCache.Clear();
+        }
+
         return AggregateCache.GetOrAdd(key, _ => new AggregateBucket());
     }
 

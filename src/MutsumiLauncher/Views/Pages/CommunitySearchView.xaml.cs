@@ -24,6 +24,11 @@ public partial class CommunitySearchView : UserControl
     private string? _presetGameVersion;
     private string? _presetLoader;
 
+    /// <summary>CurseForge 慢的时候会在后台补抓，用剩下的补刷次数控制自动刷新。</summary>
+    private int _curseForgeRefreshLeft;
+
+    private CancellationTokenSource? _curseForgeRefresh;
+
     /// <summary>点击结果行时请求上层打开详情页。</summary>
     public event Action<ModrinthItem, string?>? DetailRequested;
 
@@ -162,6 +167,8 @@ public partial class CommunitySearchView : UserControl
 
     private async Task RunSearchAsync(int page = 0)
     {
+        if (page != _page) _curseForgeRefreshLeft = 0;
+
         _page = Math.Max(0, page);
         Loading.IsActive = true;
 
@@ -213,6 +220,9 @@ public partial class CommunitySearchView : UserControl
                 };
 
             BuildPageBar();
+
+            // CurseForge 还在后台抓：过一会儿自己再刷一次，抓到了就会补进来
+            if (result.CurseForgePending) ScheduleCurseForgeRefresh(page);
         }
         catch (Exception ex)
         {
@@ -225,6 +235,40 @@ public partial class CommunitySearchView : UserControl
         {
             Loading.IsActive = false;
         }
+    }
+
+    /// <summary>
+    /// CurseForge 走第三方镜像，实测一次要 20 秒左右，所以第一次只等 8 秒。
+    /// 没等到就在这里挂一个延时刷新：后台抓完后再拉一次同一页，把 CF 的结果补上。
+    /// </summary>
+    private void ScheduleCurseForgeRefresh(int page)
+    {
+        if (_curseForgeRefreshLeft <= 0) _curseForgeRefreshLeft = 3;
+
+        _curseForgeRefresh?.Cancel();
+        _curseForgeRefresh = new CancellationTokenSource();
+        var token = _curseForgeRefresh.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(22), token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            await Dispatcher.InvokeAsync(async () =>
+            {
+                if (token.IsCancellationRequested || _page != page) return;
+                if (_curseForgeRefreshLeft <= 0) return;
+
+                _curseForgeRefreshLeft--;
+                await RunSearchAsync(page);
+            });
+        }, token);
     }
 
     private void BuildPageBar()
