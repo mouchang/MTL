@@ -59,12 +59,14 @@ public static class TranslationTable
                 var cnKey = Normalize(cn);
                 var enKey = en is null ? string.Empty : Normalize(en);
 
-                data.CnToEn.TryAdd(cnKey, en ?? string.Empty);
+                if (HasChinese(cn)) data.CnToEn.TryAdd(cnKey, en ?? string.Empty);
                 data.Items.Add((cn, en ?? string.Empty, cnKey, enKey));
 
-                if (enKey.Length > 0) data.EnToCn.TryAdd(enKey, cn);
+                // MC百科里有 297 条页面的「中文名」其实是英文（Dev World / Better With Lib …），
+                // 拿来当中文副标题毫无意义，还会盖住真标题（Fabric API 被显示成 Dev World）
+                if (enKey.Length > 0 && HasChinese(cn)) data.EnToCn.TryAdd(enKey, cn);
 
-                if (!string.IsNullOrWhiteSpace(abbr))
+                if (!string.IsNullOrWhiteSpace(abbr) && HasChinese(cn))
                 {
                     var abbrKey = Normalize(abbr);
                     if (abbrKey.Length >= 2) data.AbbrToCn.TryAdd(abbrKey, cn);
@@ -176,6 +178,7 @@ public static class TranslationTable
         foreach (var item in data.Items)
         {
             if (item.EnKey.Length < 5) continue;
+            if (!HasChinese(item.Cn)) continue;
             if (!key.Contains(item.EnKey, StringComparison.Ordinal)) continue;
 
             if (item.EnKey.Length > bestLength)

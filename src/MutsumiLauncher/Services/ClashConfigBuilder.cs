@@ -53,20 +53,36 @@ public static class ClashConfigBuilder
         return (block, names);
     }
 
-    /// <summary>按「包含匹配」挑节点；挑不到就用第一个 0.1 倍率节点，再不行用第一个。</summary>
+    /// <summary>机场塞在节点列表里的「剩余流量 / 到期时间」这类展示项，不是真节点。</summary>
+    private static readonly string[] InfoKeywords =
+        ["剩余", "到期", "重置", "官网", "订阅", "有效期", "流量", "套餐", "客服"];
+
+    public static bool IsInfoNode(string name)
+        => InfoKeywords.Any(keyword => name.Contains(keyword, StringComparison.Ordinal));
+
+    /// <summary>去掉信息节点；全被过滤掉时退回原列表（总比没有强）。</summary>
+    public static List<string> RealNodes(IReadOnlyList<string> names)
+    {
+        var real = names.Where(name => !IsInfoNode(name)).ToList();
+        return real.Count > 0 ? real : names.ToList();
+    }
+
+    /// <summary>按「包含匹配」挑节点；挑不到就用低倍率节点，再不行用第一个。</summary>
     public static string? PickNode(IReadOnlyList<string> names, string? preferred)
     {
-        if (names.Count == 0) return null;
+        var candidates = RealNodes(names);
+        if (candidates.Count == 0) return null;
 
         if (!string.IsNullOrWhiteSpace(preferred))
         {
-            var hit = names.FirstOrDefault(name =>
+            var hit = candidates.FirstOrDefault(name =>
                 name.Contains(preferred.Trim(), StringComparison.OrdinalIgnoreCase));
             if (hit is not null) return hit;
         }
 
-        return names.FirstOrDefault(name => name.Contains("0.1倍", StringComparison.Ordinal))
-               ?? names[0];
+        return candidates.FirstOrDefault(name => name.Contains("0.1倍", StringComparison.Ordinal))
+               ?? candidates.FirstOrDefault(name => name.Contains("X0.1", StringComparison.OrdinalIgnoreCase))
+               ?? candidates[0];
     }
 
     /// <summary>生成最小配置；失败返回 null（调用方回落直连）。</summary>
@@ -79,8 +95,9 @@ public static class ClashConfigBuilder
         if (node is null) return null;
 
         // 首选节点 + 其余节点组成 fallback 组：首选挂了自动切到备用（如 us -> us-HY2）
+        var real = RealNodes(names);
         var group = new List<string> { node };
-        group.AddRange(names.Where(name => !name.Equals(node, StringComparison.Ordinal)).Take(3));
+        group.AddRange(real.Where(name => !name.Equals(node, StringComparison.Ordinal)).Take(3));
 
         string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
