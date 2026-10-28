@@ -13,7 +13,7 @@
 | `/sub/status` | 网关状态（是否启用 / 模式） | 启动器设置页 |
 | `/core/mihomo.zip` | **内核镜像**：mihomo release 缓存在边缘，下载内核不再依赖 GitHub | `ProxyCore` |
 
-## 独立部署 Modrinth 镜像（不动现有 Worker）
+## 独立部署 Modrinth 镜像
 
 如果账号里已经有别的 Worker 占着 `mtl.dpdns.org/*`（例如老的 `mtl-neoforge`），
 不想合并，也可以单独建一个只做 Modrinth 镜像的 Worker：
@@ -31,7 +31,7 @@
 
 | 路径 | 用途 | 谁在用 |
 |---|---|---|
-| `/sub/config?did=...` | 下发 Clash YAML（订阅链接不出 Cloudflare） | SubscriptionGateway |
+| `/sub/config?did=...` | 下发 Clash YAML | SubscriptionGateway |
 | `/sub/status` | 网关状态：来源（kv/upstream）、发布时间、节点数 | 排查用 |
 | `/sub/publish` | 上传订阅（X-Publish-Key） | publish-sub.ps1 |
 | `/core/mihomo.zip` | 内核 zip，支持 Range 断点续传 | ProxyCore |
