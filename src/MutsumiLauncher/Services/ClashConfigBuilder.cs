@@ -94,10 +94,12 @@ public static class ClashConfigBuilder
         var node = PickNode(names, preferredNode);
         if (node is null) return null;
 
-        // 首选节点 + 其余节点组成 fallback 组：首选挂了自动切到备用（如 us -> us-HY2）
+        // 首选节点打头，其余真实节点全部当备用：首选挂了 mihomo 自动往下找
         var real = RealNodes(names);
         var group = new List<string> { node };
-        group.AddRange(real.Where(name => !name.Equals(node, StringComparison.Ordinal)).Take(3));
+        group.AddRange(real
+            .Where(name => !name.Equals(node, StringComparison.Ordinal))
+            .Take(15));
 
         string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
