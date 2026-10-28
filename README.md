@@ -191,3 +191,7 @@ MutsumiLauncher/
 [MIT](LICENSE) © 2026 [mouchang](https://github.com/mouchang)
 
 MTL 是独立项目，与任何现有启动器无隶属关系。
+
+## 赞助
+
+爱发电：https://afdian.com/a/box_star
