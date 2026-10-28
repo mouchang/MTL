@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   把 mihomo 内核 zip 推到 MTL 代理网关（存 KV），国内下载不再依赖 GitHub。
 

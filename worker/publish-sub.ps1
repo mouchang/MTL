@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   把订阅内容推送到 MTL 订阅网关（绕开「订阅端拒绝 Cloudflare 出口 IP」）。
 
