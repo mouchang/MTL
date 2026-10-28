@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 
@@ -428,55 +429,20 @@ public sealed class ProxyCore
 
     private static async Task<string?> EnsureCoreAsync(CancellationToken cancellationToken)
     {
-        if (File.Exists(CoreExePath)) return CoreExePath;
+        if (IsCoreReady()) return CoreExePath;
 
         try
         {
             Directory.CreateDirectory(CoreDir);
 
             var zipPath = Path.Combine(CoreDir, CoreZipName);
+            var partPath = zipPath + ".part";
 
             if (!File.Exists(zipPath) || !MatchesSha256(zipPath))
             {
-                var downloaded = false;
+                TryDelete(zipPath);
 
-                using var http = HttpUtil.Create(TimeSpan.FromMinutes(10), forceDirect: false);
-
-                foreach (var url in CoreUrls)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    try
-                    {
-                        AppLog.Info($"proxy core: 下载内核 {url}");
-
-                        // 必须先把文件关掉再校验：File.Create 拿的是独占句柄，sha256 读同一个文件会失败
-                        await using (var stream = await http.GetStreamAsync(url, cancellationToken))
-                        await using (var file = File.Create(zipPath))
-                        {
-                            await stream.CopyToAsync(file, cancellationToken);
-                        }
-
-                        if (MatchesSha256(zipPath))
-                        {
-                            downloaded = true;
-                            break;
-                        }
-
-                        AppLog.Info("proxy core: 校验不通过，换下一个源");
-                        File.Delete(zipPath);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLog.Error(ex, $"proxy core download {url}");
-                    }
-                }
-
-                if (!downloaded)
+                if (!await DownloadCoreAsync(partPath, zipPath, cancellationToken).ConfigureAwait(false))
                 {
                     AppLog.Info("proxy core: 所有下载源都失败");
                     return null;
@@ -498,14 +464,108 @@ public sealed class ProxyCore
                 entry.ExtractToFile(CoreExePath, overwrite: true);
             }
 
-            File.Delete(zipPath);
+            // 压缩包只用来提取一次，留着白占 22 MB
+            TryDelete(zipPath);
+            TryDelete(zipPath + ".part");
+
             AppLog.Info($"proxy core: 已就绪 {CoreVersion}");
-            return File.Exists(CoreExePath) ? CoreExePath : null;
+            return IsCoreReady() ? CoreExePath : null;
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "proxy core download");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 下载内核 zip：先写 `.part`，校验通过再改名成正式文件。
+    /// 断线时可以从断点续传 —— 以前直接 File.Create 覆盖，一断线就把已经下好的部分全截断了，
+    /// 慢镜像上永远下不完。
+    /// </summary>
+    private static async Task<bool> DownloadCoreAsync(string partPath, string zipPath,
+        CancellationToken cancellationToken)
+    {
+        using var http = HttpUtil.Create(TimeSpan.FromMinutes(10), forceDirect: false);
+
+        foreach (var url in CoreUrls)
+        {
+            for (var attempt = 1; attempt <= 2; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var start = File.Exists(partPath) ? new FileInfo(partPath).Length : 0;
+
+                try
+                {
+                    AppLog.Info($"proxy core: 下载内核 {url}（第 {attempt} 次，从 {start} 字节起）");
+
+                    using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    if (start > 0) request.Headers.Range = new RangeHeaderValue(start, null);
+
+                    using var response = await http
+                        .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    response.EnsureSuccessStatusCode();
+
+                    // 服务器不认 Range 时会回 200 全量，这时候要重新从头写
+                    var append = start > 0 && response.StatusCode == HttpStatusCode.PartialContent;
+
+                    await using (var file = new FileStream(partPath,
+                                     append ? FileMode.Append : FileMode.Create,
+                                     FileAccess.Write, FileShare.None))
+                    {
+                        await response.Content.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    if (MatchesSha256(partPath))
+                    {
+                        File.Move(partPath, zipPath, overwrite: true);
+                        return true;
+                    }
+
+                    AppLog.Info("proxy core: 内容校验不通过，丢掉重下");
+                    TryDelete(partPath);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, $"proxy core download {url}");
+                    await Task.Delay(700, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>内核文件存在且大小合理（防止下了一半的残文件被当成可用）。</summary>
+    private static bool IsCoreReady()
+    {
+        try
+        {
+            var info = new FileInfo(CoreExePath);
+            return info.Exists && info.Length > 5 * 1024 * 1024;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
+            // 删不掉就算了，下次覆盖
         }
     }
 
