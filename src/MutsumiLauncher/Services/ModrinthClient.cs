@@ -339,7 +339,19 @@ public sealed class ModrinthClient
         var result = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        return result ?? [];
+        if (result is null) return [];
+
+        // update 接口对「本地已经是最新」的哈希也会把那个最新版回给你，
+        // 所以用文件 SHA-1 再确认一次：返回的版本里如果装着本地这个文件，就不算更新
+        foreach (var (hash, version) in result.ToList())
+        {
+            var isSameFile = version.Files.Any(file =>
+                string.Equals(file.Hashes?.Sha1, hash, StringComparison.OrdinalIgnoreCase));
+
+            if (isSameFile) result.Remove(hash);
+        }
+
+        return result;
     }
 
     public async Task<string> DownloadAsync(string url, string fileName, string targetDirectory,

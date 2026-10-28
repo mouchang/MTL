@@ -46,7 +46,8 @@ public sealed record CurseForgeFingerprintMatch(
     int ModId,
     int FileId,
     string FileName,
-    string DisplayName);
+    string DisplayName,
+    uint Fingerprint);
 
 /// <summary>
 /// CurseForge 客户端。默认走 MCIM 镜像（无需 Key）；关闭社区镜像并配置 Key 后才会请求官方 API。
@@ -350,11 +351,19 @@ public sealed class CurseForgeClient
                     || file.ValueKind != JsonValueKind.Object)
                     continue;
 
+                // file.fileFingerprint 是服务端回显的指纹，靠它才能把结果和本地文件对上；
+                // 按文件名匹配在文件被改过名（比如 xxx (1).jar）时会失配
+                var fingerprint = file.TryGetProperty("fileFingerprint", out var fp)
+                                  && fp.ValueKind == JsonValueKind.Number
+                    ? (uint)fp.GetInt64()
+                    : 0u;
+
                 matches.Add(new CurseForgeFingerprintMatch(
                     modId,
                     Int(file, "id"),
                     Text(file, "fileName"),
-                    Text(file, "displayName")));
+                    Text(file, "displayName"),
+                    fingerprint));
             }
         }
 

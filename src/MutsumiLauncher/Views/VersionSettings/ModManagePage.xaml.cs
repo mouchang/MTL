@@ -154,15 +154,19 @@ public partial class ModManagePage : UserControl, IInstancePage
         owner?.ShowToast("正在检查 Mod 更新…");
         var found = 0;
 
-        // Modrinth：SHA-1 反查
+        // Modrinth：SHA-1 反查。update 接口只会返回**比本地新**、且匹配游戏版本/加载器的文件
         try
         {
             var updates = await new ModrinthClient().CheckUpdatesAsync(sha1Map.Keys.ToList(),
-                info.GameVersion, info.Loader.ToLowerInvariant());
+                info.GameVersion, LoaderKey(info.Loader));
+
+            AppLog.Info($"modrinth update check: {updates.Count}/{sha1Map.Count} 命中");
 
             foreach (var (hash, version) in updates)
             {
-                if (sha1Map.TryGetValue(hash, out var item) && MarkUpdate(item, version)) found++;
+                if (!sha1Map.TryGetValue(hash, out var item)) continue;
+                if (!IsCompatible(version, info.GameVersion, info.Loader)) continue;
+                if (MarkUpdate(item, version)) found++;
             }
         }
         catch (Exception ex)
@@ -170,26 +174,40 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Error(ex, "modrinth update check");
         }
 
-        // CurseForge：指纹反查 + 最新文件
+        // CurseForge：指纹反查 → 按 mod 拉文件列表 → 取比本地新的那一个
         try
         {
-            var matches = await new CurseForgeClient().MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
+            var curseForge = new CurseForgeClient();
+            var matches = await curseForge.MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
+
+            AppLog.Info($"curseforge update check: {matches.Count}/{fingerprintMap.Count} 命中");
 
             foreach (var match in matches)
             {
-                if (!fingerprintMap.TryGetValue(FindFingerprint(fingerprintMap, match), out var item))
-                    continue;
+                if (FindItem(fingerprintMap, match) is not { } item) continue;
 
-                var files = await new CurseForgeClient().GetFilesAsync(match.ModId,
+                var files = await curseForge.GetFilesAsync(match.ModId,
                     info.GameVersion, LoaderType(info.Loader));
 
-                var latest = files.FirstOrDefault(file => file.Id != match.FileId);
+                // 本地那一版如果在列表里，拿它的发布时间做基准：只有更新的才提示
+                var current = files.FirstOrDefault(file => file.Id == match.FileId);
+
+                // 同一天的多个文件靠文件 ID 区分（CurseForge 的 ID 是递增的）
+                var latest = files
+                    .Where(file => file.Id != match.FileId && !string.IsNullOrWhiteSpace(file.DownloadUrl))
+                    .OrderByDescending(file => file.FileDate)
+                    .ThenByDescending(file => file.Id)
+                    .FirstOrDefault();
+
                 if (latest is null) continue;
+                if (current is not null && !IsNewer(latest, current)) continue;
 
                 var version = new ModrinthVersion
                 {
                     Name = latest.DisplayName,
-                    VersionNumber = latest.DisplayName,
+                    VersionNumber = string.IsNullOrWhiteSpace(latest.DisplayName)
+                        ? latest.FileName
+                        : latest.DisplayName,
                     VersionType = latest.ReleaseType,
                     DatePublished = latest.FileDate,
                     GameVersions = latest.GameVersions.ToList(),
@@ -201,6 +219,7 @@ public partial class ModManagePage : UserControl, IInstancePage
                             Url = latest.DownloadUrl,
                             Filename = latest.FileName,
                             Primary = true,
+                            Size = latest.Length,
                             Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
                         },
                     ],
@@ -228,16 +247,45 @@ public partial class ModManagePage : UserControl, IInstancePage
         return true;
     }
 
-    private static uint FindFingerprint(Dictionary<uint, ModFileItem> map, CurseForgeFingerprintMatch match)
+    /// <summary>把 CurseForge 的匹配结果对回本地文件：优先用回显的指纹，其次文件名。</summary>
+    private static ModFileItem? FindItem(Dictionary<uint, ModFileItem> map, CurseForgeFingerprintMatch match)
     {
-        foreach (var (fingerprint, item) in map)
-        {
-            if (item.FileName.Equals(match.FileName, StringComparison.OrdinalIgnoreCase))
-                return fingerprint;
-        }
+        if (match.Fingerprint != 0 && map.TryGetValue(match.Fingerprint, out var byFingerprint))
+            return byFingerprint;
 
-        return 0;
+        return map.Values.FirstOrDefault(item =>
+            item.FileName.Equals(match.FileName, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>CurseForge 文件是否比本地那个新：先比发布时间，同一天再比 ID。</summary>
+    private static bool IsNewer(CurseForgeFile candidate, CurseForgeFile current)
+        => candidate.FileDate > current.FileDate
+           || (candidate.FileDate == current.FileDate && candidate.Id > current.Id);
+
+    /// <summary>返回的版本必须真的支持当前实例的游戏版本 / 加载器，不然装了也起不来。</summary>
+    private static bool IsCompatible(ModrinthVersion version, string gameVersion, string loader)
+    {
+        if (version.Files.Count == 0) return false;
+
+        if (version.GameVersions.Count > 0
+            && !version.GameVersions.Contains(gameVersion, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        var key = LoaderKey(loader);
+
+        if (version.Loaders.Count > 0
+            && !version.Loaders.Contains(key, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>界面上的加载器名（NeoForge / Fabric…）转成接口用的 key（neoforge / fabric…）。</summary>
+    private static string LoaderKey(string loader) => loader.ToLowerInvariant() switch
+    {
+        "neo forge" => "neoforge",
+        _ => loader.ToLowerInvariant(),
+    };
 
     private static int? LoaderType(string loader) => loader.ToLowerInvariant() switch
     {
@@ -250,42 +298,102 @@ public partial class ModManagePage : UserControl, IInstancePage
 
     private async void UpdateMod_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: ModFileItem item } || item.Update is not { } version)
+        if (sender is not Button { Tag: ModFileItem item } || item.Update is null)
             return;
-
-        var file = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files.FirstOrDefault();
-        if (file is null)
-        {
-            (Window.GetWindow(this) as MainWindow)?.ShowToast("这个版本没有可下载的文件。");
-            return;
-        }
 
         var owner = Window.GetWindow(this) as MainWindow;
 
+        if (await ApplyUpdateAsync(item, owner))
+        {
+            owner?.ShowToast($"已更新 {item.DisplayName} → {item.Update!.VersionNumber}");
+            Refresh();
+        }
+    }
+
+    /// <summary>批量更新：挨个走同一条更新流程，失败的跳过继续。</summary>
+    private async void UpdateAll_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this) as MainWindow;
+        var targets = _items.Where(item => item.Update is not null).ToList();
+
+        if (targets.Count == 0)
+        {
+            owner?.ShowToast("没有可更新的 Mod。");
+            return;
+        }
+
+        if (sender is Button button) button.IsEnabled = false;
+
+        var done = 0;
         try
         {
-            await ResourceService.DownloadAsync(file, ModsDir);
-
-            // 文件名变化时删掉旧 jar，避免同时存在两个版本
-            if (!string.Equals(file.Filename, item.FileName, StringComparison.OrdinalIgnoreCase))
+            foreach (var item in targets)
             {
-                try
-                {
-                    if (File.Exists(item.FullPath)) File.Delete(item.FullPath);
-                }
-                catch (Exception ex)
-                {
-                    AppLog.Error(ex, "delete old mod " + item.FileName);
-                }
+                owner?.ShowToast($"正在更新 {item.DisplayName}（{done + 1}/{targets.Count}）…");
+
+                if (await ApplyUpdateAsync(item, owner)) done++;
+            }
+        }
+        finally
+        {
+            if (sender is Button current) current.IsEnabled = true;
+        }
+
+        owner?.ShowToast(done == targets.Count
+            ? $"已更新全部 {done} 个 Mod。"
+            : $"更新完成 {done}/{targets.Count}，其余失败（详见日志）。");
+
+        Refresh();
+    }
+
+    /// <summary>
+    /// 下载并替换一个 Mod：保留原来的启用/禁用状态，装好之后删掉旧文件。
+    /// 返回是否成功。
+    /// </summary>
+    private async Task<bool> ApplyUpdateAsync(ModFileItem item, MainWindow? owner)
+    {
+        if (item.Update is not { } version) return false;
+
+        var file = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files.FirstOrDefault();
+
+        if (file is null || string.IsNullOrWhiteSpace(file.Url))
+        {
+            owner?.ShowToast($"{item.DisplayName}：这个版本没有可下载的文件。");
+            return false;
+        }
+
+        try
+        {
+            var directory = ModsDir;
+            var downloaded = await ResourceService.DownloadAsync(file, directory);
+
+            // 原来是被禁用的，新文件保持 .disabled
+            var finalName = item.Enabled ? file.Filename : file.Filename + ".disabled";
+            var finalPath = Path.Combine(directory, finalName);
+
+            if (!string.Equals(Path.GetFullPath(downloaded), Path.GetFullPath(finalPath),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(finalPath)) File.Delete(finalPath);
+                File.Move(downloaded, finalPath);
             }
 
-            owner?.ShowToast($"已更新 {item.DisplayName} → {version.VersionNumber}");
-            Refresh();
+            // 旧文件（同名或改名过）都清掉，避免两个版本共存
+            if (!string.Equals(Path.GetFullPath(item.FullPath), Path.GetFullPath(finalPath),
+                    StringComparison.OrdinalIgnoreCase)
+                && File.Exists(item.FullPath))
+            {
+                File.Delete(item.FullPath);
+            }
+
+            AppLog.Info($"mod updated: {item.FileName} -> {finalName}");
+            return true;
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "update mod " + item.FileName);
-            owner?.ShowToast("更新失败：" + ex.Message);
+            owner?.ShowToast($"更新 {item.DisplayName} 失败：{ex.Message}");
+            return false;
         }
     }
 
