@@ -91,10 +91,29 @@ public static class TranslationTable
         return name is null ? null : assembly.GetManifestResourceStream(name);
     }
 
-    /// <summary>中文关键词 → 英文名（搜不到返回 null）。</summary>
+    /// <summary>输入里有没有汉字（没有就当英文查询处理，别拿中文条目去套）。</summary>
+    public static bool HasChinese(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        foreach (var ch in text)
+        {
+            if (ch >= 0x4E00 && ch <= 0x9FFF) return true;   // 基本汉字
+            if (ch >= 0x3400 && ch <= 0x4DBF) return true;   // 扩展 A
+            if (ch >= 0xF900 && ch <= 0xFAFF) return true;   // 兼容汉字
+        }
+
+        return false;
+    }
+
+    /// <summary>中文关键词 → 英文名（搜不到返回 null）。英文查询一律返回 null。</summary>
     public static string? TranslateToEnglish(string? query)
     {
         if (string.IsNullOrWhiteSpace(query)) return null;
+
+        // 译名表是「中文 → 英文」的，英文输入进来只会被乱套
+        // （MC百科里有大量条目名字就是英文缩写，比如 cn="JEI" → en="JEI Bees"）
+        if (!HasChinese(query)) return null;
 
         var data = Lazy.Value;
         var key = Normalize(query);
@@ -103,20 +122,35 @@ public static class TranslationTable
 
         if (data.CnToEn.TryGetValue(key, out var exact) && exact.Length > 0) return exact;
 
-        // 包含匹配：取名字最短的那条（「工业」优先命中「工业」而不是「工业时代2附属」）
+        // 多关键词：逐个翻，取最长的那个英文名（一般也是更具体的那个）
+        // 「机械动力 汽鸣铁道」→ Create: Steam 'n' Rails，而不是笼统的 Create
+        string? bestSegment = null;
+
+        foreach (var segment in SearchText.Tokens(query))
+        {
+            var segmentKey = Normalize(segment);
+            if (segmentKey.Length < 2) continue;
+            if (!data.CnToEn.TryGetValue(segmentKey, out var name) || name.Length == 0) continue;
+
+            if (bestSegment is null || name.Length > bestSegment.Length) bestSegment = name;
+        }
+
+        if (bestSegment is not null) return bestSegment;
+
+        // 包含匹配：取名字最短的那条（「工业」优先命中「工业」而不是「工业时代2附属」）。
+        // 用规范化后的键比较，多了空格 / 标点也能命中
         (string Cn, string En)? best = null;
-        var raw = query.Trim();
 
         foreach (var item in data.Items)
         {
             if (item.En.Length == 0) continue;
+            if (item.CnKey.Length < 2) continue;
 
-            if (!item.Cn.Contains(raw, StringComparison.Ordinal) && !raw.Contains(item.Cn, StringComparison.Ordinal))
+            if (!item.CnKey.Contains(key, StringComparison.Ordinal)
+                && !key.Contains(item.CnKey, StringComparison.Ordinal))
                 continue;
 
-            if (item.Cn.Length < 2) continue;
-
-            if (best is null || item.Cn.Length < best.Value.Cn.Length) best = (item.Cn, item.En);
+            if (best is null || item.CnKey.Length < best.Value.Cn.Length) best = (item.CnKey, item.En);
         }
 
         return best?.En;

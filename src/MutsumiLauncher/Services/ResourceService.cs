@@ -32,11 +32,11 @@ public sealed record ResourceSearchPage(
 /// </summary>
 public static class ResourceService
 {
-    /// <summary>聚合缓存里最多存多少条。合并去重后差不多一条换半个分组，够翻 50 页。</summary>
-    private const int AggregateMaxItems = 2000;
+    /// <summary>聚合缓存里最多存多少条。合并去重后差不多一条换半个分组，够翻 25 页。</summary>
+    private const int AggregateMaxItems = 1000;
 
     /// <summary>聚合模式最多翻到第几页。</summary>
-    private const int AggregateMaxPages = 50;
+    private const int AggregateMaxPages = 25;
 
     /// <summary>
     /// 聚合时 CurseForge 走的是第三方镜像，偶尔一次请求要十几秒。
@@ -63,22 +63,49 @@ public static class ResourceService
         int page, int pageSize, ResourceSort sort = ResourceSort.Downloads,
         CancellationToken cancellationToken = default)
     {
-        // 中文查询：用内置译名表换成英文名（离线，不联网）。
-        // 译名表只覆盖 Mod，光影 / 资源包 / 整合包的中文关键词不翻译，免得翻串。
-        var effective = query;
-        var english = string.Equals(projectType, "mod", StringComparison.OrdinalIgnoreCase)
+        // 关键词化：先按中文译名表翻成英文（只对 Mod），再统一去标点、转小写。
+        // 这样 "Create: Steam 'n' Rails" / "create steam n rails" / "CREATE-STEAM"
+        // 都会变成同一串关键词，不会因为符号和大小写搜不到。
+        var translated = string.Equals(projectType, "mod", StringComparison.OrdinalIgnoreCase)
+                         && TranslationTable.HasChinese(query)
             ? TranslationTable.TranslateToEnglish(query)
             : null;
 
-        if (!string.IsNullOrWhiteSpace(english)
-            && !english.Equals(query, StringComparison.OrdinalIgnoreCase))
+        var effective = BuildQuery(query, translated);
+
+        if (!string.IsNullOrWhiteSpace(translated)
+            && !translated.Equals(query, StringComparison.OrdinalIgnoreCase))
         {
-            effective = english;
-            AppLog.Info($"search translated: {query} -> {english}");
+            AppLog.Info($"search translated: {query} -> {translated}（关键词：{effective}）");
         }
 
-        return await SearchCoreAsync(platform, effective, projectType, gameVersion, loader,
+        var result = await SearchCoreAsync(platform, effective, projectType, gameVersion, loader,
             category, page, pageSize, sort, cancellationToken);
+
+        // 关键词串太长导致一条都没有（比如把版本号、加载器也打进去了）：退回最长那个词再找一次
+        if (result.Hits.Count > 0 || page > 0) return result;
+
+        var fallback = SearchText.LongestToken(effective);
+
+        if (string.IsNullOrWhiteSpace(fallback)
+            || fallback.Equals(effective, StringComparison.OrdinalIgnoreCase))
+            return result;
+
+        AppLog.Info($"search fallback: {effective} -> {fallback}");
+
+        return await SearchCoreAsync(platform, fallback, projectType, gameVersion, loader,
+            category, page, pageSize, sort, cancellationToken);
+    }
+
+    /// <summary>把用户输入整理成「关键词串」：去过标点、统一小写，空的话退回原文。</summary>
+    private static string BuildQuery(string raw, string? translated)
+    {
+        var source = string.IsNullOrWhiteSpace(translated) ? raw : translated;
+        var normalized = SearchText.Normalize(source);
+
+        if (normalized.Length > 0) return normalized;
+
+        return (source ?? string.Empty).Trim();
     }
 
     private static async Task<ResourceSearchPage> SearchCoreAsync(ResourcePlatform? platform,
