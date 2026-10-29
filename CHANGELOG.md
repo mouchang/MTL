@@ -69,19 +69,16 @@
 
 ## [Unreleased]
 
-### CurseForge 官方 API
-- 设置页「下载源」新增 **CurseForge API** 一栏，两种填法：
-  - 填官方 Key → 直连 `api.curseforge.com`，搜索从十几秒降到几百毫秒（本机自用）
-  - 填 `https://…` 开头的地址 → 走 Worker 反代，Key 存在 Cloudflare 上（分发给所有用户用这个）
-  - 留空 → 社区镜像
-- 后端选择顺序：本机 Key → Worker 反代 → 社区镜像；任一环不可用（403 / 404 / 502 …）
-  自动退回下一档并写日志，不会让搜索整个失败
-- Worker 新增 `/cf/*` 反代：加上 `x-api-key` 转发给官方，GET 结果边缘缓存 5 分钟
-- Key 只存在本地 `config.json`（或 Worker 的 secret），不进仓库；
-  也可用环境变量 `MTL_CURSEFORGE_KEY` 覆盖
-- `api.curseforge.com` 改为**直连优先**：它挂在 Cloudflare 上、国内能直连，
-  之前绕代理反而先失败两次，实测一次搜索从 2 秒拖到 23 秒
-- 路由失败冷却：本机代理失败后 5 分钟内排到最后（内置代理同样从 2 分钟延长到 5 分钟），
+### CurseForge 官方 API（独立 Worker）
+- 新增独立 Worker `mtl-curseforge`（`worker/curseforge-gateway.js`）：
+  客户端请求 `mtl.dpdns.org/cf/v1/...`，Worker 加 `x-api-key` 转发给官方，
+  GET 结果边缘缓存 5 分钟（`CF_CACHE_TTL` 可调）
+- **客户端不再接触任何 Key**：默认走这个反代，不可用时（403 / 404 / 502 / 503）
+  自动退回社区镜像并写日志
+- 后端选择简化为「Worker 反代 → 社区镜像」，删掉了本机填 Key 的那条路
+  （公开分发的程序里任何字符串都能被抠出来）
+- `api.curseforge.com` 直连优先规则保留（Worker 代理层可能落到直连）
+- 路由失败冷却：本机代理失败后 5 分钟内排到最后（内置代理同样 2 → 5 分钟），
   代理挂掉时不用每个请求都先白等一遍
 - 聚合的 CurseForge 单次条数 50 → 20（官方响应随条数线性变大，50 条 ≈ 685 KB）
 

@@ -56,24 +56,8 @@ public sealed class CurseForgeClient
 {
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(30));
 
-    /// <summary>官方 API（需要 Key；官方一次搜索通常几百毫秒，镜像要十几秒）。</summary>
-    private const string OfficialBase = "https://api.curseforge.com/v1";
-
     /// <summary>社区镜像（免 Key，但慢）。</summary>
     private static string MirrorBase => DownloadSources.Mcim + "/curseforge/v1";
-
-    /// <summary>环境变量优先，其次本地配置。</summary>
-    private static string ApiKey
-    {
-        get
-        {
-            var fromEnv = Environment.GetEnvironmentVariable("MTL_CURSEFORGE_KEY");
-            return string.IsNullOrWhiteSpace(fromEnv) ? AppConfig.Current.CurseForgeApiKey : fromEnv;
-        }
-    }
-
-    /// <summary>官方 Key 被拒过就不再硬试，本进程内退回镜像。</summary>
-    private static bool _officialRejected;
 
     /// <summary>Worker 反代不可用（没部署 / 没配 Key）时退回镜像。</summary>
     private static bool _proxyUnavailable;
@@ -87,34 +71,19 @@ public sealed class CurseForgeClient
         }
     }
 
-    /// <summary>当前是不是走官方 API（本机直接填了 Key）。</summary>
-    public static bool IsOfficial => !string.IsNullOrWhiteSpace(ApiKey) && !_officialRejected;
-
     /// <summary>当前是不是走 Worker 反代。</summary>
-    public static bool IsProxied => !IsOfficial && ProxyUrl.Length > 0 && !_proxyUnavailable;
+    public static bool IsProxied => ProxyUrl.Length > 0 && !_proxyUnavailable;
 
-    /// <summary>Key → Worker 反代 → 社区镜像。</summary>
-    private static string BaseUrl => IsOfficial ? OfficialBase : IsProxied ? ProxyUrl : MirrorBase;
+    /// <summary>Worker 反代 → 社区镜像（官方 Key 只在 Worker 里，客户端不接触）。</summary>
+    private static string BaseUrl => IsProxied ? ProxyUrl : MirrorBase;
 
-    /// <summary>界面用：当前后端。</summary>
-    public static string BackendName => IsOfficial ? "官方 API" : IsProxied ? "Worker 反代" : "社区镜像";
-
-    /// <summary>补上官方 API 需要的请求头（镜像会忽略）。</summary>
-    private static void Authorize(HttpRequestMessage request)
-    {
-        if (!IsOfficial) return;
-
-        request.Headers.TryAddWithoutValidation("x-api-key", ApiKey.Trim());
-    }
+    /// <summary>界面 / 日志用：当前后端。</summary>
+    public static string BackendName => IsProxied ? "CurseForge 官方（Worker 反代）" : "社区镜像";
 
     public static bool Available => true;
 
-    /// <summary>换了新 Key / 新代理地址之后，重新允许走官方接口。</summary>
-    public static void ResetOfficialFlag()
-    {
-        _officialRejected = false;
-        _proxyUnavailable = false;
-    }
+    /// <summary>改了反代地址之后，重新允许尝试。</summary>
+    public static void ResetProxyFlag() => _proxyUnavailable = false;
 
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,
@@ -510,7 +479,6 @@ public sealed class CurseForgeClient
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
-        Authorize(request);
 
         using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -541,7 +509,6 @@ public sealed class CurseForgeClient
             Content = new StringContent(payload, Encoding.UTF8, "application/json"),
         };
         request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
-        Authorize(request);
 
         using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -554,13 +521,6 @@ public sealed class CurseForgeClient
     private static bool ShouldFallBack(Exception exception)
     {
         if (exception is not HttpRequestException { StatusCode: { } status }) return false;
-
-        if (IsOfficial && status == System.Net.HttpStatusCode.Forbidden)
-        {
-            _officialRejected = true;
-            AppLog.Info("curseforge: 官方 API 返回 403（Key 无效或额度用尽），改用社区镜像");
-            return true;
-        }
 
         // 反代没部署 / 路由被别人接走时，这些状态码都会出现（实测主 Worker 对未知路径回 403）
         if (IsProxied && status is System.Net.HttpStatusCode.Forbidden
@@ -580,9 +540,6 @@ public sealed class CurseForgeClient
 
     private static string ToMirror(string url)
     {
-        if (url.StartsWith(OfficialBase, StringComparison.OrdinalIgnoreCase))
-            return MirrorBase + url[OfficialBase.Length..];
-
         var proxy = ProxyUrl;
 
         if (proxy.Length > 0 && url.StartsWith(proxy, StringComparison.OrdinalIgnoreCase))

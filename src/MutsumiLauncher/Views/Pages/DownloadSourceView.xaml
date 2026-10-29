@@ -320,27 +320,8 @@
             </StackPanel>
         </Border>
 
-        <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="CurseForge API" Style="{StaticResource H2}" />
-                <TextBlock Text="填官方 API Key 就直连 api.curseforge.com（搜索通常几百毫秒）；也可以填 https:// 开头的 Worker 反代地址（Key 存在 Worker 里）。留空走社区镜像。只保存在本地配置里。"
-                           Style="{StaticResource Caption}" Margin="0,4,0,10" TextWrapping="Wrap" />
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="CurseForgeKeyBox" Style="{StaticResource MtlTextBox}" Height="34"
-                             VerticalContentAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="保存" Width="88"
-                            Height="34" Margin="10,0,0,0" Click="CurseForgeKey_Click" />
-                </Grid>
-
-                <TextBlock x:Name="CurseForgeKeyStatus" Style="{StaticResource Caption}" Margin="0,8,0,0"
-                           TextWrapping="Wrap" />
-            </StackPanel>
-        </Border>
+                <TextBlock x:Name="CurseForgeStatus" Style="{StaticResource Caption}" TextWrapping="Wrap"
+                   Margin="0,0,0,14" />
 
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>

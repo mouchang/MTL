@@ -1,0 +1,15 @@
+name = "mtl-curseforge"
+main = "curseforge-gateway.js"
+compatibility_date = "2026-10-01"
+
+# 只负责 CurseForge 官方 API 反代；/cf/* 比 mtl.dpdns.org/* 更具体，
+# 不会影响 /gh、/maven.neoforged.net、/sub、/core 那几组
+routes = [
+  { pattern = "mtl.dpdns.org/cf/*", zone_name = "mtl.dpdns.org" }
+]
+
+[vars]
+CF_CACHE_TTL = "300"
+
+# Secret（不要写在这里）：
+#   npx wrangler secret put CURSEFORGE_KEY

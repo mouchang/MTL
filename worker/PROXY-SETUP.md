@@ -145,22 +145,55 @@ curl -sI -H "Range: bytes=0-1023" https://mtl.dpdns.org/core/mihomo.zip
 | `Services/ProxyCore.cs` `CoreUrls` | `/core/mihomo.zip`（失败再试 GitHub） |
 
 客户端会校验内核 zip 的 **SHA-256**（`7aaf636a…864d`），镜像被篡改也装不上。
-## CurseForge 官方 API（可选）
+## CurseForge 官方 API（独立 Worker：mtl-curseforge）
 
-官方 Key 不能打进客户端 —— 公开分发的程序里任何字符串都能被抠出来，
-所以「拿 Key 去请求」这件事放在 Worker：客户端请求 `mtl.dpdns.org/cf/v1/...`，
-Worker 加上 `x-api-key` 再转发给 `api.curseforge.com`（GET 结果边缘缓存 5 分钟）。
+官方 Key 不能打进客户端（公开分发的 exe 里任何字符串都能被抠出来），
+所以「拿 Key 去请求」放在一个**单独的 Worker** 里：
 
-1. Worker → Settings → Variables and Secrets → 新增 Secret：`CURSEFORGE_KEY`，粘贴官方 Key
-2. 路由加一条：`mtl.dpdns.org/cf/*`
-3. 验证：
+```
+客户端 → mtl.dpdns.org/cf/v1/... → mtl-curseforge 加 x-api-key → api.curseforge.com
+```
+
+### 部署
+
+1. **建 Worker**：Workers & Pages → Create Worker，命名 `mtl-curseforge`，
+   粘贴 [`curseforge-gateway.js`](curseforge-gateway.js) 全文 → Deploy
+2. **加 Secret**：Settings → Variables and Secrets → 新增 Secret `CURSEFORGE_KEY`，粘贴官方 Key
+3. **加路由**：Settings → Domains and Routes → `mtl.dpdns.org/cf/*`
+4. **验证**：
 
 ```bash
 curl -s https://mtl.dpdns.org/cf/status
-# {"configured":true}
+# {"configured":true,"cacheTtl":300}
 
-curl -s "https://mtl.dpdns.org/cf/v1/mods/search?gameId=432&classId=6&pageSize=3&sortField=6&sortOrder=desc" | head -c 160
+curl -s "https://mtl.dpdns.org/cf/v1/mods/search?gameId=432&classId=6&pageSize=3&sortField=6&sortOrder=desc" | head -c 120
 ```
 
-客户端侧：设置 → 下载源 → **CurseForge API**，把 Key 填进去只适合本机自用；
-要分发给所有用户，填 Worker 代理地址（客户端按 Key → 代理 → 镜像 的顺序选后端）。
+或用 wrangler：
+
+```bash
+cd worker
+npx wrangler deploy -c curseforge-gateway.wrangler.toml
+npx wrangler secret put CURSEFORGE_KEY -c curseforge-gateway.wrangler.toml
+```
+
+### 参数
+
+| 变量 | 类型 | 说明 |
+| --- | --- | --- |
+| `CURSEFORGE_KEY` | Secret | 官方 API Key |
+| `CF_CACHE_TTL` | 文本（可选） | GET 结果缓存秒数，默认 `300`，设 `0` 关闭 |
+
+### 客户端行为
+
+- 默认后端就是 `https://mtl.dpdns.org/cf/v1`（`AppConfig.CurseForgeProxy`）
+- 反代不可用（403 / 404 / 502 / 503 …）时自动退回社区镜像，日志里写一行
+- 客户端**不接触**任何 API Key
+
+### 排查
+
+| 现象 | 原因 |
+| --- | --- |
+| `/cf/status` 返回 503 `cf-key-missing` | 没设 `CURSEFORGE_KEY` |
+| `/cf/status` 返回 404 | 路由 `mtl.dpdns.org/cf/*` 没加，请求落到了别的 Worker |
+| 客户端日志出现 `改用社区镜像` | 反代不可用，已自动降级（功能不受影响，只是慢） |

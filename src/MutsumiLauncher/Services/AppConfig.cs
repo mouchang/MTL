@@ -39,17 +39,10 @@ public sealed class AppConfig
     public string ModrinthToken { get; set; } = string.Empty;
 
     /// <summary>
-    /// CurseForge 官方 API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。
-    /// 留空走社区镜像；填了就直连 api.curseforge.com，速度差一个数量级。
-    /// 只存在本地 config.json，不进仓库。
+    /// CurseForge 反代地址（默认走 mtl-curseforge Worker）。
+    /// 官方 Key 存在 Cloudflare 的 secret 里，客户端拿不到；留空则直接用社区镜像。
     /// </summary>
-    public string CurseForgeApiKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// CurseForge 的 Worker 反代地址（例如 https://mtl.dpdns.org/cf/v1）。
-    /// 官方 Key 存在 Worker 里，客户端不接触 Key —— 给所有用户用的就是这条。
-    /// </summary>
-    public string CurseForgeProxy { get; set; } = string.Empty;
+    public string CurseForgeProxy { get; set; } = "https://mtl.dpdns.org/cf/v1";
 
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
