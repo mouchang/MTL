@@ -75,6 +75,13 @@
 - 现在每页按比例补到 `(页码+1) × 每页条数` 条 CF，翻页时两边一起跟上来
 - 实测 `jei`：第 1 页 MD 15 / CF 19、第 2 页 MD 13 / CF 19、第 3 页 MD 5 / CF 17
 
+### 清理废弃代码与过时界面
+- 删掉 `DownloadPage` 里早已不显示的安装进度条（`InstallBar` 整块，Visibility 永远是 Collapsed）
+- 删掉「网络代理修改后，重启启动器生效」的旧提示（现在每 15 秒重探一次，根本不用重启）
+- 订阅网关去掉旧的 `/status` 版本探测（新网关支持 `fresh=1` 且 KV 优先），
+  进程内第一次取订阅带 `fresh=1`，之后走缓存，少一次跨境请求
+- 修正过时注释与文案：CurseForge 客户端说明、MCIM 说明、内核大小提示（现在是随包自带）
+
 ### 清理废弃代码
 - 删掉未使用的成员：`BackendName` / `ResetProxyFlag` / `CurseForgeApiBase` / `ModrinthApiBase` /
   `FabricMaven` / `OfficialLibraries` / `SlotsTotal` / `SourceBrush` / `Stable` / `Coverage` /

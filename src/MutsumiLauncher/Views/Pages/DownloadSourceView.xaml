@@ -349,9 +349,6 @@
             </StackPanel>
         </Border>
 
-        <TextBlock x:Name="ProxyHint" Style="{StaticResource Caption}" TextWrapping="Wrap"
-                   Text="网络代理修改后，重启启动器生效。" />
-
     </StackPanel>
     </ScrollViewer>
 </UserControl>

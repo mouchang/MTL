@@ -115,7 +115,7 @@ public partial class FirstRunDialog : Window
         }
 
         CoreProgress.IsIndeterminate = true;
-        CoreStatus.Text = "正在下载代理内核（约 22 MB），下载完成后会自动启动。";
+        CoreStatus.Text = "正在释放随安装包自带的内核，完成后会自动启动。";
     }
 
     private void BuildDisclaimer()

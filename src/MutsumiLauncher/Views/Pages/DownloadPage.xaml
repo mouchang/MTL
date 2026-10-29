@@ -80,18 +80,6 @@
                       HorizontalScrollBarVisibility="Disabled" Focusable="False">
             <StackPanel Margin="0,0,4,0">
 
-                <Border x:Name="InstallBar" Style="{StaticResource GlassCard}" Padding="18,12"
-                        Margin="0,0,0,14" Visibility="Collapsed">
-                    <StackPanel>
-                        <TextBlock x:Name="InstallText" FontSize="13" Foreground="{DynamicResource Ink}" />
-                        <Border x:Name="InstallTrack" Height="4" CornerRadius="2" Background="{DynamicResource TrackBg}" Margin="0,8,0,0"
-                                ClipToBounds="True">
-                            <Border x:Name="InstallFill" Background="{DynamicResource AccentDeep}"
-                                    CornerRadius="2" HorizontalAlignment="Left" Width="0" />
-                        </Border>
-                    </StackPanel>
-                </Border>
-
                 <Border Style="{StaticResource GlassCard}" Padding="24,20">
                     <StackPanel>
                         <Grid>

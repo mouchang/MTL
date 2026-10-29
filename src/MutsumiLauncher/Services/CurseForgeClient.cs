@@ -50,7 +50,8 @@ public sealed record CurseForgeFingerprintMatch(
     uint Fingerprint);
 
 /// <summary>
-/// CurseForge 客户端。默认走 MCIM 镜像（无需 Key）；关闭社区镜像并配置 Key 后才会请求官方 API。
+/// CurseForge 客户端。默认走自家的 Worker 反代（mtl-curseforge，官方 Key 存在 Cloudflare），
+/// 反代不可用时退回 MCIM 社区镜像。
 /// </summary>
 public sealed class CurseForgeClient
 {

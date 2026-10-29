@@ -88,7 +88,7 @@ public partial class DownloadSourceView : UserControl
     private async void BuiltInTest_Click(object sender, RoutedEventArgs e)
     {
         BuiltInTest.IsEnabled = false;
-        BuiltInStatus.Text = "正在启动内核自检…（首次会下载约 20 MB 内核，请稍候）";
+        BuiltInStatus.Text = "正在启动内核自检…";
 
         try
         {

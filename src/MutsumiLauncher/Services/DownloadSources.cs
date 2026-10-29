@@ -187,7 +187,7 @@ public static class DownloadSources
     {
         if (string.IsNullOrWhiteSpace(officialUrl)) return [];
 
-        // MCIM 已移除：它只是个 302 跳转器，还会给半截文件和错文件名。
+        // 文件不走 MCIM：它只是个 302 跳转器，还会给半截文件和错文件名。
         // 现在只走 官方 CDN + 自建 Worker 镜像（墙外回源 + 边缘缓存）。
         var urls = new List<string>();
         urls.AddRange(OfficialVariants(officialUrl));

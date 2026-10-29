@@ -16,7 +16,11 @@ public static class HttpUtil
 
     public static string Mode => (AppConfig.Current.NetworkMode ?? "auto").Trim().ToLowerInvariant();
 
-    /// <summary>国内镜像域名：一律优先直连，不要绕代理。</summary>
+    /// <summary>
+    /// 直连优先的域名：国内镜像、自家 Cloudflare Worker、以及国内能直连的官方接口
+    /// （CurseForge / Modrinth 都挂在 Cloudflare 上）。
+    /// 绕代理反而会先失败两次，实测能把一次搜索从 2 秒拖到 23 秒。
+    /// </summary>
     private static bool IsDomestic(string url) =>
         url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
         || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)

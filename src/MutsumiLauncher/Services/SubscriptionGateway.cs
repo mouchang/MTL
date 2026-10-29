@@ -12,15 +12,18 @@ public static class SubscriptionGateway
 
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(60), forceDirect: false);
 
-    /// <summary>网关是否配置好（只做一次轻量探测，失败也不影响启动）。</summary>
+    /// <summary>本进程是否已经取过一次订阅（第一次会带 fresh=1 破缓存）。</summary>
+    private static bool _fetchedOnce;
+
+    /// <summary>取订阅；失败返回原因，调用方回落直连。</summary>
     public static async Task<(string? Yaml, string Reason)> FetchAsync(CancellationToken cancellationToken = default)
     {
-        // 带上发布版本号：Worker 更新订阅后，不同边缘节点上的旧缓存会自然失效
-        var version = await GetPublishedVersionAsync(cancellationToken);
-        var fresh = !string.IsNullOrEmpty(version) && version != _lastPublished;
+        // fresh=1 跳过边缘缓存：进程内第一次取订阅时用一次，避免拿到更新前的旧配置。
+        // 之后走缓存，省一次跨境往返（网关自己会在 publish 时清缓存）。
+        var fresh = !_fetchedOnce;
+        _fetchedOnce = true;
 
         var url = $"{BaseUrl}/config?did={Uri.EscapeDataString(DeviceIdentity.Current)}" +
-                  (string.IsNullOrEmpty(version) ? string.Empty : $"&v={Uri.EscapeDataString(version)}") +
                   (fresh ? "&fresh=1" : string.Empty);
 
         try
@@ -47,8 +50,7 @@ public static class SubscriptionGateway
                 return (null, "网关返回的不是 Clash 配置");
             }
 
-            _lastPublished = version;
-            AppLog.Info($"subscription gateway: {yaml.Length} 字符（来源 {source}，发布版本 {version}，fresh={fresh}）");
+            AppLog.Info($"subscription gateway: {yaml.Length} 字符（来源 {source}，fresh={fresh}）");
             return (yaml, "ok");
         }
         catch (OperationCanceledException)
@@ -62,28 +64,6 @@ public static class SubscriptionGateway
         }
     }
 
-    private static string? _lastPublished;
-
-    /// <summary>网关上一次发布订阅的时间（用于破缓存）；失败返回空串。</summary>
-    private static async Task<string> GetPublishedVersionAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await Http.GetAsync($"{BaseUrl}/status", cancellationToken);
-            if (!response.IsSuccessStatusCode) return string.Empty;
-
-            var text = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var document = System.Text.Json.JsonDocument.Parse(text);
-
-            return document.RootElement.TryGetProperty("publishedAt", out var value)
-                ? value.GetString() ?? string.Empty
-                : string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
 
     private static string Truncate(string text) =>
         text.Length <= 120 ? text : text[..120];
