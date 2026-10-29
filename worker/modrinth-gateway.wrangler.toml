@@ -1,0 +1,11 @@
+name = "mtl-modrinth-api"
+main = "modrinth-gateway.js"
+compatibility_date = "2026-10-01"
+
+# Modrinth API 反代；和现成的 mtl-modrinth（文件镜像 cdn.modrinth.com）互不影响
+routes = [
+  { pattern = "mtl.dpdns.org/md/*", zone_name = "mtl.dpdns.org" }
+]
+
+[vars]
+MD_CACHE_TTL = "300"

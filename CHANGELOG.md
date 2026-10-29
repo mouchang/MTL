@@ -69,6 +69,13 @@
 
 ## [Unreleased]
 
+### Modrinth API 也走反代
+- 新增独立 Worker `mtl-modrinth-api`（`worker/modrinth-gateway.js`）：
+  客户端请求 `mtl.dpdns.org/md/v2/...`，Worker 转发 `api.modrinth.com`，
+  GET 结果边缘缓存 5 分钟；带 Personal Access Token 的请求不缓存
+- `AppConfig.ModrinthProxy` 默认指向它；反代不可用时自动退回官方直连
+- 和现成的 `mtl-modrinth`（`cdn.modrinth.com` 文件镜像）是两回事，互不影响
+
 ### 聚合搜索：CurseForge 与 Modrinth 平权
 - 去掉「CurseForge 只等 3 秒就先返回」的限制 —— 那导致首屏永远只有 Modrinth。
   现在和 Modrinth 一样等它抓完再出页面（Worker 反代一次 20 条约 2~4 秒）

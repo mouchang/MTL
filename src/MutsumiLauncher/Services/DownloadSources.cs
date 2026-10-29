@@ -237,8 +237,22 @@ public static class DownloadSources
         }
     }
 
-    /// <summary>Modrinth API 地址（MCIM 镜像已移除，只走官方）。</summary>
-    public static IReadOnlyList<string> ModrinthApiBases => [OfficialModrinthApi];
+    /// <summary>Modrinth API 基址：自家的 Worker 反代在前，官方直连兜底。</summary>
+    public static IReadOnlyList<string> ModrinthApiBases
+    {
+        get
+        {
+            var proxy = AppConfig.Current.ModrinthProxy;
+
+            if (string.IsNullOrWhiteSpace(proxy)) return [OfficialModrinthApi];
+
+            var normalized = proxy.Trim().TrimEnd('/');
+            if (normalized.EndsWith("/v2", StringComparison.OrdinalIgnoreCase))
+                normalized = normalized[..^3];
+
+            return [normalized + "/v2", OfficialModrinthApi];
+        }
+    }
 
     public static string ModrinthApiBase => ModrinthApiBases[0];
 

@@ -197,3 +197,37 @@ npx wrangler secret put CURSEFORGE_KEY -c curseforge-gateway.wrangler.toml
 | `/cf/status` 返回 503 `cf-key-missing` | 没设 `CURSEFORGE_KEY` |
 | `/cf/status` 返回 404 | 路由 `mtl.dpdns.org/cf/*` 没加，请求落到了别的 Worker |
 | 客户端日志出现 `改用社区镜像` | 反代不可用，已自动降级（功能不受影响，只是慢） |
+## Modrinth API 反代（独立 Worker：mtl-modrinth-api）
+
+和 CurseForge 那个同样的思路，但 Modrinth 的公开接口**不需要 Key**：
+只是把请求挪到 Cloudflare 边缘，国内更稳，GET 结果缓存 5 分钟。
+
+```
+客户端 → mtl.dpdns.org/md/v2/... → mtl-modrinth-api → api.modrinth.com/v2/...
+```
+
+### 部署
+
+1. **建 Worker**：Workers & Pages → Create Worker，命名 `mtl-modrinth-api`，
+   粘贴 [`modrinth-gateway.js`](modrinth-gateway.js) 全文 → Deploy
+2. **加路由**：Settings → Domains and Routes → `mtl.dpdns.org/md/*`
+3. （可选）变量 `MD_CACHE_TTL`，默认 `300` 秒
+4. **验证**：
+
+```bash
+curl -s https://mtl.dpdns.org/md/status
+# {"ok":true,"cacheTtl":300}
+
+curl -s "https://mtl.dpdns.org/md/v2/search?query=sodium&limit=2" | head -c 120
+```
+
+### 客户端行为
+
+- `AppConfig.ModrinthProxy` 默认 `https://mtl.dpdns.org/md`，请求基址是它 + `/v2`
+- 反代不可用（403 / 404 / 5xx）时自动退回 `api.modrinth.com`，搜索不会失败
+- 带 Personal Access Token 的请求不缓存（Worker 里按 `Authorization` 判断）
+
+### 注意
+
+现成的 `mtl-modrinth` Worker 是**文件镜像**（`cdn.modrinth.com`），
+和这次的 `mtl-modrinth-api`（API 反代）是两件事，不要合并。

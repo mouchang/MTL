@@ -39,6 +39,12 @@ public sealed class AppConfig
     public string ModrinthToken { get; set; } = string.Empty;
 
     /// <summary>
+    /// Modrinth API 反代基址（默认走 mtl-modrinth-api Worker，末尾不带 /v2）。
+    /// 留空则直连 api.modrinth.com。
+    /// </summary>
+    public string ModrinthProxy { get; set; } = "https://mtl.dpdns.org/md";
+
+    /// <summary>
     /// CurseForge 反代地址（默认走 mtl-curseforge Worker）。
     /// 官方 Key 存在 Cloudflare 的 secret 里，客户端拿不到；留空则直接用社区镜像。
     /// </summary>
