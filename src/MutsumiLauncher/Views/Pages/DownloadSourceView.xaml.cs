@@ -69,7 +69,7 @@ public partial class DownloadSourceView : UserControl
         }
 
         BuiltInStatus.Text = ProxyCore.Shared.IsRunning
-            ? $"运行中 · 端口 {ProxyCore.Shared.Port} · {ProxyCore.Shared.ActiveNode}"
+            ? "运行中"
             : "已启用：取用资源时自动启动，完成后自动停止。";
     }
 
@@ -94,13 +94,11 @@ public partial class DownloadSourceView : UserControl
         {
             var (ok, milliseconds, message) = await ProxyCore.Shared.RunSelfTestAsync();
 
-            BuiltInStatus.Text = ok
-                ? $"自检通过 · {milliseconds} ms · {message}（内核已停止）"
-                : $"自检失败 · {message}（内核已停止，下载会自动回落直连）";
+            BuiltInStatus.Text = ok ? "已成功连接代理" : $"连接代理失败：{message}";
         }
         catch (Exception ex)
         {
-            BuiltInStatus.Text = "自检失败：" + ex.Message;
+            BuiltInStatus.Text = "连接代理失败：" + ex.Message;
         }
         finally
         {

@@ -447,7 +447,15 @@ public sealed class ProxyCore
             {
                 TryDelete(zipPath);
 
-                if (!await DownloadCoreAsync(partPath, zipPath, cancellationToken).ConfigureAwait(false))
+                // 安装包里带了内核就不用下载：首次启动也能秒开
+                var bundled = Path.Combine(AppContext.BaseDirectory, "core", "mihomo.zip");
+
+                if (File.Exists(bundled) && MatchesSha256(bundled))
+                {
+                    AppLog.Info("proxy core: 使用安装包内置内核");
+                    File.Copy(bundled, zipPath, overwrite: true);
+                }
+                else if (!await DownloadCoreAsync(partPath, zipPath, cancellationToken).ConfigureAwait(false))
                 {
                     AppLog.Info("proxy core: 所有下载源都失败");
                     return null;

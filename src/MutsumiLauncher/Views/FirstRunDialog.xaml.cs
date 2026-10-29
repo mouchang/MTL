@@ -96,7 +96,7 @@ public partial class FirstRunDialog : Window
         {
             CoreProgress.IsIndeterminate = false;
             CoreProgress.Value = 100;
-            CoreStatus.Text = $"代理内核已就绪 · 节点 {ProxyCore.Shared.ActiveNode}";
+            CoreStatus.Text = "代理内核已就绪";
             return;
         }
 

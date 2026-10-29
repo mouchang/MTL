@@ -49,6 +49,11 @@ jobs:
         shell: pwsh
         run: gh release delete "${{ steps.version.outputs.tag }}" --yes 2>$null; exit 0
 
+      # 内核 zip 一起打进安装包，首次启动不用再下 22 MB
+      - name: Fetch proxy core
+        shell: pwsh
+        run: ./tools/get-core.ps1 -FromGithub
+
       - name: Publish
         run: >
           dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj
