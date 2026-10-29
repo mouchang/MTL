@@ -68,22 +68,4 @@ public static class SearchText
             ? null
             : tokens.OrderByDescending(token => token.Length).First();
     }
-
-    /// <summary>这些关键词在文本里命中了几个（用于模糊排序 / 过滤）。</summary>
-    public static int Coverage(IReadOnlyList<string> tokens, string? text)
-    {
-        if (tokens.Count == 0 || string.IsNullOrWhiteSpace(text)) return 0;
-
-        var normalized = Normalize(text);
-        if (normalized.Length == 0) return 0;
-
-        var hits = 0;
-
-        foreach (var token in tokens)
-        {
-            if (normalized.Contains(token, StringComparison.Ordinal)) hits++;
-        }
-
-        return hits;
-    }
 }

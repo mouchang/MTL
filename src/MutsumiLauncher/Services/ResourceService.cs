@@ -170,18 +170,19 @@ public static class ResourceService
             // 翻下一页时一般不用补抓，已经看过的页也不会因为补抓而位移
             var needed = Math.Min(AggregateMaxItems, (page + 2) * pageSize * 2);
 
+            // CurseForge 每页也要跟着涨：Modrinth 一块 100 条、CF 一块只有 20 条，
+            // 只按总条数补的话第 2 页开始 CF 就被用光了（这就是「只有第一页有 CF」的原因）
+            var curseForgeTarget = Math.Min(AggregateMaxItems,
+                Math.Max(CurseForgeChunk, (page + 1) * pageSize));
+
             while (bucket.Count < needed && bucket.Count < AggregateMaxItems
                    && (!bucket.ModrinthDone || !bucket.CurseForgeDone))
             {
                 var before = bucket.Count;
                 await FillAsync(bucket, query, projectType, gameVersion, loader, category, sort,
-                    page, cancellationToken);
+                    page, pageSize, curseForgeTarget, cancellationToken);
 
-                // CurseForge 现在是后台抓的，它还没回来时不能因为「这一轮没长」就退出
-                var curseForgePending = !bucket.CurseForgeDone;
-
-                if (bucket.Count == before && !curseForgePending) break;  // 真没东西了
-                if (bucket.Count == before && curseForgePending) break;   // 剩下的交给后台，别卡住页面
+                if (bucket.Count == before) break;  // 真没东西了
             }
 
             var sorted = sort switch
@@ -237,7 +238,7 @@ public static class ResourceService
     /// </summary>
     private static async Task FillAsync(AggregateBucket bucket, string query, string projectType,
         string? gameVersion, string? loader, string? category, ResourceSort sort, int page,
-        CancellationToken cancellationToken)
+        int pageSize, int curseForgeTarget, CancellationToken cancellationToken)
     {
         if (!bucket.ModrinthDone)
         {
@@ -245,10 +246,9 @@ public static class ResourceService
                 cancellationToken).ConfigureAwait(false);
         }
 
-        // CurseForge 走 Worker 反代后已经和 Modrinth 差不多快（一屏 20 条约 2~4 秒），
-        // 所以不再"等 3 秒就先返回"——等它抓完，首屏两边都有结果
+        // 一直补到「这一页该有的 CF 条数」，这样每页都能混到两边
         await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
-            cancellationToken).ConfigureAwait(false);
+            curseForgeTarget, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -256,40 +256,50 @@ public static class ResourceService
     /// 之前那样做的结果是首屏永远只有 Modrinth。
     /// </summary>
     private static async Task EnsureCurseForgeAsync(AggregateBucket bucket, string query,
-        string projectType, string? gameVersion, string? loader,
+        string projectType, string? gameVersion, string? loader, int target,
         CancellationToken cancellationToken)
     {
-        if (bucket.CurseForgeDone) return;
+        var guard = 0;
 
-        Task? task;
-
-        lock (bucket.Sync)
+        while (!bucket.CurseForgeDone && CurseForgeCount(bucket) < target
+               && bucket.Count < AggregateMaxItems && guard++ < 8)
         {
-            if (bucket.CurseForgeTask is null || bucket.CurseForgeTask.IsCompleted)
+            Task? task;
+
+            lock (bucket.Sync)
             {
-                bucket.CurseForgeTask = Task.Run(
-                    () => FillCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
-                        bucket.Lifetime.Token),
-                    CancellationToken.None);
+                if (bucket.CurseForgeTask is null || bucket.CurseForgeTask.IsCompleted)
+                {
+                    bucket.CurseForgeTask = Task.Run(
+                        () => FillCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
+                            bucket.Lifetime.Token),
+                        CancellationToken.None);
+                }
+
+                task = bucket.CurseForgeTask;
             }
 
-            task = bucket.CurseForgeTask;
-        }
+            if (task is null) return;
 
-        if (task is null) return;
+            try
+            {
+                await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "curseforge aggregate wait");
+                return;
+            }
+        }
+    }
 
-        try
-        {
-            await task.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "curseforge aggregate wait");
-        }
+    private static int CurseForgeCount(AggregateBucket bucket)
+    {
+        lock (bucket.Sync) return bucket.CurseForge.Count;
     }
 
     private static async Task FillCurseForgeAsync(AggregateBucket bucket, string query,
@@ -654,31 +664,6 @@ public static class ResourceService
             : new string(text.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
     /// <summary>按组分页，尽量不让同一资源的两个来源被切到两页。</summary>
-    private static List<ResourceHit> TakePage(IEnumerable<List<ResourceHit>> groups, int page, int pageSize)
-    {
-        var result = new List<ResourceHit>();
-        var target = page * pageSize;
-        var index = 0;
-
-        foreach (var group in groups)
-        {
-            if (index + group.Count <= target)
-            {
-                index += group.Count;
-                continue;
-            }
-
-            foreach (var hit in group)
-            {
-                if (index >= target && result.Count < pageSize) result.Add(hit);
-                index++;
-            }
-
-            if (result.Count >= pageSize) break;
-        }
-
-        return result;
-    }
 
     private static List<ResourceHit> Interleave(IReadOnlyList<ResourceHit> first,
         IReadOnlyList<ResourceHit> second)

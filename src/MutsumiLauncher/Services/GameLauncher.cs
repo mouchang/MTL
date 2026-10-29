@@ -328,14 +328,6 @@ public sealed class GameLauncher
         };
     }
 
-    private static bool HasGameArguments(System.Text.Json.JsonElement? arguments)
-    {
-        if (arguments is not { ValueKind: System.Text.Json.JsonValueKind.Object } element) return false;
-
-        return element.TryGetProperty("game", out var game)
-               && game.ValueKind == System.Text.Json.JsonValueKind.Array
-               && game.GetArrayLength() > 0;
-    }
 
     private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,
         string nativesDir, string classpath, string playerName, string uuid, string accessToken,

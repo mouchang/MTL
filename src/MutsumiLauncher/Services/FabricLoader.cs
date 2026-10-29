@@ -16,8 +16,7 @@ public sealed class FabricLoaderInfo
     [JsonPropertyName("version")]
     public string Version { get; set; } = string.Empty;
 
-    [JsonPropertyName("stable")]
-    public bool Stable { get; set; }
+
 }
 
 /// <summary>Fabric Loader 安装：取 meta 的 profile JSON + 下载 Fabric 依赖库。</summary>

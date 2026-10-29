@@ -77,13 +77,8 @@ public sealed class CurseForgeClient
     /// <summary>Worker 反代 → 社区镜像（官方 Key 只在 Worker 里，客户端不接触）。</summary>
     private static string BaseUrl => IsProxied ? ProxyUrl : MirrorBase;
 
-    /// <summary>界面 / 日志用：当前后端。</summary>
-    public static string BackendName => IsProxied ? "CurseForge 官方（Worker 反代）" : "社区镜像";
-
     public static bool Available => true;
 
-    /// <summary>改了反代地址之后，重新允许尝试。</summary>
-    public static void ResetProxyFlag() => _proxyUnavailable = false;
 
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,

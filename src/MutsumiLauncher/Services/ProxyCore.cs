@@ -29,7 +29,7 @@ public sealed class ProxyCore
     ];
 
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(25);
-    private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(90);
+
 
     public static ProxyCore Shared { get; } = new();
 

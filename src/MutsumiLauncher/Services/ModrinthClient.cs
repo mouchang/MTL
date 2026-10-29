@@ -15,8 +15,7 @@ public sealed class ModrinthSearchResponse
     [JsonPropertyName("total_hits")]
     public long TotalHits { get; set; }
 
-    [JsonPropertyName("offset")]
-    public int Offset { get; set; }
+
 }
 
 public sealed record ModrinthSearchResult(IReadOnlyList<ModrinthHit> Hits, long TotalHits);
@@ -291,24 +290,6 @@ public sealed class ModrinthClient
         return JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
     }
 
-    public async Task<ModrinthVersion?> GetLatestVersionAsync(string projectId, string? gameVersion,
-        string? loader, CancellationToken cancellationToken = default)
-    {
-        var url = $"/project/{projectId}/version";
-        var query = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(gameVersion))
-            query.Add($"game_versions={Uri.EscapeDataString($"[\"{gameVersion}\"]")}");
-
-        if (!string.IsNullOrWhiteSpace(loader))
-            query.Add($"loaders={Uri.EscapeDataString($"[\"{loader}\"]")}");
-
-        if (query.Count > 0) url += "?" + string.Join("&", query);
-
-        var json = await GetStringAsync(url, cancellationToken);
-        var versions = JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
-        return versions.FirstOrDefault();
-    }
 
     /// <summary>用本地 jar 的 SHA-1 查询 Modrinth 上匹配当前游戏版本/加载器的更新。</summary>
     public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesAsync(

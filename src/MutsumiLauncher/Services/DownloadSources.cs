@@ -18,7 +18,7 @@ public static class DownloadSources
         "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
     public const string OfficialResources = "https://resources.download.minecraft.net";
-    public const string OfficialLibraries = "https://libraries.minecraft.net";
+
 
     public const string Bmclapi = "https://bmclapi2.bangbang93.com";
     public const string Mcim = "https://mod.mcimirror.top";
@@ -26,7 +26,7 @@ public static class DownloadSources
     public const string FabricMetaBase = "https://meta.fabricmc.net/v2";
     public const string FabricMetaMirror = "https://bmclapi2.bangbang93.com/fabric-meta/v2";
 
-    public const string FabricMaven = "https://maven.fabricmc.net";
+
 
     public const string OfficialModrinthApi = "https://api.modrinth.com/v2";
 
@@ -254,11 +254,9 @@ public static class DownloadSources
         }
     }
 
-    public static string ModrinthApiBase => ModrinthApiBases[0];
-
     // 注意：这不是文件下载源。没有 CurseForge API Key 之前，
     // 搜索 / 项目详情这类「元数据」只能走 MCIM 的 CurseForge 接口（返回的是 JSON，量很小）。
-    public static string CurseForgeApiBase => $"{Mcim}/curseforge/v1";
+
 
     public static IReadOnlyList<DownloadEndpoint> ForgeInstaller(string gameVersion, string loaderVersion)
     {

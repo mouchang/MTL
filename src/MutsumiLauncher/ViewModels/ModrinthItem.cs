@@ -18,10 +18,6 @@ public sealed class ModrinthItem : INotifyPropertyChanged
 
     public string SourceLabel => Platform == ResourcePlatform.CurseForge ? "CurseForge" : "Modrinth";
 
-    public Brush SourceBrush => Platform == ResourcePlatform.CurseForge
-        ? new SolidColorBrush(Color.FromRgb(0xE0, 0x7B, 0x2F))
-        : new SolidColorBrush(Color.FromRgb(0x4E, 0x9E, 0x72));
-
     public string Title => Hit.Title;
 
     public string Author => Hit.Author;

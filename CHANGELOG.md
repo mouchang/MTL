@@ -69,6 +69,17 @@
 
 ## [Unreleased]
 
+### 聚合翻页：每页都有两边
+- **修**：第 1 页 MD + CF 都有，第 2 页开始只剩 Modrinth。原因是 Modrinth 一块 100 条、
+  CurseForge 一块只有 20 条，只按总条数补的话 CF 早就被用光了
+- 现在每页按比例补到 `(页码+1) × 每页条数` 条 CF，翻页时两边一起跟上来
+- 实测 `jei`：第 1 页 MD 15 / CF 19、第 2 页 MD 13 / CF 19、第 3 页 MD 5 / CF 17
+
+### 清理废弃代码
+- 删掉未使用的成员：`BackendName` / `ResetProxyFlag` / `CurseForgeApiBase` / `ModrinthApiBase` /
+  `FabricMaven` / `OfficialLibraries` / `SlotsTotal` / `SourceBrush` / `Stable` / `Coverage` /
+  `GetLatestVersionAsync` / `HasGameArguments` / `TakePage` / `IdleTimeout` / `Offset`
+
 ### Modrinth API 也走反代
 - 新增独立 Worker `mtl-modrinth-api`（`worker/modrinth-gateway.js`）：
   客户端请求 `mtl.dpdns.org/md/v2/...`，Worker 转发 `api.modrinth.com`，

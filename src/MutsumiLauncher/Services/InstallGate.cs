@@ -13,8 +13,6 @@ public static class InstallGate
     private static readonly SemaphoreSlim Gate = new(Slots, Slots);
     private static int _waiting;
 
-    public static int SlotsTotal => Slots;
-
     /// <summary>当前占用中的并发位。</summary>
     public static int Active => Slots - Gate.CurrentCount;
 
