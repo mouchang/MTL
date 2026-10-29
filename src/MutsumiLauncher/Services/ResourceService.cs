@@ -176,20 +176,26 @@ public static class ResourceService
             await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
                 perSideTarget, cancellationToken).ConfigureAwait(false);
 
-            var sorted = sort switch
+            // 两边各自按选定的排序排好，再交替合并（MD、CF、MD、CF…）。
+            // 直接按下载量混排的话，CurseForge 的下载数普遍比 Modrinth 大一个量级
+            // （JEI 6.4 亿 vs Fabric API 2.9 亿），第一页会被 CF 整页占满。
+            var modrinth = sort switch
             {
-                ResourceSort.Updated => bucket.Hits().OrderByDescending(hit => hit.Updated).ToList(),
-                ResourceSort.Relevance => Interleave(bucket.Modrinth, bucket.CurseForge).ToList(),
-                _ => bucket.Hits().OrderByDescending(hit => hit.Hit.Downloads).ToList(),
+                ResourceSort.Updated => bucket.Modrinth.OrderByDescending(hit => hit.Updated).ToList(),
+                _ => bucket.Modrinth.OrderByDescending(hit => hit.Hit.Downloads).ToList(),
             };
 
-            // 「同一资源两边各出现一次」：把同一个项目的两条结果编成一组挨在一起
-            var groups = GroupHits(sorted);
+            var curseForge = sort switch
+            {
+                ResourceSort.Updated => bucket.CurseForge.OrderByDescending(hit => hit.Updated).ToList(),
+                _ => bucket.CurseForge.OrderByDescending(hit => hit.Hit.Downloads).ToList(),
+            };
 
-            if (sort == ResourceSort.Updated)
-                groups = groups.OrderByDescending(group => group.Max(hit => hit.Updated)).ToList();
-            else if (sort == ResourceSort.Downloads)
-                groups = groups.OrderByDescending(group => group.Max(hit => hit.Hit.Downloads)).ToList();
+            var sorted = Interleave(modrinth, curseForge).ToList();
+
+            // 「同一资源两边各出现一次」：把同一个项目的两条结果编成一组挨在一起。
+            // 组顺序保持交替后的顺序，不再按下载量重排（否则又会一边倒）。
+            var groups = GroupHits(sorted);
 
             var hits = TakeGroups(groups, page, pageSize);
 
