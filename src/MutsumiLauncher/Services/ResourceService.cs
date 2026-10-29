@@ -45,8 +45,9 @@ public static class ResourceService
     /// </summary>
     private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(45);
 
-    // 和 CurseForge 一样每块 20 条：两边同步翻页，混排后每页都均衡
-    private const int ModrinthChunk = 20;
+    // Modrinth 每块抓 40 条（CF 是 20 条）：多抓一倍当作缓冲，
+    // 某次请求抖动没回来时，池子里仍有足够条目，不会出现某一页只剩单来源
+    private const int ModrinthChunk = 40;
     // 官方 API 的响应随 pageSize 线性变大（50 条 ≈ 685 KB ≈ 10 秒），20 条最平衡
     private const int CurseForgeChunk = 20;
 
@@ -166,14 +167,16 @@ public static class ResourceService
 
         try
         {
-            // 两边各抓到「到这一页为止」的量：第 N 页时两边都有 (N+1)×20 条，混排后每页都均衡。
-            var perSideTarget = Math.Min(AggregateMaxItems, (page + 1) * pageSize);
+            // Modrinth 多抓一页当缓冲（一次 40 条，正好覆盖两页），CurseForge 按页走（一次 20 条）。
+            // 这样第 N 页时池子里 MD ≈ (N+2)×20、CF ≈ (N+1)×20，交替合并后每页两边都有。
+            var modrinthTarget = Math.Min(AggregateMaxItems, (page + 2) * pageSize);
+            var curseForgeTarget = Math.Min(AggregateMaxItems, (page + 1) * pageSize);
 
             await EnsureModrinthAsync(bucket, query, projectType, gameVersion, loader, category,
-                sort, perSideTarget, cancellationToken).ConfigureAwait(false);
+                sort, modrinthTarget, cancellationToken).ConfigureAwait(false);
 
             await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
-                perSideTarget, cancellationToken).ConfigureAwait(false);
+                curseForgeTarget, cancellationToken).ConfigureAwait(false);
 
             // 两边各自按选定的排序排好，再交替合并（MD、CF、MD、CF…）。
             // 直接按下载量混排的话，CurseForge 的下载数普遍比 Modrinth 大一个量级
