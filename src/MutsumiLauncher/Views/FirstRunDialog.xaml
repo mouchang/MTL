@@ -1,0 +1,65 @@
+<Window x:Class="MutsumiLauncher.Views.FirstRunDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="欢迎使用 Mutsumi Launcher" Width="560" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="{StaticResource UiFont}">
+
+    <Border Background="{DynamicResource SurfaceFloat}" CornerRadius="20" Padding="26,22"
+            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="34" ShadowDepth="8" Direction="270" Opacity="0.26"
+                              Color="{DynamicResource ShadowColorSoft}" />
+        </Border.Effect>
+
+        <StackPanel>
+            <TextBlock Text="欢迎使用 Mutsumi Launcher" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Ink}" />
+            <TextBlock x:Name="VersionText" FontSize="12" Foreground="{DynamicResource InkMute}"
+                       Margin="0,4,0,0" />
+
+            <!-- 代理内核 -->
+            <Border Background="{DynamicResource AccentTintSoft}" CornerRadius="14" Padding="16,13"
+                    Margin="0,16,0,0">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="代理内核安装中，最好等待 20 秒，体验更加" FontSize="14"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource AccentDeep}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock x:Name="CoreStatus" Text="正在准备…" FontSize="12"
+                               Foreground="{DynamicResource InkSoft}" Margin="0,6,0,0"
+                               TextWrapping="Wrap" />
+                    <ProgressBar x:Name="CoreProgress" Height="4" IsIndeterminate="True"
+                                 Margin="0,10,0,0" BorderThickness="0" />
+                </StackPanel>
+            </Border>
+
+            <!-- 免责申明 -->
+            <TextBlock Text="免责申明" FontSize="14" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Ink}" Margin="0,18,0,6" />
+
+            <Border Background="{DynamicResource SurfaceSunken}" CornerRadius="12" Padding="14,12">
+                <ScrollViewer MaxHeight="248" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                    <StackPanel x:Name="DisclaimerHost" />
+                </ScrollViewer>
+            </Border>
+
+            <Grid Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="HintText" Text="请先阅读上面的内容。" FontSize="12"
+                           Foreground="{DynamicResource InkMute}" VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+
+                <Button x:Name="ContinueButton" Grid.Column="1" Style="{StaticResource PrimaryButton}"
+                        Content="请稍候 10 秒" Height="38" Width="148" IsEnabled="False"
+                        Click="Continue_Click" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

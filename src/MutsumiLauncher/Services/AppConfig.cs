@@ -83,6 +83,9 @@ public sealed class AppConfig
     /// <summary>是否已经做过首次启动的代理自检（只做一次）。</summary>
     public bool ProxySelfTestDone { get; set; }
 
+    /// <summary>首次启动的公告页（代理内核提示 + 免责申明）是否已经看过。</summary>
+    public bool AnnouncementShown { get; set; }
+
     /// <summary>网络代理：auto（默认，有可用系统代理就用）/ direct / system / custom。</summary>
     public string NetworkMode { get; set; } = "auto";
 

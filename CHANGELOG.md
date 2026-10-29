@@ -69,6 +69,13 @@
 
 ## [Unreleased]
 
+### 首次启动公告
+- 新增公告页，**只在第一次启动时弹一次**：
+  - 页面打开的同时开始安装代理内核，实时显示进度（下载中 / 已就绪 · 节点名 / 失败原因）
+  - 下方是 7 条免责申明（非官方、不提供游戏本体、内置代理仅用于加速、令牌只存本机、风险自负等）
+  - **关闭按钮 10 秒倒计时**，倒计时内 Esc / Alt+F4 也关不掉
+- 看完写进配置 `AnnouncementShown`，之后不再出现
+
 ### CurseForge 官方 API（独立 Worker）
 - 新增独立 Worker `mtl-curseforge`（`worker/curseforge-gateway.js`）：
   客户端请求 `mtl.dpdns.org/cf/v1/...`，Worker 加 `x-api-key` 转发给官方，

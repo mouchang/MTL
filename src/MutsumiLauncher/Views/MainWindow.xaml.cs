@@ -56,6 +56,8 @@ public partial class MainWindow : Window
                 OpenVersionSettings();
             }
 
+            _ = ShowFirstRunAnnouncementAsync();
+
             _ = RunFirstProxySelfTestAsync();
         };
         SizeChanged += (_, _) => UpdateShellClip();
@@ -423,6 +425,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>首次启动时自动跑一次代理自检：成功/失败都在全局提示一次。</summary>
+    /// <summary>首次启动弹一次公告页（代理内核提示 + 免责申明），之后不再出现。</summary>
+    private async Task ShowFirstRunAnnouncementAsync()
+    {
+        if (AppConfig.Current.AnnouncementShown) return;
+
+        // 等主窗口完全画出来再弹，避免公告页卡在启动动画前面
+        await Task.Delay(360);
+
+        try
+        {
+            var dialog = new FirstRunDialog { Owner = this };
+            dialog.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "first run announcement");
+        }
+    }
+
     private async Task RunFirstProxySelfTestAsync()
     {
         var config = AppConfig.Current;
