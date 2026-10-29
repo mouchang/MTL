@@ -47,6 +47,17 @@ public partial class MainWindow : Window
         {
             UpdateShellClip();
 
+            // 从别的窗口点开启动器时，窗口经常被挡在后面：先激活，再短暂置顶，
+            // 等界面画完（ApplicationIdle）再取消置顶，否则系统有时不理会这次前置
+            Activate();
+            Topmost = true;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Topmost = false;
+                Activate();
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
             // 调试用：MTL_START_PAGE=download 可直接进下载页
             var start = Environment.GetEnvironmentVariable("MTL_START_PAGE");
             ShowPage(start is not null && _pages.ContainsKey(start) ? start : "launch", animate: false);

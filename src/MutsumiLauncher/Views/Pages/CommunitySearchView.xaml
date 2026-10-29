@@ -96,7 +96,8 @@
         </Border>
 
         <Border Grid.Row="1" Style="{StaticResource GlassCard}" Padding="22,14" Margin="0,14,0,0">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer x:Name="ResultsScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                 <ItemsControl x:Name="ResultsList">
                     <ItemsControl.ItemTemplate>

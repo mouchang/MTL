@@ -206,6 +206,9 @@ public partial class CommunitySearchView : UserControl
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
+            // 翻页后回到顶部，不然还停在上一页的底部
+            ResultsScroll.ScrollToTop();
+
             ResultsList.BeginAnimation(OpacityProperty,
                 new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(220))
                 {
