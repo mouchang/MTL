@@ -193,4 +193,4 @@ MTL 是独立项目，与任何现有启动器无隶属关系。
 
 ## 赞助
 
-爱发电：https://afdian.com/a/box_star
+爱发电主页：https://afdian.com/a/box_star?utm_source=copylink&utm_medium=link
