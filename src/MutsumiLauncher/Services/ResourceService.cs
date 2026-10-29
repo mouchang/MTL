@@ -166,8 +166,9 @@ public static class ResourceService
         try
         {
             // 合并会去重，按「两倍页大小」估需要抓多少条；
-            // 再往后多留两页余量，翻下一页时一般不用补抓，已经看过的页也不会因为补抓而位移
-            var needed = Math.Min(AggregateMaxItems, (page + 3) * pageSize * 2);
+            // 再往后多留一页余量（留太多会让首次打开多下几百 KB），
+            // 翻下一页时一般不用补抓，已经看过的页也不会因为补抓而位移
+            var needed = Math.Min(AggregateMaxItems, (page + 2) * pageSize * 2);
 
             while (bucket.Count < needed && bucket.Count < AggregateMaxItems
                    && (!bucket.ModrinthDone || !bucket.CurseForgeDone))

@@ -21,9 +21,11 @@ public static class HttpUtil
         url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
         || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
         || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase)
-        // CurseForge 官方 API 挂在 Cloudflare 上，国内直连通常一两秒；
+        // 这两个官方接口都挂在 Cloudflare 上，国内直连通常一两秒；
         // 绕代理反而先失败两次 —— 实测一次搜索能从 2 秒拖到 23 秒
-        || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase);
+        || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("api.modrinth.com", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>常见本地代理端口（Clash / v2ray / Shadowsocks 客户端）。</summary>
     private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
