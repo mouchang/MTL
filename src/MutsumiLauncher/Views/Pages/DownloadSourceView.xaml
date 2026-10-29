@@ -323,7 +323,7 @@
         <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="CurseForge API" Style="{StaticResource H2}" />
-                <TextBlock Text="填官方 API Key 就直连 api.curseforge.com，搜索通常几百毫秒；留空走社区镜像（一次要十几秒）。Key 只存在本地配置里。"
+                <TextBlock Text="填官方 API Key 就直连 api.curseforge.com（搜索通常几百毫秒）；也可以填 https:// 开头的 Worker 反代地址（Key 存在 Worker 里）。留空走社区镜像。只保存在本地配置里。"
                            Style="{StaticResource Caption}" Margin="0,4,0,10" TextWrapping="Wrap" />
 
                 <Grid>

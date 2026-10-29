@@ -2,11 +2,12 @@ name = "mtl-proxy"
 main = "proxy-gateway.js"
 compatibility_date = "2026-10-01"
 
-# 两条路由都指向同一个 Worker；比 mtl.dpdns.org/* 更具体，
+# 三条路由都指向同一个 Worker；比 mtl.dpdns.org/* 更具体，
 # 不会影响现有的 /gh、/maven.neoforged.net、/cdn.modrinth.com 那几个
 routes = [
   { pattern = "mtl.dpdns.org/sub/*", zone_name = "mtl.dpdns.org" },
-  { pattern = "mtl.dpdns.org/core/*", zone_name = "mtl.dpdns.org" }
+  { pattern = "mtl.dpdns.org/core/*", zone_name = "mtl.dpdns.org" },
+  { pattern = "mtl.dpdns.org/cf/*", zone_name = "mtl.dpdns.org" }
 ]
 
 [vars]
@@ -22,4 +23,5 @@ SUB_ENABLED = "1"
 
 # Secret（不要写在这里）：
 #   npx wrangler secret put SUB_URL       订阅回源地址
-#   npx wrangler secret put PUBLISH_KEY   上传校验用的 key
+#   npx wrangler secret put PUBLISH_KEY     上传校验用的 key
+#   npx wrangler secret put CURSEFORGE_KEY  CurseForge 官方 API Key（/cf/* 转发用）

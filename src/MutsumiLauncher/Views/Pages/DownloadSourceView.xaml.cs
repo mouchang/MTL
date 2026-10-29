@@ -48,13 +48,19 @@ public partial class DownloadSourceView : UserControl
         ProxyHostBox.Text = config.ProxyHost;
         ProxyPortBox.Text = config.ProxyPort.ToString();
 
-        CurseForgeKeyBox.Text = config.CurseForgeApiKey;
+        CurseForgeKeyBox.Text = string.IsNullOrWhiteSpace(config.CurseForgeProxy)
+            ? config.CurseForgeApiKey
+            : config.CurseForgeProxy;
 
-        CurseForgeKeyStatus.Text = CurseForgeClient.IsOfficial
-            ? "当前：官方 API（api.curseforge.com）"
-            : string.IsNullOrWhiteSpace(config.CurseForgeApiKey)
-                ? "当前：社区镜像（未配置 Key）"
-                : "当前：社区镜像（Key 被官方拒绝过，填新的 Key 再保存一次）";
+        CurseForgeKeyStatus.Text = CurseForgeClient.BackendName switch
+        {
+            "官方 API" => "当前：官方 API（api.curseforge.com）",
+            "Worker 反代" => $"当前：Worker 反代（{config.CurseForgeProxy}）",
+            _ => string.IsNullOrWhiteSpace(config.CurseForgeApiKey)
+                 && string.IsNullOrWhiteSpace(config.CurseForgeProxy)
+                ? "当前：社区镜像（未配置，一次搜索要十几秒）"
+                : "当前：社区镜像（Key / 反代被拒过，改好再保存一次）",
+        };
 
         RefreshSpeed();
         RefreshBuiltIn();
@@ -114,20 +120,25 @@ public partial class DownloadSourceView : UserControl
 
     private void CurseForgeKey_Click(object sender, RoutedEventArgs e)
     {
-        var key = CurseForgeKeyBox.Text.Trim();
+        var input = CurseForgeKeyBox.Text.Trim();
+        var isProxy = input.StartsWith("http", StringComparison.OrdinalIgnoreCase);
         var config = AppConfig.Current;
 
-        config.CurseForgeApiKey = key;
+        // 填链接就是 Worker 反代，填其它就是官方 Key
+        config.CurseForgeApiKey = isProxy ? string.Empty : input;
+        config.CurseForgeProxy = isProxy ? input : string.Empty;
         config.Save();
 
-        // 换了 Key 就重新试一次官方 API（之前可能因为 403 退回过镜像）
+        // 换过配置就重新试一次（之前可能因为 403 / 404 退回过镜像）
         CurseForgeClient.ResetOfficialFlag();
 
-        CurseForgeKeyStatus.Text = string.IsNullOrWhiteSpace(key)
+        CurseForgeKeyStatus.Text = string.IsNullOrWhiteSpace(input)
             ? "已清空：改用社区镜像。"
-            : "已保存：下一次搜索会直连 api.curseforge.com；如果 Key 被拒，日志里会有提示。";
+            : isProxy
+                ? "已保存 Worker 反代：下一次搜索走这个地址。"
+                : "已保存官方 Key：下一次搜索直连 api.curseforge.com，被拒会写日志。";
 
-        AppLog.Info($"curseforge api key {(string.IsNullOrWhiteSpace(key) ? "cleared" : "updated")}");
+        AppLog.Info($"curseforge endpoint {(string.IsNullOrWhiteSpace(input) ? "cleared" : isProxy ? "proxy" : "official")}");
         _onChanged?.Invoke();
     }
 

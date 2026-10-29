@@ -75,10 +75,29 @@ public sealed class CurseForgeClient
     /// <summary>官方 Key 被拒过就不再硬试，本进程内退回镜像。</summary>
     private static bool _officialRejected;
 
-    /// <summary>当前是不是走官方 API。</summary>
+    /// <summary>Worker 反代不可用（没部署 / 没配 Key）时退回镜像。</summary>
+    private static bool _proxyUnavailable;
+
+    private static string ProxyUrl
+    {
+        get
+        {
+            var url = AppConfig.Current.CurseForgeProxy;
+            return string.IsNullOrWhiteSpace(url) ? string.Empty : url.Trim().TrimEnd('/');
+        }
+    }
+
+    /// <summary>当前是不是走官方 API（本机直接填了 Key）。</summary>
     public static bool IsOfficial => !string.IsNullOrWhiteSpace(ApiKey) && !_officialRejected;
 
-    private static string BaseUrl => IsOfficial ? OfficialBase : MirrorBase;
+    /// <summary>当前是不是走 Worker 反代。</summary>
+    public static bool IsProxied => !IsOfficial && ProxyUrl.Length > 0 && !_proxyUnavailable;
+
+    /// <summary>Key → Worker 反代 → 社区镜像。</summary>
+    private static string BaseUrl => IsOfficial ? OfficialBase : IsProxied ? ProxyUrl : MirrorBase;
+
+    /// <summary>界面用：当前后端。</summary>
+    public static string BackendName => IsOfficial ? "官方 API" : IsProxied ? "Worker 反代" : "社区镜像";
 
     /// <summary>补上官方 API 需要的请求头（镜像会忽略）。</summary>
     private static void Authorize(HttpRequestMessage request)
@@ -90,8 +109,12 @@ public sealed class CurseForgeClient
 
     public static bool Available => true;
 
-    /// <summary>换了新 Key 之后重新允许走官方 API。</summary>
-    public static void ResetOfficialFlag() => _officialRejected = false;
+    /// <summary>换了新 Key / 新代理地址之后，重新允许走官方接口。</summary>
+    public static void ResetOfficialFlag()
+    {
+        _officialRejected = false;
+        _proxyUnavailable = false;
+    }
 
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,
@@ -477,9 +500,8 @@ public sealed class CurseForgeClient
         {
             return await SendAsync(url, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (IsForbidden(ex))
+        catch (HttpRequestException ex) when (ShouldFallBack(ex))
         {
-            RejectOfficial(ex);
             return await SendAsync(ToMirror(url), cancellationToken).ConfigureAwait(false);
         }
     }
@@ -505,9 +527,8 @@ public sealed class CurseForgeClient
         {
             return await SendPostAsync(BaseUrl, payload, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (IsForbidden(ex))
+        catch (HttpRequestException ex) when (ShouldFallBack(ex))
         {
-            RejectOfficial(ex);
             return await SendPostAsync(MirrorBase, payload, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -529,22 +550,46 @@ public sealed class CurseForgeClient
         return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static bool IsForbidden(Exception exception)
-        => exception is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Forbidden }
-           && IsOfficial;
-
-    /// <summary>官方 Key 被拒：本进程后面都用镜像，日志里说清楚原因。</summary>
-    private static void RejectOfficial(Exception exception)
+    /// <summary>官方 403 / 反代不可用：标记一下，这一次直接换镜像重试。</summary>
+    private static bool ShouldFallBack(Exception exception)
     {
-        _officialRejected = true;
-        AppLog.Info("curseforge: 官方 API 返回 403（Key 无效或额度用尽），改用社区镜像");
-        AppLog.Error(exception, "curseforge official api");
+        if (exception is not HttpRequestException { StatusCode: { } status }) return false;
+
+        if (IsOfficial && status == System.Net.HttpStatusCode.Forbidden)
+        {
+            _officialRejected = true;
+            AppLog.Info("curseforge: 官方 API 返回 403（Key 无效或额度用尽），改用社区镜像");
+            return true;
+        }
+
+        // 反代没部署 / 路由被别人接走时，这些状态码都会出现（实测主 Worker 对未知路径回 403）
+        if (IsProxied && status is System.Net.HttpStatusCode.Forbidden
+                or System.Net.HttpStatusCode.NotFound
+                or System.Net.HttpStatusCode.MethodNotAllowed
+                or System.Net.HttpStatusCode.NotImplemented
+                or System.Net.HttpStatusCode.BadGateway
+                or System.Net.HttpStatusCode.ServiceUnavailable)
+        {
+            _proxyUnavailable = true;
+            AppLog.Info($"curseforge: Worker 反代不可用（{(int)status}），改用社区镜像");
+            return true;
+        }
+
+        return false;
     }
 
     private static string ToMirror(string url)
-        => url.StartsWith(OfficialBase, StringComparison.OrdinalIgnoreCase)
-            ? MirrorBase + url[OfficialBase.Length..]
-            : url;
+    {
+        if (url.StartsWith(OfficialBase, StringComparison.OrdinalIgnoreCase))
+            return MirrorBase + url[OfficialBase.Length..];
+
+        var proxy = ProxyUrl;
+
+        if (proxy.Length > 0 && url.StartsWith(proxy, StringComparison.OrdinalIgnoreCase))
+            return MirrorBase + url[proxy.Length..];
+
+        return url;
+    }
 
     private static string Text(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String

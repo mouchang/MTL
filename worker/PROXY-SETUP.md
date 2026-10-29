@@ -145,3 +145,22 @@ curl -sI -H "Range: bytes=0-1023" https://mtl.dpdns.org/core/mihomo.zip
 | `Services/ProxyCore.cs` `CoreUrls` | `/core/mihomo.zip`（失败再试 GitHub） |
 
 客户端会校验内核 zip 的 **SHA-256**（`7aaf636a…864d`），镜像被篡改也装不上。
+## CurseForge 官方 API（可选）
+
+官方 Key 不能打进客户端 —— 公开分发的程序里任何字符串都能被抠出来，
+所以「拿 Key 去请求」这件事放在 Worker：客户端请求 `mtl.dpdns.org/cf/v1/...`，
+Worker 加上 `x-api-key` 再转发给 `api.curseforge.com`（GET 结果边缘缓存 5 分钟）。
+
+1. Worker → Settings → Variables and Secrets → 新增 Secret：`CURSEFORGE_KEY`，粘贴官方 Key
+2. 路由加一条：`mtl.dpdns.org/cf/*`
+3. 验证：
+
+```bash
+curl -s https://mtl.dpdns.org/cf/status
+# {"configured":true}
+
+curl -s "https://mtl.dpdns.org/cf/v1/mods/search?gameId=432&classId=6&pageSize=3&sortField=6&sortOrder=desc" | head -c 160
+```
+
+客户端侧：设置 → 下载源 → **CurseForge API**，把 Key 填进去只适合本机自用；
+要分发给所有用户，填 Worker 代理地址（客户端按 Key → 代理 → 镜像 的顺序选后端）。

@@ -45,6 +45,12 @@ public sealed class AppConfig
     /// </summary>
     public string CurseForgeApiKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// CurseForge 的 Worker 反代地址（例如 https://mtl.dpdns.org/cf/v1）。
+    /// 官方 Key 存在 Worker 里，客户端不接触 Key —— 给所有用户用的就是这条。
+    /// </summary>
+    public string CurseForgeProxy { get; set; } = string.Empty;
+
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 

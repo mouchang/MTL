@@ -70,11 +70,15 @@
 ## [Unreleased]
 
 ### CurseForge 官方 API
-- 设置页「下载源」新增 **CurseForge API** 一栏：填官方 Key 后直连 `api.curseforge.com`，
-  搜索从十几秒降到几百毫秒；留空继续走社区镜像
-- 请求自动带 `x-api-key`；官方返回 403（Key 无效 / 额度用尽）时自动退回镜像并写日志，
-  不会让整个搜索失败
-- Key 只存在本地 `config.json`，也可以用环境变量 `MTL_CURSEFORGE_KEY` 覆盖
+- 设置页「下载源」新增 **CurseForge API** 一栏，两种填法：
+  - 填官方 Key → 直连 `api.curseforge.com`，搜索从十几秒降到几百毫秒（本机自用）
+  - 填 `https://…` 开头的地址 → 走 Worker 反代，Key 存在 Cloudflare 上（分发给所有用户用这个）
+  - 留空 → 社区镜像
+- 后端选择顺序：本机 Key → Worker 反代 → 社区镜像；任一环不可用（403 / 404 / 502 …）
+  自动退回下一档并写日志，不会让搜索整个失败
+- Worker 新增 `/cf/*` 反代：加上 `x-api-key` 转发给官方，GET 结果边缘缓存 5 分钟
+- Key 只存在本地 `config.json`（或 Worker 的 secret），不进仓库；
+  也可用环境变量 `MTL_CURSEFORGE_KEY` 覆盖
 
 ## [1.0.0-beta.6] - 2026-10-29
 

@@ -76,6 +76,14 @@ export default {
       return coreDownload(request, env, ctx);
     }
 
+    if (url.pathname === "/cf/status" || url.pathname === "/cf/status/") {
+      return json(200, { configured: Boolean(env.CURSEFORGE_KEY) });
+    }
+
+    if (url.pathname.startsWith("/cf/")) {
+      return curseForgeProxy(request, env, ctx, url);
+    }
+
     return json(404, { enabled: false, reason: "not-found" });
   },
 };
@@ -366,6 +374,63 @@ async function publishCore(request, env) {
   await caches.default.delete(new Request(CACHE_CORE));
 
   return json(200, { ok: true, ...meta });
+}
+
+// ---------------------------------------------------------------- CurseForge 反代
+
+/**
+ * 把 /cf/v1/... 转发到 api.curseforge.com/v1/...。
+ * 官方 API Key 只存在 Worker 的 secret 里，客户端拿不到 —— 公开分发的启动器
+ * 不能把 Key 打进程序，否则谁都能抠出来，还会被官方吊销。
+ */
+async function curseForgeProxy(request, env, ctx, url) {
+  if (!env.CURSEFORGE_KEY) return json(503, { ok: false, reason: "cf-key-missing" });
+
+  const upstream = "https://api.curseforge.com" + url.pathname.slice(3) + url.search;
+  const cache = caches.default;
+  const cacheKey = new Request("https://mtl.internal/cf" + url.pathname.slice(3) + url.search);
+
+  if (!cacheKey.url.includes("/fingerprints")) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
+
+  let response;
+  try {
+    response = await fetch(upstream, {
+      method: request.method,
+      headers: {
+        "x-api-key": env.CURSEFORGE_KEY,
+        Accept: "application/json",
+        "User-Agent": "MutsumiLauncher/1.0",
+      },
+      body: request.method === "GET" ? undefined : request.body,
+    });
+  } catch {
+    return json(502, { ok: false, reason: "cf-unreachable" });
+  }
+
+  const headers = new Headers({
+    "Content-Type": response.headers.get("content-type") || "application/json; charset=utf-8",
+    "X-MTL-CF": "1",
+    ...cors(),
+  });
+
+  if (!response.ok) {
+    headers.set("Cache-Control", "no-store");
+    return new Response(response.body, { status: response.status, headers });
+  }
+
+  // 搜索结果缓存 5 分钟：模组库不会 5 分钟内变天，能省掉大量上游请求
+  headers.set("Cache-Control", "public, max-age=300");
+
+  const wrapped = new Response(response.body, { status: response.status, headers });
+
+  if (request.method === "GET" && !cacheKey.url.includes("/fingerprints")) {
+    ctx.waitUntil(cache.put(cacheKey, wrapped.clone()));
+  }
+
+  return wrapped;
 }
 
 // ---------------------------------------------------------------- 工具
