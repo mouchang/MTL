@@ -10,7 +10,7 @@ public static class SubscriptionGateway
 {
     public const string BaseUrl = "https://mtl.dpdns.org/sub";
 
-    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(60), forceDirect: false);
+    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(60));
 
     /// <summary>本进程是否已经取过一次订阅（第一次会带 fresh=1 破缓存）。</summary>
     private static bool _fetchedOnce;

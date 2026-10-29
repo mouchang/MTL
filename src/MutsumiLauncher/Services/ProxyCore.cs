@@ -499,7 +499,7 @@ public sealed class ProxyCore
     private static async Task<bool> DownloadCoreAsync(string partPath, string zipPath,
         CancellationToken cancellationToken)
     {
-        using var http = HttpUtil.Create(TimeSpan.FromMinutes(10), forceDirect: false);
+        using var http = HttpUtil.Create(TimeSpan.FromMinutes(10));
 
         foreach (var url in CoreUrls)
         {

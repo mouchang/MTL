@@ -42,11 +42,9 @@ public static class HttpUtil
     private static readonly ConcurrentDictionary<string, HttpClient> ProxyClients =
         new(StringComparer.OrdinalIgnoreCase);
 
-    /// <param name="forceDirect">忽略设置强制直连（诊断用）。</param>
-    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
-        bool forceDirect = false)
+    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null)
     {
-        var client = new HttpClient(new RouteHandler(forceDirect ? "direct" : Mode))
+        var client = new HttpClient(new RouteHandler(Mode))
         {
             Timeout = timeout ?? TimeSpan.FromMinutes(2),
         };

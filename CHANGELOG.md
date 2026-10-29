@@ -81,6 +81,7 @@
 - 订阅网关去掉旧的 `/status` 版本探测（新网关支持 `fresh=1` 且 KV 优先），
   进程内第一次取订阅带 `fresh=1`，之后走缓存，少一次跨境请求
 - 修正过时注释与文案：CurseForge 客户端说明、MCIM 说明、内核大小提示（现在是随包自带）
+- 删掉 `HttpUtil.Create` 里没人用过的 `forceDirect` 参数（三处调用全是默认值 false）
 
 ### 清理废弃代码
 - 删掉未使用的成员：`BackendName` / `ResetProxyFlag` / `CurseForgeApiBase` / `ModrinthApiBase` /
