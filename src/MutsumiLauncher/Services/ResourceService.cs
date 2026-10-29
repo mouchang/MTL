@@ -33,11 +33,14 @@ public sealed record ResourceSearchPage(
 /// </summary>
 public static class ResourceService
 {
-    /// <summary>聚合缓存里最多存多少条。合并去重后差不多一条换半个分组，够翻 25 页。</summary>
-    private const int AggregateMaxItems = 1000;
+    /// <summary>
+    /// 聚合缓存里最多存多少条（两边各 100 页 × 20 条）。
+    /// 数据是按页现抓的，这里只是上限，不翻到那么深就不会真去请求。
+    /// </summary>
+    private const int AggregateMaxItems = 4000;
 
     /// <summary>聚合模式最多翻到第几页。</summary>
-    private const int AggregateMaxPages = 25;
+    private const int AggregateMaxPages = 100;
 
     /// <summary>
     /// 聚合时 CurseForge 走的是第三方镜像，偶尔一次请求要十几秒。
@@ -238,10 +241,11 @@ public static class ResourceService
         string projectType, string? gameVersion, string? loader, string? category,
         ResourceSort sort, int target, CancellationToken cancellationToken)
     {
+        // 一次请求最多补 12 块：够覆盖分页条一轮 6 页的跳转，又不至于为了一个深页发几十个请求
         var guard = 0;
 
         while (!bucket.ModrinthDone && bucket.Modrinth.Count < target
-               && bucket.Count < AggregateMaxItems && guard++ < 8)
+               && bucket.Count < AggregateMaxItems && guard++ < 12)
         {
             var before = bucket.Modrinth.Count;
 
@@ -276,7 +280,7 @@ public static class ResourceService
         var guard = 0;
 
         while (!bucket.CurseForgeDone && CurseForgeCount(bucket) < target
-               && bucket.Count < AggregateMaxItems && guard++ < 8)
+               && bucket.Count < AggregateMaxItems && guard++ < 12)
         {
             Task? task;
 

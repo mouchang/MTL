@@ -215,20 +215,9 @@ public partial class CommunitySearchView : UserControl
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
                 });
 
-            var hint = string.Empty;
-
-            StatusText.Text = items.Count == 0
-                ? "没有找到结果，换个关键词或条件试试。" + hint
-                : platform switch
-                {
-                    ResourcePlatform.CurseForge =>
-                        $"找到 {result.Total:N0} 个结果（来自 CurseForge）{hint}",
-                    ResourcePlatform.Modrinth =>
-                        $"找到 {result.Total:N0} 个结果（来自 Modrinth）{hint}",
-                    _ =>
-                        $"找到 {TotalText(result.Total)} 个结果（Modrinth {result.ModrinthTotal:N0} · " +
-                        $"CurseForge {TotalText(result.CurseForgeTotal)}）{hint}",
-                };
+            // 不再显示“找到 N 个结果”：CurseForge 的 totalCount 封顶 10000，
+            // 聚合又是两边相加，数字既不准也没意义，只在没结果时给个提示
+            StatusText.Text = items.Count == 0 ? "没有找到结果，换个关键词或条件试试。" : string.Empty;
 
             BuildPageBar();
 
@@ -285,13 +274,6 @@ public partial class CommunitySearchView : UserControl
         }, token);
     }
 
-    /// <summary>
-    /// CurseForge 官方接口对 totalCount 封顶 10000（index + pageSize 也不能超过它），
-    /// 所以数字正好是 10000 时加个加号，别让人以为真的只有一万个结果。
-    /// </summary>
-    private static string TotalText(long total)
-        => total >= 10000 ? "10,000+" : total.ToString("N0");
-
     private void BuildPageBar()
     {
         // 页数由服务端算好：聚合模式按合并后的卡片数，单平台按接口返回的总数
@@ -305,7 +287,7 @@ public partial class CommunitySearchView : UserControl
         }
 
         PageBar.Visibility = Visibility.Visible;
-        PageInfo.Text = $"共 {TotalText(_totalHits)} 个结果";
+        PageInfo.Text = string.Empty;
         PagePanel.Children.Clear();
 
         AddPageButton("上一页", Math.Max(0, _page - 1), enabled: _page > 0);
