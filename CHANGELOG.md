@@ -74,6 +74,8 @@
   客户端请求 `mtl.dpdns.org/md/v2/...`，Worker 转发 `api.modrinth.com`，
   GET 结果边缘缓存 5 分钟；带 Personal Access Token 的请求不缓存
 - `AppConfig.ModrinthProxy` 默认指向它；反代不可用时自动退回官方直连
+- Worker 可配 Secret `MODRINTH_TOKEN`：用 Worker 里的 Token 请求上游，
+  所有客户端共享更高配额；客户端无需自带 token
 - 和现成的 `mtl-modrinth`（`cdn.modrinth.com` 文件镜像）是两回事，互不影响
 
 ### 聚合搜索：CurseForge 与 Modrinth 平权

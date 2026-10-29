@@ -6,7 +6,9 @@
 // 这里会把 Authorization 原样转发（带令牌的请求不缓存）。
 //
 // 环境变量：
-//   MD_CACHE_TTL   搜索结果缓存秒数，默认 300；设 0 关闭
+//   MD_CACHE_TTL      搜索结果缓存秒数，默认 300；设 0 关闭
+//   MODRINTH_TOKEN    （Secret，可选）Personal Access Token。配了就用它请求上游，
+//                     所有客户端共享更高的速率配额；客户端不需要自己填 token
 //
 // 端点：
 //   GET  /md/v2/search?...          转发到 api.modrinth.com/v2/search
@@ -25,7 +27,11 @@ export default {
     }
 
     if (url.pathname === STATUS_PATH || url.pathname === STATUS_PATH + "/") {
-      return json(200, { ok: true, cacheTtl: cacheTtl(env) });
+      return json(200, {
+        ok: true,
+        cacheTtl: cacheTtl(env),
+        tokenized: Boolean(env.MODRINTH_TOKEN),
+      });
     }
 
     if (!url.pathname.startsWith("/md/")) {
@@ -66,7 +72,12 @@ export default {
       redirect: "follow",
     };
 
-    if (authorized) init.headers["Authorization"] = request.headers.get("authorization");
+    // 客户端自带 token 优先；否则用 Worker 里的（给所有用户共享配额）
+    if (authorized) {
+      init.headers["Authorization"] = request.headers.get("authorization");
+    } else if (env.MODRINTH_TOKEN) {
+      init.headers["Authorization"] = env.MODRINTH_TOKEN.trim();
+    }
 
     if (request.method === "POST") {
       init.body = request.body;

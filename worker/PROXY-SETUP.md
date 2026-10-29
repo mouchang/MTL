@@ -211,12 +211,14 @@ npx wrangler secret put CURSEFORGE_KEY -c curseforge-gateway.wrangler.toml
 1. **建 Worker**：Workers & Pages → Create Worker，命名 `mtl-modrinth-api`，
    粘贴 [`modrinth-gateway.js`](modrinth-gateway.js) 全文 → Deploy
 2. **加路由**：Settings → Domains and Routes → `mtl.dpdns.org/md/*`
-3. （可选）变量 `MD_CACHE_TTL`，默认 `300` 秒
-4. **验证**：
+3. （可选）Secret `MODRINTH_TOKEN`：Modrinth Personal Access Token。
+   配了之后 Worker 会用它请求上游，所有客户端共享更高配额；客户端不用再填 token
+4. （可选）变量 `MD_CACHE_TTL`，默认 `300` 秒
+5. **验证**：
 
 ```bash
 curl -s https://mtl.dpdns.org/md/status
-# {"ok":true,"cacheTtl":300}
+# {"ok":true,"cacheTtl":300,"tokenized":false}
 
 curl -s "https://mtl.dpdns.org/md/v2/search?query=sodium&limit=2" | head -c 120
 ```
