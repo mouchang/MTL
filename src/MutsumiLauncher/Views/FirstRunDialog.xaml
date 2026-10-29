@@ -24,7 +24,7 @@
                     Margin="0,16,0,0">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="代理内核安装中，最好等待 20 秒，体验更加" FontSize="14"
+                        <TextBlock Text="代理内核安装中，最好等待 5 秒，体验更加" FontSize="14"
                                    FontWeight="SemiBold" Foreground="{DynamicResource AccentDeep}"
                                    TextWrapping="Wrap" />
                     </StackPanel>

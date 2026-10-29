@@ -245,19 +245,18 @@ public static class ResourceService
                 cancellationToken).ConfigureAwait(false);
         }
 
-        var grace = page == 0 ? CurseForgeFirstPageGrace : TimeSpan.Zero;
-        await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader, grace,
+        // CurseForge 走 Worker 反代后已经和 Modrinth 差不多快（一屏 20 条约 2~4 秒），
+        // 所以不再"等 3 秒就先返回"——等它抓完，首屏两边都有结果
+        await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
             cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 第一页最多等 CurseForge 这么久（实测镜像一次要 19 秒上下），等不到先出 Modrinth 的结果，
-    /// 抓完再由界面自动补一次。整页只等一次，不能每轮补抓都等。
+    /// 抓一块 CurseForge。跟 Modrinth 一样等它抓完再出页面，不再按时间先返回 ——
+    /// 之前那样做的结果是首屏永远只有 Modrinth。
     /// </summary>
-    private static readonly TimeSpan CurseForgeFirstPageGrace = TimeSpan.FromSeconds(3);
-
     private static async Task EnsureCurseForgeAsync(AggregateBucket bucket, string query,
-        string projectType, string? gameVersion, string? loader, TimeSpan grace,
+        string projectType, string? gameVersion, string? loader,
         CancellationToken cancellationToken)
     {
         if (bucket.CurseForgeDone) return;
@@ -277,21 +276,20 @@ public static class ResourceService
             task = bucket.CurseForgeTask;
         }
 
-        if (task is null || task.IsCompleted) return;
-        if (grace <= TimeSpan.Zero) return;
+        if (task is null) return;
 
-        // 整页只等一次：补抓循环会来回好几轮，每轮都等就变成几十秒了
-        lock (bucket.Sync)
+        try
         {
-            if (bucket.CurseForgeGraceUsed) return;
-            bucket.CurseForgeGraceUsed = true;
+            await task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-
-        var finished = await Task.WhenAny(task, Task.Delay(grace, cancellationToken))
-            .ConfigureAwait(false);
-
-        if (finished != task)
-            AppLog.Info("curseforge 聚合：镜像较慢，先在后台抓，本次只返回 Modrinth 结果");
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge aggregate wait");
+        }
     }
 
     private static async Task FillCurseForgeAsync(AggregateBucket bucket, string query,
@@ -417,8 +415,7 @@ public static class ResourceService
         /// <summary>后台正在跑的 CurseForge 抓取（同时只允许一个）。</summary>
         public Task? CurseForgeTask;
 
-        /// <summary>已经为这个缓存等过一次 CurseForge，后面不再卡前台。</summary>
-        public bool CurseForgeGraceUsed;
+
 
         public int Count
         {

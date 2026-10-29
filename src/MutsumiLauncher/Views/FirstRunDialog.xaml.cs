@@ -12,7 +12,7 @@ namespace MutsumiLauncher.Views;
 /// </summary>
 public partial class FirstRunDialog : Window
 {
-    private const int WaitSeconds = 10;
+    private const int WaitSeconds = 5;
 
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromMilliseconds(600) };
@@ -90,10 +90,16 @@ public partial class FirstRunDialog : Window
         }
     }
 
+    private bool _coreReady;
+
     private void UpdateCoreStatus()
     {
+        // 装好之后状态就定住，不再跟着后面的停止/重启跳来跳去
+        if (_coreReady) return;
+
         if (ProxyCore.Shared.IsRunning)
         {
+            _coreReady = true;
             CoreProgress.IsIndeterminate = false;
             CoreProgress.Value = 100;
             CoreStatus.Text = "代理内核已就绪";
