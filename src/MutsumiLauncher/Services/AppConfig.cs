@@ -38,6 +38,13 @@ public sealed class AppConfig
     /// <summary>Modrinth Personal Access Token（也可用环境变量 MTL_MODRINTH_TOKEN）。</summary>
     public string ModrinthToken { get; set; } = string.Empty;
 
+    /// <summary>
+    /// CurseForge 官方 API Key（也可用环境变量 MTL_CURSEFORGE_KEY）。
+    /// 留空走社区镜像；填了就直连 api.curseforge.com，速度差一个数量级。
+    /// 只存在本地 config.json，不进仓库。
+    /// </summary>
+    public string CurseForgeApiKey { get; set; } = string.Empty;
+
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 

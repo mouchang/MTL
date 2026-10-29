@@ -56,8 +56,42 @@ public sealed class CurseForgeClient
 {
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(30));
 
-    /// <summary>暂无官方 Key，统一走 MCIM 镜像，因此始终可用。</summary>
+    /// <summary>官方 API（需要 Key；官方一次搜索通常几百毫秒，镜像要十几秒）。</summary>
+    private const string OfficialBase = "https://api.curseforge.com/v1";
+
+    /// <summary>社区镜像（免 Key，但慢）。</summary>
+    private static string MirrorBase => DownloadSources.Mcim + "/curseforge/v1";
+
+    /// <summary>环境变量优先，其次本地配置。</summary>
+    private static string ApiKey
+    {
+        get
+        {
+            var fromEnv = Environment.GetEnvironmentVariable("MTL_CURSEFORGE_KEY");
+            return string.IsNullOrWhiteSpace(fromEnv) ? AppConfig.Current.CurseForgeApiKey : fromEnv;
+        }
+    }
+
+    /// <summary>官方 Key 被拒过就不再硬试，本进程内退回镜像。</summary>
+    private static bool _officialRejected;
+
+    /// <summary>当前是不是走官方 API。</summary>
+    public static bool IsOfficial => !string.IsNullOrWhiteSpace(ApiKey) && !_officialRejected;
+
+    private static string BaseUrl => IsOfficial ? OfficialBase : MirrorBase;
+
+    /// <summary>补上官方 API 需要的请求头（镜像会忽略）。</summary>
+    private static void Authorize(HttpRequestMessage request)
+    {
+        if (!IsOfficial) return;
+
+        request.Headers.TryAddWithoutValidation("x-api-key", ApiKey.Trim());
+    }
+
     public static bool Available => true;
+
+    /// <summary>换了新 Key 之后重新允许走官方 API。</summary>
+    public static void ResetOfficialFlag() => _officialRejected = false;
 
     /// <summary>classId：mod 6 / modpack 4471 / resourcepack 12 / shader 6552 / datapack 6945。</summary>
     public async Task<CurseForgeSearchResult> SearchAsync(string query, int classId,
@@ -84,7 +118,7 @@ public sealed class CurseForgeClient
         if (loaderType is { } loader)
             parameters.Add("modLoaderType=" + loader);
 
-        var url = $"{DownloadSources.CurseForgeApiBase}/mods/search?" + string.Join('&', parameters);
+        var url = $"{BaseUrl}/mods/search?" + string.Join('&', parameters);
 
         using var document = await GetAsync(url, cancellationToken);
         var root = document.RootElement;
@@ -122,7 +156,7 @@ public sealed class CurseForgeClient
     public async Task<CurseForgeModDetail?> GetModAsync(int modId,
         CancellationToken cancellationToken = default)
     {
-        using var document = await GetAsync($"{DownloadSources.CurseForgeApiBase}/mods/{modId}",
+        using var document = await GetAsync($"{BaseUrl}/mods/{modId}",
             cancellationToken);
 
         if (!document.RootElement.TryGetProperty("data", out var data)
@@ -205,7 +239,7 @@ public sealed class CurseForgeClient
 
             if (index > 0) parameters.Add("index=" + index);
 
-            var url = $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files?"
+            var url = $"{BaseUrl}/mods/{modId}/files?"
                       + string.Join('&', parameters);
 
             try
@@ -262,7 +296,7 @@ public sealed class CurseForgeClient
         CancellationToken cancellationToken = default)
     {
         using var document = await GetAsync(
-            $"{DownloadSources.CurseForgeApiBase}/mods/{modId}/files/{fileId}", cancellationToken);
+            $"{BaseUrl}/mods/{modId}/files/{fileId}", cancellationToken);
 
         if (!document.RootElement.TryGetProperty("data", out var data)
             || data.ValueKind != JsonValueKind.Object)
@@ -322,18 +356,7 @@ public sealed class CurseForgeClient
             fingerprints = fingerprints.Select(value => (long)value).ToArray(),
         });
 
-        using var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{DownloadSources.CurseForgeApiBase}/fingerprints")
-        {
-            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
-        };
-        request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
-
-        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await PostJsonAsync(payload, cancellationToken).ConfigureAwait(false);
         using var document = JsonDocument.Parse(json);
 
         var matches = new List<CurseForgeFingerprintMatch>();
@@ -450,8 +473,22 @@ public sealed class CurseForgeClient
 
     private static async Task<JsonDocument> GetAsync(string url, CancellationToken cancellationToken)
     {
+        try
+        {
+            return await SendAsync(url, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (IsForbidden(ex))
+        {
+            RejectOfficial(ex);
+            return await SendAsync(ToMirror(url), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<JsonDocument> SendAsync(string url, CancellationToken cancellationToken)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
+        Authorize(request);
 
         using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -461,6 +498,53 @@ public sealed class CurseForgeClient
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         return JsonDocument.Parse(json);
     }
+
+    private static async Task<string> PostJsonAsync(string payload, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendPostAsync(BaseUrl, payload, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (IsForbidden(ex))
+        {
+            RejectOfficial(ex);
+            return await SendPostAsync(MirrorBase, payload, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<string> SendPostAsync(string baseUrl, string payload,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/fingerprints")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
+        Authorize(request);
+
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool IsForbidden(Exception exception)
+        => exception is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Forbidden }
+           && IsOfficial;
+
+    /// <summary>官方 Key 被拒：本进程后面都用镜像，日志里说清楚原因。</summary>
+    private static void RejectOfficial(Exception exception)
+    {
+        _officialRejected = true;
+        AppLog.Info("curseforge: 官方 API 返回 403（Key 无效或额度用尽），改用社区镜像");
+        AppLog.Error(exception, "curseforge official api");
+    }
+
+    private static string ToMirror(string url)
+        => url.StartsWith(OfficialBase, StringComparison.OrdinalIgnoreCase)
+            ? MirrorBase + url[OfficialBase.Length..]
+            : url;
 
     private static string Text(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String

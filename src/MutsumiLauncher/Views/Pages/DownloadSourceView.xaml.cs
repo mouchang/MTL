@@ -48,6 +48,14 @@ public partial class DownloadSourceView : UserControl
         ProxyHostBox.Text = config.ProxyHost;
         ProxyPortBox.Text = config.ProxyPort.ToString();
 
+        CurseForgeKeyBox.Text = config.CurseForgeApiKey;
+
+        CurseForgeKeyStatus.Text = CurseForgeClient.IsOfficial
+            ? "当前：官方 API（api.curseforge.com）"
+            : string.IsNullOrWhiteSpace(config.CurseForgeApiKey)
+                ? "当前：社区镜像（未配置 Key）"
+                : "当前：社区镜像（Key 被官方拒绝过，填新的 Key 再保存一次）";
+
         RefreshSpeed();
         RefreshBuiltIn();
     }
@@ -102,6 +110,25 @@ public partial class DownloadSourceView : UserControl
         {
             BuiltInTest.IsEnabled = true;
         }
+    }
+
+    private void CurseForgeKey_Click(object sender, RoutedEventArgs e)
+    {
+        var key = CurseForgeKeyBox.Text.Trim();
+        var config = AppConfig.Current;
+
+        config.CurseForgeApiKey = key;
+        config.Save();
+
+        // 换了 Key 就重新试一次官方 API（之前可能因为 403 退回过镜像）
+        CurseForgeClient.ResetOfficialFlag();
+
+        CurseForgeKeyStatus.Text = string.IsNullOrWhiteSpace(key)
+            ? "已清空：改用社区镜像。"
+            : "已保存：下一次搜索会直连 api.curseforge.com；如果 Key 被拒，日志里会有提示。";
+
+        AppLog.Info($"curseforge api key {(string.IsNullOrWhiteSpace(key) ? "cleared" : "updated")}");
+        _onChanged?.Invoke();
     }
 
     private void RefreshSpeed()

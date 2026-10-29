@@ -67,6 +67,15 @@
 - 文件下载不再使用 MCIM；CurseForge 的搜索与详情仍走 MCIM
   （没有官方 API Key 之前别无选择，但它只传 JSON 元数据，不传文件）
 
+## [Unreleased]
+
+### CurseForge 官方 API
+- 设置页「下载源」新增 **CurseForge API** 一栏：填官方 Key 后直连 `api.curseforge.com`，
+  搜索从十几秒降到几百毫秒；留空继续走社区镜像
+- 请求自动带 `x-api-key`；官方返回 403（Key 无效 / 额度用尽）时自动退回镜像并写日志，
+  不会让整个搜索失败
+- Key 只存在本地 `config.json`，也可以用环境变量 `MTL_CURSEFORGE_KEY` 覆盖
+
 ## [1.0.0-beta.6] - 2026-10-29
 
 **MTL beta v1.0.0 build 6**
