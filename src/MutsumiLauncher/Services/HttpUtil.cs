@@ -20,7 +20,10 @@ public static class HttpUtil
     private static bool IsDomestic(string url) =>
         url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
         || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase);
+        || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase)
+        // CurseForge 官方 API 挂在 Cloudflare 上，国内直连通常一两秒；
+        // 绕代理反而先失败两次 —— 实测一次搜索能从 2 秒拖到 23 秒
+        || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>常见本地代理端口（Clash / v2ray / Shadowsocks 客户端）。</summary>
     private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
@@ -159,6 +162,9 @@ public static class HttpUtil
         /// <summary>内置代理失败后的冷却时间（静态：所有请求共享，别每次都白等一遍）。</summary>
         private static long _builtInDownUntilTicks;
 
+        /// <summary>本机代理（7890 之类）失败后的冷却时间，同上。</summary>
+        private static long _proxyDownUntilTicks;
+
         public RouteHandler(string mode)
         {
             _mode = mode;
@@ -218,7 +224,10 @@ public static class HttpUtil
             var url = request.RequestUri?.ToString() ?? string.Empty;
             var proxy = await ProxyAsync(cancellationToken).ConfigureAwait(false);
 
-            var routes = BuildRoutes(url, proxy);
+            // 本机代理刚失败过就先用直连，别让每个请求都先白等一次握手超时
+            var proxyCooling = DateTime.UtcNow.Ticks < Interlocked.Read(ref _proxyDownUntilTicks);
+
+            var routes = BuildRoutes(url, proxyCooling ? null : proxy);
 
             // 内置代理优先：只有境外资源域名会命中；最近失败过就先别用它
             HttpClient? builtIn = null;
@@ -252,8 +261,14 @@ public static class HttpUtil
                     try
                     {
                         // 成功后不能释放 timeout：ResponseHeadersRead 的后续读取还挂着这个 token
-                        return await route.SendAsync(clone, HttpCompletionOption.ResponseHeadersRead,
+                        var response = await route.SendAsync(clone, HttpCompletionOption.ResponseHeadersRead,
                             timeout.Token).ConfigureAwait(false);
+
+                        // 这条路通了，把冷却清掉
+                        if (ReferenceEquals(route, proxy))
+                            Interlocked.Exchange(ref _proxyDownUntilTicks, 0);
+
+                        return response;
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -271,10 +286,13 @@ public static class HttpUtil
 
                         AppLog.Info($"网络失败，换下一条路（{label}）：{url} -> {ex.Message}");
 
-                        // 内置代理挂了就别让它继续挡在前面
+                        // 挂掉的路先冷静一会儿，别让每个请求都先白等一遍
                         if (ReferenceEquals(route, builtIn))
                             Interlocked.Exchange(ref _builtInDownUntilTicks,
-                                DateTime.UtcNow.AddMinutes(2).Ticks);
+                                DateTime.UtcNow.AddMinutes(5).Ticks);
+                        else if (ReferenceEquals(route, proxy))
+                            Interlocked.Exchange(ref _proxyDownUntilTicks,
+                                DateTime.UtcNow.AddMinutes(5).Ticks);
                     }
                 }
 

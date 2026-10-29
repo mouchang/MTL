@@ -46,7 +46,8 @@ public static class ResourceService
     private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(45);
 
     private const int ModrinthChunk = 100;
-    private const int CurseForgeChunk = 50;
+    // 官方 API 的响应随 pageSize 线性变大（50 条 ≈ 685 KB ≈ 10 秒），20 条最平衡
+    private const int CurseForgeChunk = 20;
 
     private static readonly ModrinthClient Modrinth = new();
     private static readonly CurseForgeClient CurseForge = new();
