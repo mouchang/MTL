@@ -226,7 +226,8 @@ public partial class CommunitySearchView : UserControl
                     ResourcePlatform.Modrinth =>
                         $"找到 {result.Total:N0} 个结果（来自 Modrinth）{hint}",
                     _ =>
-                        $"找到 {result.Total:N0} 个结果（Modrinth {result.ModrinthTotal:N0} · CurseForge {result.CurseForgeTotal:N0}）{hint}",
+                        $"找到 {TotalText(result.Total)} 个结果（Modrinth {result.ModrinthTotal:N0} · " +
+                        $"CurseForge {TotalText(result.CurseForgeTotal)}）{hint}",
                 };
 
             BuildPageBar();
@@ -284,6 +285,13 @@ public partial class CommunitySearchView : UserControl
         }, token);
     }
 
+    /// <summary>
+    /// CurseForge 官方接口对 totalCount 封顶 10000（index + pageSize 也不能超过它），
+    /// 所以数字正好是 10000 时加个加号，别让人以为真的只有一万个结果。
+    /// </summary>
+    private static string TotalText(long total)
+        => total >= 10000 ? "10,000+" : total.ToString("N0");
+
     private void BuildPageBar()
     {
         // 页数由服务端算好：聚合模式按合并后的卡片数，单平台按接口返回的总数
@@ -297,7 +305,7 @@ public partial class CommunitySearchView : UserControl
         }
 
         PageBar.Visibility = Visibility.Visible;
-        PageInfo.Text = $"共 {_totalHits:N0} 个结果";
+        PageInfo.Text = $"共 {TotalText(_totalHits)} 个结果";
         PagePanel.Children.Clear();
 
         AddPageButton("上一页", Math.Max(0, _page - 1), enabled: _page > 0);
