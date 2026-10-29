@@ -25,7 +25,9 @@ public static class HttpUtil
         // 绕代理反而先失败两次 —— 实测一次搜索能从 2 秒拖到 23 秒
         || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase)
         || url.Contains("api.modrinth.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase);
+        || url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase)
+        // 自家的 Cloudflare Worker：国内直连边缘节点比绕代理快，也省代理带宽
+        || url.Contains("mtl.dpdns.org", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>常见本地代理端口（Clash / v2ray / Shadowsocks 客户端）。</summary>
     private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
