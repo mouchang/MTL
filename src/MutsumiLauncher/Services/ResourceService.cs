@@ -166,8 +166,7 @@ public static class ResourceService
 
         try
         {
-            // 两边都抓「到这一页为止」的量：每页各补 20 条，翻到第 N 页时两边都有 N×20 条。
-            // 以前 Modrinth 一块 100 条、CF 一块 20 条，CF 第一页就被用光，第 2 页起只剩 MD。
+            // 两边各抓到「到这一页为止」的量：第 N 页时两边都有 (N+1)×20 条，混排后每页都均衡。
             var perSideTarget = Math.Min(AggregateMaxItems, (page + 1) * pageSize);
 
             await EnsureModrinthAsync(bucket, query, projectType, gameVersion, loader, category,
@@ -198,6 +197,9 @@ public static class ResourceService
             var groups = GroupHits(sorted);
 
             var hits = TakeGroups(groups, page, pageSize);
+
+            AppLog.Info($"aggregate page {page + 1}: 池 MD {bucket.Modrinth.Count} / CF " +
+                        $"{bucket.CurseForge.Count}，分组 {groups.Count}，本页 {hits.Count}");
 
             // 每个分组平均由不到两条结果合成，所以「能翻到第几页」要按条数折半算，
             // 否则分页条会给出根本抓不到数据的页码（点进去是空的）
@@ -240,8 +242,21 @@ public static class ResourceService
         {
             var before = bucket.Modrinth.Count;
 
-            await FillModrinthAsync(bucket, query, projectType, gameVersion, loader, category, sort,
-                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await FillModrinthAsync(bucket, query, projectType, gameVersion, loader, category,
+                    sort, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // 一次失败不代表没数据：记一笔，下次翻页再来，别让整页变成单来源
+                AppLog.Error(ex, "modrinth search in aggregate");
+                return;
+            }
 
             if (bucket.Modrinth.Count == before) break;
         }

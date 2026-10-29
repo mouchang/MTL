@@ -69,6 +69,11 @@
 
 ## [Unreleased]
 
+### 聚合：Modrinth 抓取失败不再拖垮整页
+- `EnsureModrinthAsync` 单次失败只记日志、下次翻页重试，不再让整页退化成单来源
+  （之前一次超时就会导致某一页只剩 CurseForge）
+- 每页打一行日志：`aggregate page N: 池 MD x / CF y，分组 z，本页 n`，方便排查
+
 ### 聚合排序：两边交替，不再一边倒
 - 原因：CurseForge 的下载量普遍比 Modrinth 高一个量级（JEI 6.4 亿 vs Fabric API 2.9 亿），
   直接按下载量混排，第一页会被 CF 整页占满
