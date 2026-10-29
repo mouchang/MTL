@@ -45,7 +45,8 @@ public static class ResourceService
     /// </summary>
     private static readonly TimeSpan CurseForgeFillTimeout = TimeSpan.FromSeconds(45);
 
-    private const int ModrinthChunk = 100;
+    // 和 CurseForge 一样每块 20 条：两边同步翻页，混排后每页都均衡
+    private const int ModrinthChunk = 20;
     // 官方 API 的响应随 pageSize 线性变大（50 条 ≈ 685 KB ≈ 10 秒），20 条最平衡
     private const int CurseForgeChunk = 20;
 
@@ -165,25 +166,15 @@ public static class ResourceService
 
         try
         {
-            // 合并会去重，按「两倍页大小」估需要抓多少条；
-            // 再往后多留一页余量（留太多会让首次打开多下几百 KB），
-            // 翻下一页时一般不用补抓，已经看过的页也不会因为补抓而位移
-            var needed = Math.Min(AggregateMaxItems, (page + 2) * pageSize * 2);
+            // 两边都抓「到这一页为止」的量：每页各补 20 条，翻到第 N 页时两边都有 N×20 条。
+            // 以前 Modrinth 一块 100 条、CF 一块 20 条，CF 第一页就被用光，第 2 页起只剩 MD。
+            var perSideTarget = Math.Min(AggregateMaxItems, (page + 1) * pageSize);
 
-            // CurseForge 每页也要跟着涨：Modrinth 一块 100 条、CF 一块只有 20 条，
-            // 只按总条数补的话第 2 页开始 CF 就被用光了（这就是「只有第一页有 CF」的原因）
-            var curseForgeTarget = Math.Min(AggregateMaxItems,
-                Math.Max(CurseForgeChunk, (page + 1) * pageSize));
+            await EnsureModrinthAsync(bucket, query, projectType, gameVersion, loader, category,
+                sort, perSideTarget, cancellationToken).ConfigureAwait(false);
 
-            while (bucket.Count < needed && bucket.Count < AggregateMaxItems
-                   && (!bucket.ModrinthDone || !bucket.CurseForgeDone))
-            {
-                var before = bucket.Count;
-                await FillAsync(bucket, query, projectType, gameVersion, loader, category, sort,
-                    page, pageSize, curseForgeTarget, cancellationToken);
-
-                if (bucket.Count == before) break;  // 真没东西了
-            }
+            await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
+                perSideTarget, cancellationToken).ConfigureAwait(false);
 
             var sorted = sort switch
             {
@@ -231,24 +222,23 @@ public static class ResourceService
         }
     }
 
-    /// <summary>
-    /// 补抓一块。Modrinth 很快，等它；CurseForge 走第三方镜像，实测一次要 20 秒左右
-    /// （mod 类目 50 条响应 1.4 MB），所以只在前台等一小会儿，剩下的丢后台继续抓，
-    /// 抓到了下一次翻页/刷新就能看见 —— 不能因为镜像慢就整块不显示。
-    /// </summary>
-    private static async Task FillAsync(AggregateBucket bucket, string query, string projectType,
-        string? gameVersion, string? loader, string? category, ResourceSort sort, int page,
-        int pageSize, int curseForgeTarget, CancellationToken cancellationToken)
+    /// <summary>Modrinth 补抓到「这一页该有的条数」为止，每块 20 条。</summary>
+    private static async Task EnsureModrinthAsync(AggregateBucket bucket, string query,
+        string projectType, string? gameVersion, string? loader, string? category,
+        ResourceSort sort, int target, CancellationToken cancellationToken)
     {
-        if (!bucket.ModrinthDone)
+        var guard = 0;
+
+        while (!bucket.ModrinthDone && bucket.Modrinth.Count < target
+               && bucket.Count < AggregateMaxItems && guard++ < 8)
         {
+            var before = bucket.Modrinth.Count;
+
             await FillModrinthAsync(bucket, query, projectType, gameVersion, loader, category, sort,
                 cancellationToken).ConfigureAwait(false);
-        }
 
-        // 一直补到「这一页该有的 CF 条数」，这样每页都能混到两边
-        await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
-            curseForgeTarget, cancellationToken).ConfigureAwait(false);
+            if (bucket.Modrinth.Count == before) break;
+        }
     }
 
     /// <summary>
