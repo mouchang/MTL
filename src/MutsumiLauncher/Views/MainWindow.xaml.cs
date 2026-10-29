@@ -424,7 +424,6 @@ public partial class MainWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
 
-    /// <summary>首次启动时自动跑一次代理自检：成功/失败都在全局提示一次。</summary>
     /// <summary>首次启动弹一次公告页（代理内核提示 + 免责申明），之后不再出现。</summary>
     private async Task ShowFirstRunAnnouncementAsync()
     {
@@ -444,6 +443,7 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>首次启动时自动跑一次代理自检：成功/失败都在全局提示一次。</summary>
     private async Task RunFirstProxySelfTestAsync()
     {
         var config = AppConfig.Current;
@@ -454,16 +454,11 @@ public partial class MainWindow : Window
             // 等窗口稳定一点再开始，别和首屏动画抢资源
             await Task.Delay(1500);
 
-            var (ok, milliseconds, message) = await ProxyCore.Shared.RunSelfTestAsync();
+            var (ok, _, message) = await ProxyCore.Shared.RunSelfTestAsync();
 
-            if (ok)
-            {
-                ShowToast($"内置代理连接成功 · {message}（{milliseconds} ms）");
-            }
-            else
-            {
-                ShowToast($"内置代理连接失败：{message}　可到「设置 → 下载源 → 内置代理」重新测试");
-            }
+            ShowToast(ok
+                ? "已成功连接代理"
+                : $"连接代理失败：{message}");
 
             config.ProxySelfTestDone = true;
             config.Save();

@@ -165,10 +165,14 @@ public partial class CommunitySearchView : UserControl
         await RunSearchAsync(0);
     }
 
+    /// <summary>搜索代次：慢请求回来时如果已经有更新的请求，就丢掉这批结果。</summary>
+    private int _searchGeneration;
+
     private async Task RunSearchAsync(int page = 0)
     {
         if (page != _page) _curseForgeRefreshLeft = 0;
 
+        var generation = ++_searchGeneration;
         _page = Math.Max(0, page);
         Loading.IsActive = true;
 
@@ -178,6 +182,9 @@ public partial class CommunitySearchView : UserControl
         {
             var result = await ResourceService.SearchAsync(platform, SearchNameBox.Text.Trim(),
                 _projectType, GameVersion(), Loader(), Category(), _page, PageSize, SortOption());
+
+            // 翻页点得太快时，前一次（更慢的）请求可能后返回 —— 别让它覆盖当前页
+            if (generation != _searchGeneration) return;
 
             _totalHits = result.Total;
             _pageCount = result.PageCount;
@@ -227,13 +234,16 @@ public partial class CommunitySearchView : UserControl
         catch (Exception ex)
         {
             AppLog.Error(ex, "community search");
+            if (generation != _searchGeneration) return;
+
             ResultsList.ItemsSource = null;
             StatusText.Text = "搜索失败：" + ex.Message;
             PageBar.Visibility = Visibility.Collapsed;
         }
         finally
         {
-            Loading.IsActive = false;
+            // 只有「当前这一代」请求才关掉 loading，否则慢请求会把新请求的转圈提前关掉
+            if (generation == _searchGeneration) Loading.IsActive = false;
         }
     }
 
