@@ -229,7 +229,8 @@
                                                     Visibility="{Binding HasCurseForge, Converter={StaticResource BoolToVis}}">
 
                                                 <Grid>
-                                                    <Border CornerRadius="8" Background="{DynamicResource Accent}" Opacity="0">
+                                                    <!-- 选中底色用 CurseForge 自己的橙色，和 Modrinth 的绿色区分开 -->
+                                                    <Border CornerRadius="8" Background="{DynamicResource SourceOrange}" Opacity="0">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
