@@ -3,6 +3,13 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0-beta.6] - 2026-10-30
+
+### 感谢名单
+
+- BMCLAPI 的地址改成仓库 OpenBMCLAPI：https://github.com/bangbang93/openbmclapi
+- MCIM 未开源，链接改为官网 https://mcimirror.top
+
 ## [1.1.0-beta.5] - 2026-10-30
 
 ### 关于页
