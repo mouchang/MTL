@@ -498,6 +498,91 @@ public static class ResourceService
         return list;
     }
 
+    /// <summary>
+    /// 批量取项目：先查缓存，剩下的用一次批量请求补齐。
+    /// 前置面板一屏可能有好几个项目，逐个查要好几秒，批量只走一次网络。
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, ModrinthProject>> GetProjectsAsync(
+        ResourcePlatform platform, IReadOnlyCollection<string> projectIds,
+        string projectType = "mod", CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, ModrinthProject>(StringComparer.OrdinalIgnoreCase);
+        var missing = new List<string>();
+
+        foreach (var id in projectIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct())
+        {
+            var key = $"{platform}:{id}";
+
+            if (ProjectCache.TryGetValue(key, out var cached))
+            {
+                result[id] = cached;
+                continue;
+            }
+
+            // 之前打开过这个项目的详情页：磁盘里就有缓存，直接读，不用等网络
+            if (TryLoadDisk($"project-{platform}-{id}", out ModrinthProject? diskProject)
+                && diskProject is not null)
+            {
+                ProjectCache[key] = diskProject;
+                result[id] = diskProject;
+                continue;
+            }
+
+            missing.Add(id);
+        }
+
+        if (missing.Count == 0) return result;
+
+        try
+        {
+            if (platform == ResourcePlatform.Modrinth)
+            {
+                foreach (var project in await Modrinth.GetProjectsAsync(missing, cancellationToken))
+                {
+                    var key = $"{platform}:{project.Id}";
+                    ProjectCache[key] = project;
+                    result[project.Id] = project;
+                    SaveDisk($"project-{platform}-{project.Id}", project);
+                }
+            }
+            else
+            {
+                var ids = missing.Select(id => int.TryParse(id, out var number) ? number : 0)
+                    .Where(number => number > 0)
+                    .ToList();
+
+                foreach (var mod in await CurseForge.GetModsAsync(ids, cancellationToken))
+                {
+                    var project = new ModrinthProject
+                    {
+                        Id = mod.Id.ToString(),
+                        Slug = mod.Id.ToString(),
+                        Title = mod.Name,
+                        Description = mod.Summary,
+                        IconUrl = mod.IconUrl,
+                        Downloads = mod.Downloads,
+                        ProjectType = projectType,
+                    };
+
+                    var key = $"{platform}:{project.Id}";
+                    ProjectCache[key] = project;
+                    result[project.Id] = project;
+                    SaveDisk($"project-{platform}-{project.Id}", project);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "batch project fetch");
+        }
+
+        return result;
+    }
+
     public static async Task<ModrinthProject?> GetProjectAsync(ResourcePlatform platform, string projectId,
         string projectType = "mod", CancellationToken cancellationToken = default)
     {

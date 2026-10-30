@@ -301,70 +301,106 @@ public partial class ModrinthDetailView : UserControl
         _visibleRows = new ObservableCollection<ModrinthFileRow>(rows.Take(VersionPageSize));
         FileList.ItemsSource = _visibleRows;
 
-        // 只给最前面的若干行查前置：版本列表动辄上百行，全查一遍既慢又没必要
-        foreach (var row in rows.Take(DependencyPrefetchRows))
-            _ = LoadDependenciesAsync(row);
+        // 前置：批量取名字立刻贴标签，再后台核对是否需要
+        _ = LoadDependenciesForVisibleAsync();
     }
 
     /// <summary>
-    /// 只加载这一版真正需要的前置：
-    /// 1. Modrinth 只认 required，CurseForge 只认 relationType = 3（在 GetVersionsAsync 里已过滤）；
-    /// 2. 跳过 Fabric API / Quilt API 这类"必装但不值得占位"的加载器本体；
-    /// 3. 前置在同一个游戏版本下已经没有构建的，说明只是老版本才需要，当前版本不显示。
+    /// 前置标签：先把名字一次性批量取回来，立刻贴标签；「这一版还需不需要它」的核对放后台。
     /// </summary>
-    private async Task LoadDependenciesAsync(ModrinthFileRow row)
+    private async Task LoadDependenciesForVisibleAsync()
     {
         var platform = _item?.Platform ?? ResourcePlatform.Modrinth;
         var projectType = _item?.Hit.ProjectType ?? "mod";
+
+        var targets = _visibleRows
+            .Take(DependencyPrefetchRows)
+            .Select(row => (Row: row, Deps: RequiredDependencies(row)))
+            .Where(target => target.Deps.Count > 0)
+            .ToList();
+
+        if (targets.Count == 0) return;
+
+        var ids = targets.SelectMany(target => target.Deps)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        IReadOnlyDictionary<string, ModrinthProject> projects;
+
+        try
+        {
+            projects = await ResourceService.GetProjectsAsync(platform, ids, projectType);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "batch dependency projects");
+            projects = new Dictionary<string, ModrinthProject>();
+        }
+
+        // 1. 立刻贴标签：名字拿不到就先用项目 ID，比空白强
+        Dispatcher.Invoke(() =>
+        {
+            foreach (var (row, deps) in targets)
+            {
+                foreach (var projectId in deps)
+                {
+                    if (row.Dependencies.Any(chip => chip.ProjectId == projectId)) continue;
+
+                    projects.TryGetValue(projectId, out var project);
+
+                    var english = project?.Title ?? projectId;
+                    var chinese = McmodIndex.ChineseFor(project?.Slug, english);
+
+                    row.Dependencies.Add(new DependencyChip
+                    {
+                        ProjectId = projectId,
+                        Name = string.IsNullOrWhiteSpace(chinese) ? english : chinese,
+                        Tooltip = string.IsNullOrWhiteSpace(chinese) ? english : chinese + "\n" + english,
+                    });
+                }
+            }
+        });
+
+        // 2. 后台核对：这一版下前置已经没有构建的，说明只是老版本需要，撤掉
+        foreach (var (row, deps) in targets)
+            _ = VerifyDependenciesAsync(platform, row, deps);
+    }
+
+    /// <summary>这一版真正要展示的前置：required、去重、排除加载器本体、最多 6 个。</summary>
+    private static List<string> RequiredDependencies(ModrinthFileRow row) =>
+        row.Version.Dependencies
+            .Where(dependency => dependency.DependencyType == "required")
+            .Where(dependency => !string.IsNullOrWhiteSpace(dependency.ProjectId))
+            .Where(dependency => !IsLoaderDependency(dependency.ProjectId!))
+            .Select(dependency => dependency.ProjectId!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxDependenciesPerVersion)
+            .ToList();
+
+    private async Task VerifyDependenciesAsync(ResourcePlatform platform, ModrinthFileRow row,
+        IReadOnlyList<string> projectIds)
+    {
         var versions = row.Version.GameVersions
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var dependencies = row.Version.Dependencies
-            .Where(dependency => dependency.DependencyType == "required")
-            .Where(dependency => !string.IsNullOrWhiteSpace(dependency.ProjectId))
-            .Where(dependency => !IsLoaderDependency(dependency.ProjectId!))
-            .DistinctBy(dependency => dependency.ProjectId!)
-            .Take(MaxDependenciesPerVersion)
-            .ToList();
+        if (versions.Count == 0) return;
 
-        foreach (var dependency in dependencies)
+        foreach (var projectId in projectIds)
         {
-            var projectId = dependency.ProjectId!;
-
-            if (versions.Count > 0 && !await DependencyCoversAsync(platform, projectId, versions))
-                continue;   // 这一版下前置没有对应构建：多半是老版本遗留的，不显示
-
-            string english = projectId;
-            string? chinese = null;
-
-            try
-            {
-                var project = await ResourceService.GetProjectAsync(platform, projectId, projectType);
-                english = project?.Title ?? projectId;
-                chinese = McmodIndex.ChineseFor(project?.Slug, english);
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error(ex, "load dependency project");
-            }
-
-            var chip = new DependencyChip
-            {
-                ProjectId = projectId,
-                Name = string.IsNullOrWhiteSpace(chinese) ? english : chinese,
-                Tooltip = string.IsNullOrWhiteSpace(chinese) ? english : $"{chinese}\n{english}",
-            };
+            if (await DependencyCoversAsync(platform, projectId, versions)) continue;
 
             Dispatcher.Invoke(() =>
             {
-                if (!row.Dependencies.Any(item => item.ProjectId == chip.ProjectId))
-                    row.Dependencies.Add(chip);
+                var chip = row.Dependencies.FirstOrDefault(item => item.ProjectId == projectId);
+                if (chip is not null) row.Dependencies.Remove(chip);
             });
         }
     }
 
     private const int MaxDependenciesPerVersion = 6;
+
+    /// <summary>只为最前面这么多行预加载前置。</summary>
+    private const int DependencyPrefetchRows = 12;
 
     /// <summary>每次渲染多少行版本，滚到底再续下一页。</summary>
     private const int VersionPageSize = 30;
@@ -384,18 +420,11 @@ public partial class ModrinthDetailView : UserControl
     {
         if (_visibleRows.Count >= _filteredRows.Count) return;
 
-        var before = _visibleRows.Count;
-
-        foreach (var row in _filteredRows.Skip(before).Take(VersionPageSize))
+        foreach (var row in _filteredRows.Skip(_visibleRows.Count).Take(VersionPageSize))
             _visibleRows.Add(row);
 
-        // 新加进来的行也要补前置
-        foreach (var row in _filteredRows.Skip(before).Take(DependencyPrefetchRows))
-            _ = LoadDependenciesAsync(row);
+        _ = LoadDependenciesForVisibleAsync();
     }
-
-    /// <summary>只为最前面这么多行预加载前置。</summary>
-    private const int DependencyPrefetchRows = 12;
 
     /// <summary>Fabric API / Quilt API：几乎所有 Mod 都写着，显示出来只会刷屏。</summary>
     private static bool IsLoaderDependency(string projectId) =>

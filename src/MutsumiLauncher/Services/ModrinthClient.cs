@@ -290,6 +290,24 @@ public sealed class ModrinthClient
         return JsonSerializer.Deserialize<List<ModrinthVersion>>(json) ?? [];
     }
 
+    /// <summary>批量取项目（一次最多 100 个）。前置动辄好几个，一次请求比逐个查快得多。</summary>
+    public async Task<IReadOnlyList<ModrinthProject>> GetProjectsAsync(
+        IReadOnlyCollection<string> projectIds, CancellationToken cancellationToken = default)
+    {
+        var ids = projectIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(100)
+            .ToList();
+
+        if (ids.Count == 0) return [];
+
+        var query = Uri.EscapeDataString(JsonSerializer.Serialize(ids));
+        var json = await GetStringAsync($"/projects?ids={query}", cancellationToken);
+
+        return JsonSerializer.Deserialize<List<ModrinthProject>>(json) ?? [];
+    }
+
 
     /// <summary>用本地 jar 的 SHA-1 查询 Modrinth 上匹配当前游戏版本/加载器的更新。</summary>
     public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesAsync(

@@ -166,6 +166,43 @@ public sealed class CurseForgeClient
             Website(data));
     }
 
+    /// <summary>批量取项目（一次最多 100 个）。</summary>
+    public async Task<IReadOnlyList<CurseForgeModDetail>> GetModsAsync(
+        IReadOnlyCollection<int> modIds, CancellationToken cancellationToken = default)
+    {
+        var ids = modIds.Where(id => id > 0).Distinct().Take(100).ToList();
+        if (ids.Count == 0) return [];
+
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object> { ["modIds"] = ids });
+
+        using var document = await PostAsync($"{BaseUrl}/mods", payload, cancellationToken);
+
+        if (document is null || !document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var result = new List<CurseForgeModDetail>();
+
+        foreach (var element in data.EnumerateArray())
+        {
+            var updated = DateTimeOffset.TryParse(Text(element, "dateModified"), out var date)
+                ? date
+                : DateTimeOffset.MinValue;
+
+            result.Add(new CurseForgeModDetail(
+                Int(element, "id"),
+                Text(element, "name"),
+                Text(element, "summary"),
+                Logo(element),
+                Authors(element),
+                Long(element, "downloadCount"),
+                updated,
+                Website(element)));
+        }
+
+        return result;
+    }
+
     /// <summary>单页条数。CurseForge 接口单页最多 50，想拿全只能翻页。</summary>
     private const int FilePageSize = 50;
 
@@ -495,6 +532,37 @@ public sealed class CurseForgeClient
         {
             return await SendPostAsync(MirrorBase, payload, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>POST 并解析 JSON（带镜像回落）。</summary>
+    private static async Task<JsonDocument> PostAsync(string url, string payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendPostDocumentAsync(url, payload, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ShouldFallBack(ex))
+        {
+            return await SendPostDocumentAsync(ToMirror(url), payload, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<JsonDocument> SendPostDocumentAsync(string url, string payload,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.UserAgent.ParseAdd("MutsumiLauncher/1.0");
+
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        return JsonDocument.Parse(json);
     }
 
     private static async Task<string> SendPostAsync(string baseUrl, string payload,
