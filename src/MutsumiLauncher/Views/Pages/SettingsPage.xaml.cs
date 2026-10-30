@@ -125,7 +125,8 @@ public partial class SettingsPage : UserControl
         MemoryAutoRadio.IsChecked = !manual;
 
         MemorySlider.Maximum = Math.Max(4096, TotalMemoryMb);
-        MemorySlider.Value = Math.Clamp(manual ? config.MemoryMb : AutoMemoryMb(), 512, MemorySlider.Maximum);
+        MemorySlider.Value = SnapMemory(Math.Clamp(manual ? config.MemoryMb : AutoMemoryMb(),
+            512, MemorySlider.Maximum));
         MemorySlider.IsEnabled = manual;
 
         MemoryHint.Text = $"检测到物理内存 {FormatMemory(TotalMemoryMb)}：自动配置取一半，" +
@@ -152,11 +153,35 @@ public partial class SettingsPage : UserControl
         MemoryValueText.Text = manual ? FormatMemory(value) : $"{FormatMemory(value)}（自动）";
     }
 
+    /// <summary>滑块不在回写过程中，避免吸附时自己触发自己。</summary>
+    private bool _memorySnapping;
+
+    /// <summary>
+    /// 内存吸附：1 GB 以下按 1 MB 走（512、513…1023），
+    /// 1 GB 以上按 0.1 GB 走（1126、1229…），拖起来不会一跳半 G。
+    /// </summary>
+    private static double SnapMemory(double value)
+    {
+        if (value < 1024) return Math.Round(value);
+
+        return Math.Round(value / 102.4) * 102.4;
+    }
+
     private void MemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_memoryLoading || MemoryValueText is null || MemoryManualRadio?.IsChecked != true) return;
+        if (_memorySnapping) return;
 
-        var value = (int)e.NewValue;
+        var snapped = SnapMemory(e.NewValue);
+
+        if (Math.Abs(e.NewValue - snapped) >= 0.5)
+        {
+            _memorySnapping = true;
+            MemorySlider.Value = snapped;
+            _memorySnapping = false;
+        }
+
+        var value = (int)snapped;
 
         AppConfig.Current.MemoryMb = value;
         AppConfig.Current.MemoryAuto = false;

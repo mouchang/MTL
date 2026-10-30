@@ -72,9 +72,10 @@
                                            Foreground="{DynamicResource AccentDeep}" />
                             </StackPanel>
 
+                            <!-- 1 GB 以下按 1 MB 调，1 GB 以上按 0.1 GB 调（吸附在代码里做） -->
                             <Slider x:Name="MemorySlider" Style="{StaticResource MtlSlider}"
-                                    Minimum="512" Maximum="65536" SmallChange="512"
-                                    LargeChange="1024" TickFrequency="512" IsSnapToTickEnabled="True"
+                                    Minimum="512" Maximum="65536" SmallChange="1"
+                                    LargeChange="128" TickFrequency="1" IsSnapToTickEnabled="False"
                                     Margin="0,14,0,0" ValueChanged="MemorySlider_ValueChanged" />
                         </StackPanel>
                     </Border>

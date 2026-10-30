@@ -6,13 +6,9 @@
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         FontFamily="{StaticResource UiFont}">
 
+    <!-- 不加 DropShadowEffect：透明窗口里阴影会被窗口边界裁成一个半透明方块 -->
     <Border Background="{DynamicResource SurfaceFloat}" CornerRadius="20" Padding="26,22"
             BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="34" ShadowDepth="8" Direction="270" Opacity="0.26"
-                              Color="{DynamicResource ShadowColorSoft}" />
-        </Border.Effect>
-
         <StackPanel>
             <TextBlock Text="欢迎使用 Mutsumi Launcher" FontSize="20" FontWeight="SemiBold"
                        Foreground="{DynamicResource Ink}" />

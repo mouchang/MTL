@@ -184,6 +184,15 @@ public partial class CommunitySearchView : UserControl
     /// <summary>搜索代次：慢请求回来时如果已经有更新的请求，就丢掉这批结果。</summary>
     private int _searchGeneration;
 
+    /// <summary>输入框里按回车直接搜索，不用移动到按钮上。</summary>
+    private void Filter_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+
+        e.Handled = true;
+        _ = RunSearchAsync(0);
+    }
+
     private async Task RunSearchAsync(int page = 0)
     {
         if (page != _page) _curseForgeRefreshLeft = 0;
@@ -426,7 +435,16 @@ public partial class CommunitySearchView : UserControl
         await Task.WhenAll(tasks);
     }
 
-    private string? GameVersion() => (VersionCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+    /// <summary>版本可以下拉选，也可以手输；输入框里写什么就用什么。</summary>
+    private string? GameVersion()
+    {
+        var text = VersionCombo.Text?.Trim();
+
+        if (!string.IsNullOrEmpty(text) && !text.StartsWith("全部", StringComparison.Ordinal))
+            return text;
+
+        return (VersionCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+    }
 
     private string? Loader() =>
         _kind == "mod" ? (LoaderCombo.SelectedItem as ComboBoxItem)?.Tag as string : null;
