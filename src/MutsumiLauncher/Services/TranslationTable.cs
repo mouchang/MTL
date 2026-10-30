@@ -6,8 +6,9 @@ using System.Text.Json;
 namespace MutsumiLauncher.Services;
 
 /// <summary>
-/// 离线译名表（MC百科，约 1.4 万条）：中文名 ↔ 英文名。
-/// 数据由 tools/mcmod-crawler 生成，打包进程序，不联网、不依赖第三方 API。
+/// 离线译名表（MC百科）：中文名 ↔ 英文名。
+/// 和 <see cref="McmodIndex"/> 共用同一份全量百科表（3.1 万条），
+/// 这里只挑出「有中文名」的那些建反向查询表，不再单独打包一份数据。
 /// </summary>
 public static class TranslationTable
 {
@@ -86,11 +87,17 @@ public static class TranslationTable
     private static Stream? OpenTableStream()
     {
         var assembly = typeof(TranslationTable).Assembly;
+        var names = assembly.GetManifestResourceNames();
 
-        var name = assembly.GetManifestResourceNames()
-            .FirstOrDefault(item => item.EndsWith("mcmod-zh.json.gz", StringComparison.OrdinalIgnoreCase));
+        // 全量表（3.1 万条）里面本来就有中文名，不再单独打包 mcmod-zh.json.gz
+        foreach (var suffix in new[] { "mcmod-all.json.gz", "mcmod-zh.json.gz" })
+        {
+            var name = names.FirstOrDefault(item => item.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 
-        return name is null ? null : assembly.GetManifestResourceStream(name);
+            if (name is not null) return assembly.GetManifestResourceStream(name);
+        }
+
+        return null;
     }
 
     /// <summary>输入里有没有汉字（没有就当英文查询处理，别拿中文条目去套）。</summary>

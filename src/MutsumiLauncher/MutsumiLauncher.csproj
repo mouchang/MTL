@@ -14,10 +14,8 @@
 
   <ItemGroup>
     <None Remove="Assets\**\*" />
-    <Resource Include="Assets\**\*" Exclude="Assets\mcmod-zh.json.gz" />
-    <!-- MC百科译名表（离线，来自 tools/mcmod-crawler），走嵌入资源方便直接读流 -->
-    <EmbeddedResource Include="Assets\mcmod-zh.json.gz" />
-    <!-- 全量百科表（31432 条，含没有中文名的），给 mcmod 匹配索引用 -->
+    <Resource Include="Assets\**\*" Exclude="Assets\mcmod-all.json.gz" />
+    <!-- MC百科全量数据（31432 条，来自 tools/mcmod-crawler）：索引和译名表共用这一份 -->
     <EmbeddedResource Include="Assets\mcmod-all.json.gz" />
   </ItemGroup>
 
