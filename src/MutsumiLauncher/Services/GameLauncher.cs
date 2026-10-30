@@ -121,7 +121,12 @@ public sealed class GameLauncher
         if (!string.IsNullOrWhiteSpace(detail.InheritsFrom))
             detail = MergeInherited(detail, detail.InheritsFrom);
 
-        if (detail.AssetIndex is { Url.Length: > 0 } assetIndex)
+        // 引用实例：库和资源都可能不在本地，先去外部 .minecraft 找
+        var isReference = ExternalSourceService.GetReference(id) is not null;
+        var referenceAssets = ExternalSourceService.AssetsDirFor(id);
+        var assetsDir = referenceAssets ?? GamePaths.AssetsDir;
+
+        if (detail.AssetIndex is { Url.Length: > 0 } assetIndex && referenceAssets is null)
         {
             progress?.Report(new LaunchProgress(3, "检查资源文件…"));
             IProgress<InstallProgress>? assetProgress = progress is null
@@ -136,32 +141,32 @@ public sealed class GameLauncher
         Directory.CreateDirectory(nativesDir);
         foreach (var artifact in AllowedLibraries(detail).SelectMany(NativeClassifiers))
         {
-            var path = Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
+            var path = ExternalSourceService.ResolveLibrary(id, artifact.Path!)
+                       ?? Path.Combine(GamePaths.LibrariesDir, artifact.Path!);
+
             if (File.Exists(path)) ExtractNatives(path, nativesDir);
         }
 
-        var jarPath = Path.Combine(versionDir, $"{id}.jar");
-        if (!File.Exists(jarPath) && !string.IsNullOrWhiteSpace(detail.InheritsFrom))
-        {
-            jarPath = Path.Combine(GamePaths.VersionsDir, detail.InheritsFrom,
-                $"{detail.InheritsFrom}.jar");
-        }
+        var jarPath = ExternalSourceService.ResolveClientJar(id, versionDir, detail.InheritsFrom)
+                      ?? Path.Combine(versionDir, $"{id}.jar");
 
-        var classpath = BuildClasspath(detail, jarPath);
+        var classpath = BuildClasspath(detail, jarPath, id, out var missing);
 
-        var missing = classpath.Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Where(entry => !File.Exists(entry))
-            .ToList();
+        if (!File.Exists(jarPath)) missing.Insert(0, jarPath);
 
         if (missing.Count > 0)
         {
             var names = string.Join("、", missing.Take(3).Select(Path.GetFileName));
             return new LaunchResult(false,
-                $"缺少 {missing.Count} 个依赖文件（如 {names}），请到下载页重新安装该版本以补全文件。",
+                ExternalSourceService.GetReference(id) is not null
+                    ? $"缺少 {missing.Count} 个依赖文件（如 {names}），引用源里也没找到；" +
+                      "请确认原目录里的 libraries 完整，或改用「导入」模式。"
+                    : $"缺少 {missing.Count} 个依赖文件（如 {names}），请到下载页重新安装该版本以补全文件。",
                 null);
         }
 
-        var gameDir = options.VersionIsolation ? versionDir : GamePaths.Root;
+        // 引用实例必须用影子目录当游戏目录，否则 mods 联接不生效
+        var gameDir = options.VersionIsolation || isReference ? versionDir : GamePaths.Root;
         Directory.CreateDirectory(gameDir);
 
         // Fabric 会在 .fabric/remappedJars 写重映射后的 jar；临时目录也放到游戏目录，避免系统 TEMP 不可写
@@ -197,8 +202,9 @@ public sealed class GameLauncher
         var java = await PickJavaAsync(detail, options.JavaPath, progress);
         if (java is null) return new LaunchResult(false, "没有可用的 Java，请先安装或指定 Java 路径。", null);
 
-        var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, options.PlayerName,
-            options.Uuid, options.AccessToken, options.IsMicrosoft, options.Xuid, options.MemoryMb);
+        var arguments = BuildArguments(detail, id, gameDir, nativesDir, classpath, assetsDir,
+            options.PlayerName, options.Uuid, options.AccessToken, options.IsMicrosoft, options.Xuid,
+            options.MemoryMb);
 
         var logDir = Path.Combine(GamePaths.Root, "logs");
         Directory.CreateDirectory(logDir);
@@ -256,17 +262,28 @@ public sealed class GameLauncher
         return new LaunchResult(true, $"已启动 {id}（Java {java.Version}）", logPath, process.Id);
     }
 
-    private static string BuildClasspath(VersionDetail detail, string jarPath)
+    private static string BuildClasspath(VersionDetail detail, string jarPath, string instance,
+        out List<string> missing)
     {
         var entries = new List<string> { jarPath };
+        missing = [];
 
-        entries.AddRange(AllowedLibraries(detail)
+        var paths = AllowedLibraries(detail)
             .Select(library => library.Downloads?.Artifact?.Path is { } artifactPath
                 ? artifactPath
                 : MavenPathFromName(library.Name))
             .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(path => Path.Combine(GamePaths.LibrariesDir, path!))
-            .Where(File.Exists));
+            .ToList();
+
+        foreach (var path in paths)
+        {
+            // 引用实例：本地没有就去外部 .minecraft 的 libraries 找
+            var resolved = ExternalSourceService.ResolveLibrary(instance, path!)
+                           ?? Path.Combine(GamePaths.LibrariesDir, path!);
+
+            if (File.Exists(resolved)) entries.Add(resolved);
+            else missing.Add(path!);
+        }
 
         return string.Join(';', entries);
     }
@@ -330,8 +347,8 @@ public sealed class GameLauncher
 
 
     private static List<string> BuildArguments(VersionDetail detail, string id, string gameDir,
-        string nativesDir, string classpath, string playerName, string uuid, string accessToken,
-        bool isMicrosoft, string xuid, int memoryMb)
+        string nativesDir, string classpath, string assetsDir, string playerName, string uuid,
+        string accessToken, bool isMicrosoft, string xuid, int memoryMb)
     {
         if (string.IsNullOrWhiteSpace(uuid)) uuid = OfflineUuid(playerName);
 
@@ -340,8 +357,8 @@ public sealed class GameLauncher
             ["auth_player_name"] = playerName,
             ["version_name"] = id,
             ["game_directory"] = gameDir,
-            ["assets_root"] = GamePaths.AssetsDir,
-            ["game_assets"] = Path.Combine(GamePaths.AssetsDir, "virtual", "legacy"),
+            ["assets_root"] = assetsDir,
+            ["game_assets"] = Path.Combine(assetsDir, "virtual", "legacy"),
             ["assets_index_name"] = detail.AssetIndex?.Id ?? detail.Assets,
             ["auth_uuid"] = uuid,
             ["auth_access_token"] = string.IsNullOrWhiteSpace(accessToken) ? "0" : accessToken,

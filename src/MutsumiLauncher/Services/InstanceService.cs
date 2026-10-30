@@ -35,9 +35,11 @@ public static class InstanceService
 {
     public static string DirFor(string name) => Path.Combine(GamePaths.VersionsDir, name);
 
-    /// <summary>版本隔离时游戏目录就是实例目录，否则是游戏根目录。</summary>
+    /// <summary>版本隔离时游戏目录就是实例目录，否则是游戏根目录；引用实例强制隔离。</summary>
     public static string GameDirFor(string name)
-        => InstanceSettings.Load(name).EffectiveIsolation ? DirFor(name) : GamePaths.Root;
+        => InstanceSettings.Load(name).EffectiveIsolation || ExternalSourceService.IsReference(name)
+            ? DirFor(name)
+            : GamePaths.Root;
 
     public static string ModsDirFor(string name) => Path.Combine(GameDirFor(name), "mods");
 

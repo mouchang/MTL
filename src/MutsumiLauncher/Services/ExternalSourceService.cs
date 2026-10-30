@@ -286,6 +286,95 @@ public static class ExternalSourceService
         }
     }
 
+    /// <summary>引用实例的来源（root + 外部版本名）；不是引用实例返回 null。</summary>
+    public sealed record ReferenceInfo(string Root, string Version);
+
+    public static ReferenceInfo? GetReference(string instance)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(GamePaths.VersionsDir, instance);
+            var marker = ReadMarker(dir);
+
+            return marker is null || string.IsNullOrWhiteSpace(marker.Root)
+                ? null
+                : new ReferenceInfo(marker.Root, marker.Version);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>库文件：先找本地 libraries，再找引用源的 libraries。返回第一个存在的完整路径。</summary>
+    public static string? ResolveLibrary(string instance, string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath)) return null;
+
+        var local = System.IO.Path.Combine(GamePaths.LibrariesDir, relativePath);
+        if (File.Exists(local)) return local;
+
+        var reference = GetReference(instance);
+        if (reference is null) return null;
+
+        var external = System.IO.Path.Combine(reference.Root, "libraries", relativePath);
+        return File.Exists(external) ? external : null;
+    }
+
+    /// <summary>引用实例用外部 .minecraft 的 assets（有 indexes 才算数）。</summary>
+    public static string? AssetsDirFor(string instance)
+    {
+        var reference = GetReference(instance);
+        if (reference is null) return null;
+
+        try
+        {
+            var assets = System.IO.Path.Combine(reference.Root, "assets");
+            return Directory.Exists(System.IO.Path.Combine(assets, "indexes")) ? assets : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>客户端 jar：本地实例目录 → 外部版本目录 → 继承链（本地 / 外部）。</summary>
+    public static string? ResolveClientJar(string instance, string instanceDir, string? inheritsFrom)
+    {
+        var reference = GetReference(instance);
+
+        var candidates = new List<string>
+        {
+            System.IO.Path.Combine(instanceDir, instance + ".jar"),
+        };
+
+        if (reference is not null)
+        {
+            candidates.Add(System.IO.Path.Combine(reference.Root, "versions", reference.Version,
+                reference.Version + ".jar"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(inheritsFrom))
+        {
+            candidates.Add(System.IO.Path.Combine(GamePaths.VersionsDir, inheritsFrom, inheritsFrom + ".jar"));
+
+            if (reference is not null)
+            {
+                candidates.Add(System.IO.Path.Combine(reference.Root, "versions", inheritsFrom,
+                    inheritsFrom + ".jar"));
+            }
+        }
+
+        // 实例目录里任意一个 jar 也能用（有些启动器会把 jar 改名）
+        if (Directory.Exists(instanceDir))
+        {
+            candidates.AddRange(Directory.EnumerateFiles(instanceDir, "*.jar")
+                .OrderByDescending(path => System.IO.Path.GetFileName(path) == instance + ".jar"));
+        }
+
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
     private static ReferenceMarker? ReadMarker(string dir)
     {
         try

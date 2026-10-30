@@ -3,6 +3,18 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0-beta.5] - 2026-10-31
+
+### 修复：引用实例无法启动
+
+- 客户端 jar：原来只找 `实例名.jar`（ref-xxx.jar，根本不存在）。
+  现在按「实例目录 → 外部版本目录 → 继承链（本地 / 外部）→ 实例目录里任意 jar」依次查找
+- libraries：classpath 原来只认本地 `libraries`，引用实例必缺。
+  现在逐个库先查本地、再查引用源的 `libraries`
+- assets：引用源里有 `assets\indexes` 就直接用它，不再把几百 MB 资源重新下一遍
+- 缺失检查改成真正逐项核对（原来过滤后永远为空），缺文件时提示引用源或改用导入模式
+- 引用实例强制使用影子目录作为游戏目录，保证 mods / 存档的目录联接生效
+
 ## [1.1.0-beta.4] - 2026-10-31
 
 ### 引用现有 .minecraft（第三步 · 引用模式）
