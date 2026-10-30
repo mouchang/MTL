@@ -121,8 +121,10 @@ public sealed class GameLauncher
         if (!string.IsNullOrWhiteSpace(detail.InheritsFrom))
             detail = MergeInherited(detail, detail.InheritsFrom);
 
-        // 引用实例：库和资源都可能不在本地，先去外部 .minecraft 找
+        // 引用实例：先修一遍 mods / saves 等目录联接（之前建残或外部目录后加的都能补上）
         var isReference = ExternalSourceService.GetReference(id) is not null;
+
+        if (isReference) ExternalSourceService.EnsureLinks(id);
         var referenceAssets = ExternalSourceService.AssetsDirFor(id);
         var assetsDir = referenceAssets ?? GamePaths.AssetsDir;
 

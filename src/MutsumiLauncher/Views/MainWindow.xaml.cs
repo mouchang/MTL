@@ -298,6 +298,13 @@ public partial class MainWindow : Window
         ShowPage(key);
     }
 
+    /// <summary>打开下载页（版本设置的空状态引导用）。</summary>
+    public void ShowDownloadPagePublic()
+    {
+        if (_settingsOpen) CloseVersionSettings();
+        ShowPage("download");
+    }
+
     /// <summary>在主窗口内从底部滑出版本设置。</summary>
     public event Action? VersionSelectionChanged;
 

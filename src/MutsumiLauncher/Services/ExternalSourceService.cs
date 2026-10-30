@@ -192,14 +192,7 @@ public static class ExternalSourceService
                     .RootElement.TryGetProperty("inheritsFrom", out var next) ? next.GetString() : null;
             }
 
-            // 3. mods / config / saves 等：建 junction 指回原目录（只链接存在的）
-            foreach (var name in new[] { "mods", "config", "saves", "resourcepacks", "shaderpacks" })
-            {
-                var from = System.IO.Path.Combine(source, name);
-                if (Directory.Exists(from)) Link(System.IO.Path.Combine(dir, name), from);
-            }
-
-            // 4. 标记
+            // 3. 先写标记（EnsureLinks 要靠它找来源），再建 mods / config / saves 的联接
             var marker = new ReferenceMarker
             {
                 Root = root,
@@ -209,6 +202,8 @@ public static class ExternalSourceService
 
             File.WriteAllText(System.IO.Path.Combine(dir, MarkerName),
                 JsonSerializer.Serialize(marker, new JsonSerializerOptions { WriteIndented = true }));
+
+            EnsureLinks(instance);
 
             AppLog.Info($"reference instance created: {instance} -> {source}");
             return instance;
@@ -375,6 +370,39 @@ public static class ExternalSourceService
         return candidates.FirstOrDefault(File.Exists);
     }
 
+    /// <summary>
+    /// 补齐 / 修复引用实例的目录联接：mods、config、saves、resourcepacks、shaderpacks。
+    /// 版本目录里没有的，退回外部 .minecraft 的全局目录（很多启动器不按版本隔离）。
+    /// 每次启动前都会跑一遍，之前建残了也能修好。
+    /// </summary>
+    public static void EnsureLinks(string instance)
+    {
+        try
+        {
+            var reference = GetReference(instance);
+            if (reference is null) return;
+
+            var dir = System.IO.Path.Combine(GamePaths.VersionsDir, instance);
+            var versionDir = System.IO.Path.Combine(reference.Root, "versions", reference.Version);
+
+            foreach (var name in new[] { "mods", "config", "saves", "resourcepacks", "shaderpacks" })
+            {
+                var link = System.IO.Path.Combine(dir, name);
+                if (Directory.Exists(link)) continue;   // 已经有了（联接或本地目录）
+
+                var target = System.IO.Path.Combine(versionDir, name);
+                if (!Directory.Exists(target)) target = System.IO.Path.Combine(reference.Root, name);
+                if (!Directory.Exists(target)) continue;
+
+                Link(link, target);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "ensure reference links");
+        }
+    }
+
     private static ReferenceMarker? ReadMarker(string dir)
     {
         try
@@ -413,6 +441,22 @@ public static class ExternalSourceService
 
             using var process = Process.Start(info);
             process?.WaitForExit(5000);
+
+            if (!Directory.Exists(link))
+            {
+                // mklink 失败（极少见）：再试一次 .NET 的目录符号链接
+                try
+                {
+                    Directory.CreateSymbolicLink(link, target);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "create link fallback " + link);
+                }
+            }
+
+            if (Directory.Exists(link)) AppLog.Info($"reference link: {link} -> {target}");
+            else AppLog.Error(new IOException("link failed"), $"reference link {link} -> {target}");
         }
         catch (Exception ex)
         {

@@ -24,9 +24,15 @@
                     <TextBlock x:Name="TitleText" Text="版本设置" FontSize="16"
                                Foreground="{DynamicResource Ink}" VerticalAlignment="Center"
                                Margin="0,0,60,0" />
-                    <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Click="Close_Click" ToolTip="关闭" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Top">
+                        <Button Style="{StaticResource GhostButton}" Content="引用 .minecraft…"
+                                Height="28" Padding="12,0" Margin="0,2,10,0"
+                                Click="ReferenceMinecraft_Click"
+                                ToolTip="引用其它启动器里已有的版本，不复制文件" />
+                        <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"
+                                VerticalAlignment="Top" Click="Close_Click" ToolTip="关闭" />
+                    </StackPanel>
                 </Grid>
 
                 <Grid Grid.Row="1" Margin="18,0,18,18">
@@ -75,7 +81,31 @@
                         </StackPanel>
                     </Border>
 
-                    <ContentControl x:Name="PageHost" Grid.Column="1" Margin="16,0,0,0" />
+                    <Grid Grid.Column="1" Margin="16,0,0,0">
+                        <ContentControl x:Name="PageHost" />
+
+                        <!-- 一个版本都没有时显示，引导用户下载 / 引用 -->
+                        <Border x:Name="EmptyState" Visibility="Collapsed"
+                                Background="{DynamicResource PaneBg}" CornerRadius="18">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        MaxWidth="420">
+                                <TextBlock Text="还没有可用的版本" FontSize="18"
+                                           Foreground="{DynamicResource Ink}"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock Text="先在「下载」里安装一个，或者引用其它启动器已有的 .minecraft。"
+                                           Style="{StaticResource Caption}" Margin="0,8,0,0"
+                                           TextWrapping="Wrap" TextAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                            Margin="0,18,0,0">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="去下载"
+                                            Height="36" Width="120" Click="GoDownload_Click" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="引用 .minecraft…"
+                                            Height="36" Padding="16,0" Margin="12,0,0,0"
+                                            Click="ReferenceMinecraft_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Grid>
         </Grid>

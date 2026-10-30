@@ -32,9 +32,92 @@ public partial class VersionSettingsView : UserControl
     /// <summary>实例被重命名或删除（参数为新名称，删除时为 null）。</summary>
     public event Action<string?>? InstanceChanged;
 
+    /// <summary>没有实例时显示引导页（下载 / 引用）。</summary>
+    private void RefreshEmptyState()
+    {
+        if (EmptyState is null) return;
+
+        var any = GameLauncher.InstalledVersions().Count > 0;
+
+        EmptyState.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void GoDownload_Click(object sender, RoutedEventArgs e)
+    {
+        CloseRequested?.Invoke(this, EventArgs.Empty);
+        (Window.GetWindow(this) as MainWindow)?.ShowDownloadPagePublic();
+    }
+
+    /// <summary>引用其它启动器的 .minecraft（文件留在原处）。</summary>
+    private void ReferenceMinecraft_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择其它启动器的 .minecraft 目录",
+            Multiselect = false,
+        };
+
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+
+        var picked = dialog.FolderName;
+
+        if (!ExternalSourceService.LooksLikeMinecraft(picked))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "不是有效的目录",
+                "这个目录里没有 versions / libraries / assets，看起来不是 .minecraft。",
+                "知道了", null);
+            return;
+        }
+
+        var versions = ExternalSourceService.ListVersions(picked);
+
+        if (versions.Count == 0)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "没有可引用的版本",
+                "这个目录里没找到带版本 JSON 的版本。", "知道了", null);
+            return;
+        }
+
+        var preview = string.Join("、", versions.Take(4));
+        if (versions.Count > 4) preview += " 等";
+
+        var go = MessageDialog.Show(Window.GetWindow(this), "引用现有版本",
+            $"在 {picked} 里发现 {versions.Count} 个版本：\n{preview}\n\n" +
+            "引用不会复制或移动任何文件，只在启动器里生成引用实例。",
+            "开始引用", "取消");
+
+        if (!go) return;
+
+        var created = 0;
+
+        foreach (var version in versions)
+        {
+            if (ExternalSourceService.CreateShadow(picked, version, out _) is not null) created++;
+        }
+
+        if (created > 0) ExternalSourceService.AddRoot(picked);
+
+        RefreshEmptyState();
+
+        if (created == 0)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "没有引用成功",
+                "这些版本都缺版本 JSON 或父版本，无法引用。", "知道了", null);
+            return;
+        }
+
+        MessageDialog.Show(Window.GetWindow(this), "引用完成",
+            $"已引用 {created} 个版本，可以在版本列表里选择它们启动。", "好的", null);
+
+        CloseRequested?.Invoke(this, EventArgs.Empty);
+        (Window.GetWindow(this) as MainWindow)?.RefreshInstances();
+    }
+
     public void Load(string version)
     {
         _version = version;
+        RefreshEmptyState();
+
         TitleText.Text = string.IsNullOrWhiteSpace(version)
             ? "版本设置"
             : $"版本设置 · {ExternalSourceService.DisplayName(version)}";
