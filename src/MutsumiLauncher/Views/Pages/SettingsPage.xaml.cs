@@ -469,6 +469,178 @@ public partial class SettingsPage : UserControl
 
     private void OpenGameDir_Click(object sender, RoutedEventArgs e) => OpenPath(GamePaths.Root);
 
+    // ==================== 数据 / 游戏目录 ====================
+
+    /// <summary>换游戏目录：可选把现有文件一起搬过去，改完需要重启。</summary>
+    private async void ChangeGameDir_Click(object sender, RoutedEventArgs e)
+    {
+        var picked = PickFolder("选择新的游戏目录", GamePaths.Root);
+        if (picked is null) return;
+        if (SamePath(picked, GamePaths.Root) || IsInside(picked, GamePaths.Root) || IsInside(GamePaths.Root, picked))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "目录不可用",
+                "新目录不能和旧目录相同，也不能互相包含。", "知道了", null);
+            return;
+        }
+
+        var old = GamePaths.Root;
+        var counts = PathMigrator.Measure(old);
+
+        var migrate = MessageDialog.Show(Window.GetWindow(this), "更换游戏目录",
+            $"新目录：{picked}\n\n旧目录里有 {counts.Files} 个文件（{PathMigrator.FormatSize(counts.Bytes)}）。\n" +
+            "要不要一起搬过去？（不搬就留在原地，可以自己删）",
+            "一起迁移", "只换目录");
+
+        if (migrate) await MigrateAsync(old, picked, "游戏数据");
+
+        GamePaths.SetRoot(picked);
+        RefreshPaths();
+        Notify("游戏目录已更新，重启启动器后生效");
+    }
+
+    /// <summary>换数据目录（配置 / 缓存 / 图标 / 日志）。</summary>
+    private async void ChangeDataDir_Click(object sender, RoutedEventArgs e)
+    {
+        var picked = PickFolder("选择新的数据目录", AppPaths.DataRoot);
+        if (picked is null) return;
+        if (SamePath(picked, AppPaths.DataRoot) || IsInside(picked, AppPaths.DataRoot) || IsInside(AppPaths.DataRoot, picked))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "目录不可用",
+                "新目录不能和旧目录相同，也不能互相包含。", "知道了", null);
+            return;
+        }
+
+        var old = AppPaths.DataRoot;
+        var counts = PathMigrator.Measure(old);
+
+        var migrate = MessageDialog.Show(Window.GetWindow(this), "更换数据目录",
+            $"新目录：{picked}\n\n当前数据 {counts.Files} 个文件（{PathMigrator.FormatSize(counts.Bytes)}）。\n" +
+            "要不要一起搬过去？（不搬的话账号和设置会留在旧目录）",
+            "一起迁移", "只换目录");
+
+        if (migrate)
+        {
+            await MigrateAsync(old, picked, "应用数据");
+        }
+        else
+        {
+            // 只换目录也至少把配置和账号带过去，否则重启后设置全丢
+            CopyConfigFiles(old, picked);
+        }
+
+        AppPaths.SetDataRoot(picked);
+        RefreshPaths();
+        Notify("数据目录已更新，重启启动器后生效");
+    }
+
+    private async Task MigrateAsync(string from, string to, string label)
+    {
+        var task = Task.Run(() => PathMigrator.CopyDirectory(from, to));
+
+        while (!task.IsCompleted) await Task.Delay(60);
+
+        var result = await task;
+
+        if (!result.Ok)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "迁移失败", result.Error ?? "未知错误", "知道了", null);
+            return;
+        }
+
+        MessageDialog.Show(Window.GetWindow(this), "迁移完成",
+            $"{label}已复制到新位置（{result.Files} 个文件 / {PathMigrator.FormatSize(result.Bytes)}）。\n" +
+            "旧目录没有删除，确认没问题后可以自己清理。",
+            "知道了", null);
+    }
+
+    /// <summary>只换目录时，至少保证新目录里有配置和账号。</summary>
+    private static void CopyConfigFiles(string from, string to)
+    {
+        try
+        {
+            Directory.CreateDirectory(to);
+
+            foreach (var name in new[] { "config.json", "accounts.json" })
+            {
+                var source = Path.Combine(from, name);
+                var target = Path.Combine(to, name);
+
+                if (File.Exists(source) && !File.Exists(target)) File.Copy(source, target);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "copy config to new data dir");
+        }
+    }
+
+    private static bool SamePath(string a, string b)
+    {
+        try
+        {
+            return Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar)
+                .Equals(Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsInside(string path, string parent)
+    {
+        try
+        {
+            var a = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var b = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return a.StartsWith(b, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private string? PickFolder(string title, string start)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = title,
+            Multiselect = false,
+        };
+
+        try
+        {
+            if (Directory.Exists(start)) dialog.InitialDirectory = start;
+        }
+        catch
+        {
+            // 初始目录无效就让它自己选
+        }
+
+        return dialog.ShowDialog(Window.GetWindow(this)) == true ? dialog.FolderName : null;
+    }
+
+    /// <summary>提示一下：主窗口有 toast 就用 toast，否则弹个框。</summary>
+    private void Notify(string message)
+    {
+        if (Window.GetWindow(this) is MainWindow main)
+        {
+            main.ShowToast(message);
+            return;
+        }
+
+        MessageDialog.Show(Window.GetWindow(this), "提示", message, "知道了", null);
+    }
+
+    private void RefreshPaths()
+    {
+        GameDirText.Text = GamePaths.Root;
+        DataDirText.Text = AppPaths.DataRoot;
+        LogPathText.Text = AppLog.LogPath;
+    }
+
+
     private void OpenDataDir_Click(object sender, RoutedEventArgs e) => OpenPath(AppPaths.DataRoot);
 
     private void OpenLogDir_Click(object sender, RoutedEventArgs e)

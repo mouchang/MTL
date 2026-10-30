@@ -50,6 +50,9 @@ public sealed class AppConfig
     /// </summary>
     public string CurseForgeProxy { get; set; } = "https://mtl.dpdns.org/cf/v1";
 
+    /// <summary>游戏目录（版本 / 库 / 资源）。留空 = 安装目录下的 game\。</summary>
+    public string GameRoot { get; set; } = string.Empty;
+
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 

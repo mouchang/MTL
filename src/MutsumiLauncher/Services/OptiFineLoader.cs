@@ -67,7 +67,9 @@ public sealed class OptiFineLoader
         if (!File.Exists(vanillaJson))
             throw new InvalidOperationException($"请先安装原版 {gameVersion}");
 
-        var temp = Path.Combine(Path.GetTempPath(), "mtl-optifine-" + Guid.NewGuid().ToString("N"));
+        // 临时目录放在游戏目录里，不再往 C 盘的 %TEMP% 写
+        Directory.CreateDirectory(GamePaths.TempDir);
+        var temp = Path.Combine(GamePaths.TempDir, "optifine-" + Guid.NewGuid().ToString("N"));
         var minecraft = Path.Combine(temp, ".minecraft");
         var installer = Path.Combine(minecraft, build.FileName);
 

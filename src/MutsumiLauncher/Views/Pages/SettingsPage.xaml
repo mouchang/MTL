@@ -327,8 +327,8 @@
                     <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                         <StackPanel>
                             <TextBlock Text="数据位置" Style="{StaticResource H2}" />
-                            <TextBlock Text="游戏文件、配置和日志分别放在这些目录里。"
-                                       Style="{StaticResource Caption}" Margin="0,4,0,12" />
+                            <TextBlock Text="默认都放在安装目录里，不占 C 盘的 AppData。换目录可以连数据一起搬，改完重启生效。"
+                                       Style="{StaticResource Caption}" Margin="0,4,0,12" TextWrapping="Wrap" />
 
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
@@ -340,8 +340,13 @@
                                 <TextBlock x:Name="GameDirText" Grid.Column="1" FontSize="12"
                                            Foreground="{DynamicResource InkSoft}"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="打开"
-                                        Height="28" Padding="12,0" Click="OpenGameDir_Click" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button Style="{StaticResource GhostButton}" Content="打开"
+                                            Height="28" Padding="12,0" Margin="0,0,8,0"
+                                            Click="OpenGameDir_Click" />
+                                    <Button Style="{StaticResource GhostButton}" Content="更改"
+                                            Height="28" Padding="12,0" Click="ChangeGameDir_Click" />
+                                </StackPanel>
                             </Grid>
 
                             <Grid Margin="0,0,0,8">
@@ -350,12 +355,17 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="配置目录" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="数据目录" Style="{StaticResource FieldLabel}" />
                                 <TextBlock x:Name="DataDirText" Grid.Column="1" FontSize="12"
                                            Foreground="{DynamicResource InkSoft}"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="打开"
-                                        Height="28" Padding="12,0" Click="OpenDataDir_Click" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button Style="{StaticResource GhostButton}" Content="打开"
+                                            Height="28" Padding="12,0" Margin="0,0,8,0"
+                                            Click="OpenDataDir_Click" />
+                                    <Button Style="{StaticResource GhostButton}" Content="更改"
+                                            Height="28" Padding="12,0" Click="ChangeDataDir_Click" />
+                                </StackPanel>
                             </Grid>
 
                             <Grid>

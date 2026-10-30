@@ -114,7 +114,9 @@ public sealed class ForgeLoader
         IProgress<InstallProgress>? progress = null, string? instanceName = null,
         CancellationToken cancellationToken = default)
     {
-        var temp = Path.Combine(Path.GetTempPath(), "mtl-loader-" + Guid.NewGuid().ToString("N"));
+        // 临时目录放在游戏目录里，不再往 C 盘的 %TEMP% 写
+        Directory.CreateDirectory(GamePaths.TempDir);
+        var temp = Path.Combine(GamePaths.TempDir, "loader-" + Guid.NewGuid().ToString("N"));
         var vanillaDir = Path.Combine(GamePaths.VersionsDir, gameVersion);
         var vanillaJson = Path.Combine(vanillaDir, $"{gameVersion}.json");
         if (!File.Exists(vanillaJson))

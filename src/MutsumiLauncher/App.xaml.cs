@@ -31,7 +31,12 @@ public partial class App : Application
             }
 
             NormalizePath();
+
+            // 老版本把配置/缓存写在 %LOCALAPPDATA%：搬到安装目录后删掉旧的，C 盘不留东西
+            PathMigrator.MigrateLegacyDataIfNeeded();
+
             GamePaths.MigrateFromAppDataIfNeeded();
+            GamePaths.EnsureCreated();
 
             // 必须在主窗口创建之前套主题，否则第一帧会闪一下浅色
             ThemeService.ApplyFromConfig();
@@ -54,9 +59,11 @@ public partial class App : Application
         if (exception is null) return;
 
         var details = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}{exception}";
+        // 优先写到安装目录（和数据放一起），实在写不了才退回系统的临时目录
         var candidates = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, "startup-error.log"),
+            Path.Combine(AppContext.BaseDirectory, "data", "startup-error.log"),
             Path.Combine(Path.GetTempPath(), "MutsumiLauncher-startup-error.log"),
         };
 

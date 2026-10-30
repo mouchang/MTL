@@ -2,27 +2,24 @@ using System.IO;
 
 namespace MutsumiLauncher.Services;
 
-/// <summary>极简日志：优先 %LOCALAPPDATA%\Mutsumi Launcher\logs\app.log，失败则退回程序目录。</summary>
+/// <summary>极简日志：写到数据目录下的 logs\app.log（默认在安装目录里，不进 C 盘的 AppData）。</summary>
 public static class AppLog
 {
     private static readonly object Gate = new();
 
-    public static string LogPath { get; } = ResolveLogPath();
-
-    private static string ResolveLogPath()
+    public static string LogPath
     {
-        try
+        get
         {
-            var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (!string.IsNullOrWhiteSpace(dir))
-                return Path.Combine(dir, "Mutsumi Launcher", "logs", "app.log");
+            try
+            {
+                return AppPaths.LogPath;
+            }
+            catch
+            {
+                return Path.Combine(AppContext.BaseDirectory, "mtl.log");
+            }
         }
-        catch
-        {
-            // 忽略，走兜底
-        }
-
-        return Path.Combine(AppContext.BaseDirectory, "mtl.log");
     }
 
     public static void Info(string message) => Write("INFO", message);
