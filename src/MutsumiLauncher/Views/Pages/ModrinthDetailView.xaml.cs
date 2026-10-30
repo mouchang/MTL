@@ -296,7 +296,10 @@ public partial class ModrinthDetailView : UserControl
             .Where(row => row.File is not null)
             .ToList();
 
-        FileList.ItemsSource = rows;
+        // 版本动辄上百条：先渲染一批，滚到底再续，避免一次性建几百行
+        _filteredRows = rows;
+        _visibleRows = new ObservableCollection<ModrinthFileRow>(rows.Take(VersionPageSize));
+        FileList.ItemsSource = _visibleRows;
 
         // 只给最前面的若干行查前置：版本列表动辄上百行，全查一遍既慢又没必要
         foreach (var row in rows.Take(DependencyPrefetchRows))
@@ -362,6 +365,34 @@ public partial class ModrinthDetailView : UserControl
     }
 
     private const int MaxDependenciesPerVersion = 6;
+
+    /// <summary>每次渲染多少行版本，滚到底再续下一页。</summary>
+    private const int VersionPageSize = 30;
+
+    private IReadOnlyList<ModrinthFileRow> _filteredRows = [];
+    private ObservableCollection<ModrinthFileRow> _visibleRows = [];
+
+    /// <summary>滚到离底部还有一屏时，把下一批版本补进来。</summary>
+    private void PageScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (PageScroll.VerticalOffset + PageScroll.ViewportHeight < PageScroll.ExtentHeight - 400) return;
+
+        AppendVisibleRows();
+    }
+
+    private void AppendVisibleRows()
+    {
+        if (_visibleRows.Count >= _filteredRows.Count) return;
+
+        var before = _visibleRows.Count;
+
+        foreach (var row in _filteredRows.Skip(before).Take(VersionPageSize))
+            _visibleRows.Add(row);
+
+        // 新加进来的行也要补前置
+        foreach (var row in _filteredRows.Skip(before).Take(DependencyPrefetchRows))
+            _ = LoadDependenciesAsync(row);
+    }
 
     /// <summary>只为最前面这么多行预加载前置。</summary>
     private const int DependencyPrefetchRows = 12;

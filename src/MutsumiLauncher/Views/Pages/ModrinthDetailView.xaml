@@ -73,8 +73,9 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="PageScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollChanged="PageScroll_ScrollChanged">
             <StackPanel>
                 <Border Style="{StaticResource GlassCard}" Padding="14,10" Margin="0,14,0,0">
                     <StackPanel>

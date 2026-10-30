@@ -165,6 +165,22 @@ public partial class CommunitySearchView : UserControl
         await RunSearchAsync(0);
     }
 
+    /// <summary>列表自带的 ScrollViewer 在模板里，取出来滚回顶部。</summary>
+    private void ScrollResultsToTop()
+    {
+        ResultsList.ApplyTemplate();
+        ResultsList.UpdateLayout();
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(ResultsList); i++)
+        {
+            if (VisualTreeHelper.GetChild(ResultsList, i) is ScrollViewer viewer)
+            {
+                viewer.ScrollToTop();
+                return;
+            }
+        }
+    }
+
     /// <summary>搜索代次：慢请求回来时如果已经有更新的请求，就丢掉这批结果。</summary>
     private int _searchGeneration;
 
@@ -208,7 +224,7 @@ public partial class CommunitySearchView : UserControl
             _ = LoadIconsAsync(items);
 
             // 翻页后回到顶部，不然还停在上一页的底部
-            ResultsScroll.ScrollToTop();
+            ScrollResultsToTop();
 
             ResultsList.BeginAnimation(OpacityProperty,
                 new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(220))

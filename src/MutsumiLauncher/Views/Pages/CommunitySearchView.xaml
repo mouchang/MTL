@@ -96,10 +96,14 @@
         </Border>
 
         <Border Grid.Row="1" Style="{StaticResource GlassCard}" Padding="22,14" Margin="0,14,0,0">
-            <ScrollViewer x:Name="ResultsScroll" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel>
-                <ItemsControl x:Name="ResultsList">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 虚拟化：只创建视口内的卡片，前后各留 1~2 屏 -->
+                <ItemsControl x:Name="ResultsList" Grid.Row="0" Style="{StaticResource VirtualList}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Padding="0,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}"
@@ -119,7 +123,8 @@
                                                        VerticalAlignment="Center" />
                                         </Border>
                                         <Border CornerRadius="10" ClipToBounds="True">
-                                            <Image Source="{Binding IconPath}" Stretch="UniformToFill"
+                                            <Image Source="{Binding IconPath, Converter={StaticResource IconSource}}"
+                                                   Stretch="UniformToFill"
                                                    RenderOptions.BitmapScalingMode="HighQuality" />
                                         </Border>
                                     </Grid>
@@ -371,12 +376,11 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <StackPanel x:Name="PageBar" Margin="0,12,0,4" Visibility="Collapsed">
+                <StackPanel x:Name="PageBar" Grid.Row="1" Margin="0,12,0,4" Visibility="Collapsed">
                     <TextBlock x:Name="PageInfo" Style="{StaticResource Caption}" Margin="0,0,0,8" />
                     <WrapPanel x:Name="PagePanel" />
                 </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
+            </Grid>
         </Border>
 
         <controls:LoadingOverlay x:Name="Loading" Grid.RowSpan="2" Panel.ZIndex="10"

@@ -58,9 +58,9 @@
                     </RadioButton>
                 </StackPanel>
 
-                <ScrollViewer x:Name="ModScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="ModList">
+                <!-- 虚拟化：Mod 多的时候只创建可见行 -->
+                <ItemsControl x:Name="ModList" Grid.Row="1" Style="{StaticResource VirtualList}"
+                              ScrollViewer.CanContentScroll="True">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}" Padding="0,10">
@@ -79,7 +79,8 @@
                                                            FontSize="13" FontWeight="SemiBold"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            Visibility="{Binding InitialVisibility}" />
-                                                <Image Source="{Binding IconPath}" Stretch="UniformToFill"
+                                                <Image Source="{Binding IconPath, Converter={StaticResource IconSource}}"
+                                                       Stretch="UniformToFill"
                                                        RenderOptions.BitmapScalingMode="HighQuality"
                                                        Visibility="{Binding IconVisibility}" />
                                             </Grid>
@@ -119,8 +120,7 @@
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                </ItemsControl>
 
                 <TextBlock x:Name="EmptyText" Grid.Row="1" Text="这个实例还没有安装 Mod。"
                            Style="{StaticResource Caption}" HorizontalAlignment="Center"
