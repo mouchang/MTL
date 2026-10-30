@@ -38,6 +38,8 @@ public partial class SettingsPage : UserControl
         VersionText.Text = AppInfo.DisplayName;
         UpdateStatus.Text = $"版本 {AppInfo.Version} · WPF · .NET 10 · 开源";
 
+        LoadCredits();
+
         // 开发者信息：仓库地址跟着 UpdateRepo 走，换仓库时这里自动跟着变
         var repo = string.IsNullOrWhiteSpace(AppConfig.Current.UpdateRepo)
             ? "mouchang/MTL"
@@ -390,6 +392,44 @@ public partial class SettingsPage : UserControl
     }
 
     private void OpenDeveloper_Click(object sender, RoutedEventArgs e) => OpenUrl(_ownerUrl);
+
+    /// <summary>感谢名单里的一条：项目名 + 用到了什么 + 开源地址。</summary>
+    public sealed record CreditEntry(string Name, string Note, string Url);
+
+    private static readonly CreditEntry[] Credits =
+    [
+        new("Plain Craft Launcher 2（PCL2）",
+            "下载引擎的分源与重试策略、文件校验顺序、分页缺失处理、MC百科条目匹配思路都参考了它",
+            "https://github.com/Meloong-Git/PCL"),
+        new("mihomo",
+            "内置代理使用的内核，随安装包分发",
+            "https://github.com/MetaCubeX/mihomo"),
+        new("BMCLAPI",
+            "原版游戏文件的国内加速镜像（bangbang93 维护）",
+            "https://github.com/bangbang93/BMCLAPI"),
+        new("MCIM",
+            "CurseForge 的社区镜像，反代不可用时的兜底",
+            "https://github.com/mcimdev/mcim"),
+        new("MC百科",
+            "Mod 的中文名、缩写与条目编号数据（由本项目自行抓取）",
+            "https://www.mcmod.cn"),
+        new("Modrinth / CurseForge",
+            "社区资源搜索、项目与版本信息的接口来源",
+            "https://modrinth.com"),
+        new(".NET 与 WPF",
+            "运行框架；界面没有引入任何第三方 UI 库",
+            "https://github.com/dotnet/wpf"),
+    ];
+
+    private void LoadCredits()
+    {
+        CreditList.ItemsSource = Credits;
+    }
+
+    private void OpenCredit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: CreditEntry entry }) OpenUrl(entry.Url);
+    }
 
     private void OpenRepo_Click(object sender, RoutedEventArgs e) => OpenUrl(_repoUrl);
 

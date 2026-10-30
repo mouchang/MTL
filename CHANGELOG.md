@@ -3,6 +3,13 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0-beta.5] - 2026-10-30
+
+### 关于页
+
+- 新增**感谢名单**：列出参考过代码或使用其数据/服务的项目，附开源地址，点「打开」可直达
+  （PCL2、mihomo、BMCLAPI、MCIM、MC百科、Modrinth / CurseForge、.NET & WPF）
+
 ## [1.1.0-beta.4] - 2026-10-30
 
 ### 前置标签加载

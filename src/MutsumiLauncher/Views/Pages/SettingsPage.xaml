@@ -284,6 +284,45 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- 感谢名单 -->
+                    <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
+                        <StackPanel>
+                            <TextBlock Text="感谢名单" Style="{StaticResource H2}" />
+                            <TextBlock Text="以下项目的代码、数据或服务让 MTL 少走了很多弯路，在此致谢。"
+                                       Style="{StaticResource Caption}" Margin="0,4,0,12"
+                                       TextWrapping="Wrap" />
+
+                            <ItemsControl x:Name="CreditList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}"
+                                                Padding="0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="13"
+                                                               Foreground="{DynamicResource Ink}" />
+                                                    <TextBlock Text="{Binding Note}" FontSize="11"
+                                                               Foreground="{DynamicResource InkMute}"
+                                                               Margin="0,3,0,0" TextWrapping="Wrap" />
+                                                </StackPanel>
+
+                                                <Button Grid.Column="1" Style="{StaticResource GhostButton}"
+                                                        Content="打开" Height="28" Padding="12,0"
+                                                        Margin="12,0,0,0" VerticalAlignment="Center"
+                                                        Tag="{Binding}" Click="OpenCredit_Click" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
                     <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                         <StackPanel>
                             <TextBlock Text="数据位置" Style="{StaticResource H2}" />
