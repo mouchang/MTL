@@ -56,6 +56,9 @@ public sealed class AppConfig
     /// <summary>目录布局版本：1 = 旧的扁平结构，2 = .minecraft 子目录。</summary>
     public int LayoutVersion { get; set; } = 1;
 
+    /// <summary>引用模式登记的外部 .minecraft（只引用、不复制）。</summary>
+    public List<ExternalRoot> ExternalRoots { get; set; } = [];
+
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 

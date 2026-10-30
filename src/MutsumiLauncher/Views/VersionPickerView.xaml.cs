@@ -14,6 +14,9 @@ public sealed class VersionRow : INotifyPropertyChanged
 
     public required string Id { get; init; }
 
+    /// <summary>界面显示用：引用实例标成「版本名（引用）」。</summary>
+    public string Display => ExternalSourceService.DisplayName(Id);
+
     public bool IsSelected
     {
         get => _isSelected;

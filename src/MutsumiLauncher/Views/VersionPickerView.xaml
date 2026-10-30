@@ -37,7 +37,7 @@
                                         Tag="{Binding}" Click="Version_Click">
                                     <Grid>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Id}" FontSize="15"
+                                            <TextBlock Text="{Binding Display}" FontSize="15"
                                                        Foreground="{DynamicResource Ink}" />
                                             <TextBlock Text="已安装" FontSize="11"
                                                        Foreground="{DynamicResource InkMute}"

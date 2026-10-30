@@ -39,6 +39,7 @@ public partial class SettingsPage : UserControl
         UpdateStatus.Text = $"版本 {AppInfo.Version} · WPF · .NET 10 · 开源";
 
         LoadCredits();
+        LoadExternalRoots();
 
         // 开发者信息：仓库地址跟着 UpdateRepo 走，换仓库时这里自动跟着变
         var repo = string.IsNullOrWhiteSpace(AppConfig.Current.UpdateRepo)
@@ -645,6 +646,100 @@ public partial class SettingsPage : UserControl
 
     private void OpenLogDir_Click(object sender, RoutedEventArgs e)
         => OpenPath(Path.GetDirectoryName(AppLog.LogPath) ?? AppPaths.DataRoot);
+
+    // ==================== 现有 .minecraft ====================
+
+    /// <summary>把外部 .minecraft 里的版本引用进来（不复制文件）。</summary>
+    private void ReferenceMinecraft_Click(object sender, RoutedEventArgs e)
+    {
+        var picked = PickFolder("选择其它启动器的 .minecraft 目录", string.Empty);
+        if (picked is null) return;
+
+        if (!ExternalSourceService.LooksLikeMinecraft(picked))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "不是有效的目录",
+                "这个目录里没有 versions / libraries / assets，看起来不是 .minecraft。",
+                "知道了", null);
+            return;
+        }
+
+        var versions = ExternalSourceService.ListVersions(picked);
+
+        if (versions.Count == 0)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "没有可引用的版本",
+                "这个目录里没找到带版本 JSON 的版本。", "知道了", null);
+            return;
+        }
+
+        var preview = string.Join("、", versions.Take(4));
+        if (versions.Count > 4) preview += " 等";
+
+        var go = MessageDialog.Show(Window.GetWindow(this), "引用现有版本",
+            $"在 {picked} 里发现 {versions.Count} 个版本：\n{preview}\n\n" +
+            "引用不会复制或移动任何文件，只在启动器里生成引用实例；" +
+            "mods、存档、配置都用原目录里的。",
+            "开始引用", "取消");
+
+        if (!go) return;
+
+        var created = 0;
+        var failed = new List<string>();
+
+        foreach (var version in versions)
+        {
+            var instance = ExternalSourceService.CreateShadow(picked, version, out var reason);
+
+            if (instance is null)
+            {
+                if (reason is not null) failed.Add($"{version}：{reason}");
+                continue;
+            }
+
+            created++;
+        }
+
+        if (created > 0) ExternalSourceService.AddRoot(picked);
+
+        LoadExternalRoots();
+
+        if (Window.GetWindow(this) is MainWindow main) main.RefreshInstances();
+
+        if (failed.Count > 0)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "部分版本没能引用",
+                $"成功 {created} 个，失败 {failed.Count} 个：\n\n{string.Join("\n", failed.Take(6))}",
+                "知道了", null);
+        }
+        else
+        {
+            Notify($"已引用 {created} 个版本");
+        }
+    }
+
+    private void RemoveExternalRoot_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ExternalRoot root }) return;
+
+        var go = MessageDialog.Show(Window.GetWindow(this), "移除引用",
+            $"移除 {root.Path} 的登记？\n\n已经建好的引用实例不会自动删除，" +
+            "可以在版本设置里逐个「断开引用」。",
+            "移除", "取消");
+
+        if (!go) return;
+
+        ExternalSourceService.RemoveRoot(root.Path);
+        LoadExternalRoots();
+        Notify("已移除该引用目录的登记");
+    }
+
+    private void LoadExternalRoots()
+    {
+        if (ExternalRootList is null) return;
+
+        ExternalRootList.ItemsSource = null;
+        ExternalRootList.ItemsSource = AppConfig.Current.ExternalRoots;
+    }
 
     private void OpenPath(string path)
     {

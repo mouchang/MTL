@@ -110,7 +110,7 @@ public partial class LaunchPage : UserControl
     public void RefreshVersions()
     {
         _versions = GameLauncher.InstalledVersions();
-        VersionText.Text = SelectedVersion() ?? "未安装版本";
+        VersionText.Text = DisplayVersion(SelectedVersion());
 
         var config = AppConfig.Current;
 
@@ -119,7 +119,7 @@ public partial class LaunchPage : UserControl
             // 当前版本被删除或改名：自动切换到第一个可用版本
             config.SelectedVersion = _versions[0];
             config.Save();
-            VersionText.Text = config.SelectedVersion;
+            VersionText.Text = DisplayVersion(config.SelectedVersion);
         }
         else if (string.IsNullOrWhiteSpace(config.SelectedVersion) && _versions.Count > 0)
         {
@@ -127,6 +127,10 @@ public partial class LaunchPage : UserControl
             config.Save();
         }
     }
+
+    /// <summary>引用实例在界面上标成「版本名（引用）」，内部仍用 ref-xxx。</summary>
+    private static string DisplayVersion(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? "未安装版本" : ExternalSourceService.DisplayName(name);
 
     /// <summary>头像显示尺寸，按这个尺寸生成位图才能 1:1 清晰。</summary>
     private const int AvatarSize = 88;

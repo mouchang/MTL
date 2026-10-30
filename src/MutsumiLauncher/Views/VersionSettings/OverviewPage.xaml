@@ -106,10 +106,10 @@
             <Border Style="{StaticResource GlassCard}" Padding="22,18" Margin="0,14,0,0">
                 <StackPanel>
                     <TextBlock Text="高级管理" Style="{StaticResource H2}" />
-                    <TextBlock Text="删除后实例目录会被整体移除，且不可恢复。" Style="{StaticResource Caption}"
-                               Margin="0,4,0,12" />
-                    <Button Style="{StaticResource DangerButton}" Content="删除实例" Width="150"
-                            HorizontalAlignment="Left" Click="DeleteVersion_Click" />
+                    <TextBlock x:Name="DangerHint" Text="删除后实例目录会被整体移除，且不可恢复。"
+                               Style="{StaticResource Caption}" Margin="0,4,0,12" />
+                    <Button x:Name="DangerButton" Style="{StaticResource DangerButton}" Content="删除实例"
+                            Width="150" HorizontalAlignment="Left" Click="DeleteVersion_Click" />
                 </StackPanel>
             </Border>
 

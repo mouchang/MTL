@@ -25,6 +25,7 @@ public partial class OverviewPage : UserControl, IInstancePage
     public void SetInstance(string version)
     {
         _version = version;
+        RefreshDangerButton();
         _ = RefreshAsync();
     }
 
@@ -119,9 +120,44 @@ public partial class OverviewPage : UserControl, IInstancePage
         }
     }
 
+    /// <summary>引用实例把「删除」换成「断开引用」，并把说明改掉。</summary>
+    private void RefreshDangerButton()
+    {
+        if (DangerButton is null || DangerHint is null) return;
+
+        var reference = ExternalSourceService.IsReference(_version);
+
+        DangerButton.Content = reference ? "断开引用" : "删除实例";
+        DangerHint.Text = reference
+            ? "断开后只移除本启动器里的引用实例，外部 .minecraft 里的文件不受影响。"
+            : "删除后实例目录会被整体移除，且不可恢复。";
+    }
+
     private void DeleteVersion_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
+
+        // 引用实例：只能断开引用，原目录不动
+        if (ExternalSourceService.IsReference(_version))
+        {
+            var owner2 = Window.GetWindow(this);
+            var ok = MessageDialog.Show(owner2, "断开引用",
+                $"「{ExternalSourceService.DisplayName(_version)}」是引用实例。\n\n" +
+                "断开后只会移除本启动器里的影子实例，外部 .minecraft 里的文件不会动。",
+                "断开引用");
+
+            if (!ok) return;
+
+            if (!ExternalSourceService.Disconnect(_version, out var reason))
+            {
+                Toast("断开失败：" + (reason ?? "未知错误"));
+                return;
+            }
+
+            Toast($"已断开「{ExternalSourceService.DisplayName(_version)}」的引用");
+            Deleted?.Invoke();
+            return;
+        }
 
         var owner = Window.GetWindow(this);
         var confirmed = MessageDialog.Show(owner, "删除实例",

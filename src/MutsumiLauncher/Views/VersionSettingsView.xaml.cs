@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MutsumiLauncher.Services;
 using MutsumiLauncher.Views.VersionSettings;
 
 namespace MutsumiLauncher.Views;
@@ -34,7 +35,9 @@ public partial class VersionSettingsView : UserControl
     public void Load(string version)
     {
         _version = version;
-        TitleText.Text = string.IsNullOrWhiteSpace(version) ? "版本设置" : $"版本设置 · {version}";
+        TitleText.Text = string.IsNullOrWhiteSpace(version)
+            ? "版本设置"
+            : $"版本设置 · {ExternalSourceService.DisplayName(version)}";
 
         // 只初始化当前看得见的那一页：版本设置里每页都要扫盘（Mod 列表、存档、导出统计），
         // 一次性全加载会让打开浮层卡上好几百毫秒
