@@ -173,7 +173,7 @@ public static class ExternalSourceService
                     if (!File.Exists(parentJson))
                     {
                         error = $"缺少父版本 {parent}，无法引用。";
-                        Directory.Delete(dir, recursive: true);
+                        DeleteSafely(dir);
                         return null;
                     }
 
@@ -232,17 +232,17 @@ public static class ExternalSourceService
 
             var marker = ReadMarker(dir);
 
-            // 先把 junction 拆掉：直接递归删除会跟着进去把原文件删了
+            // 先把 junction 拆掉：递归删除有可能跟着联接进到外部目录，把玩家的东西删了
             foreach (var name in new[] { "mods", "config", "saves", "resourcepacks", "shaderpacks" })
             {
                 var link = System.IO.Path.Combine(dir, name);
-                if (Directory.Exists(link)) Unlink(link);
+                if (IsJunction(link)) Unlink(link);
             }
 
             var versionJar = System.IO.Path.Combine(dir, instance + ".jar");
             if (File.Exists(versionJar)) File.Delete(versionJar);
 
-            Directory.Delete(dir, recursive: true);
+            DeleteSafely(dir);
 
             // 清理我们补进来的父版本（json 是我们复制的；jar 是链接）
             foreach (var ancestor in marker?.CreatedAncestors ?? [])
@@ -388,18 +388,156 @@ public static class ExternalSourceService
             foreach (var name in new[] { "mods", "config", "saves", "resourcepacks", "shaderpacks" })
             {
                 var link = System.IO.Path.Combine(dir, name);
-                if (Directory.Exists(link)) continue;   // 已经有了（联接或本地目录）
+                var target = PickLinkTarget(versionDir, reference.Root, name);
 
-                var target = System.IO.Path.Combine(versionDir, name);
-                if (!Directory.Exists(target)) target = System.IO.Path.Combine(reference.Root, name);
-                if (!Directory.Exists(target)) continue;
+                if (target is null) continue;
+
+                // 已经有联接：指向的目录是空的、而另一个候选里有东西 → 换过去
+                if (Directory.Exists(link))
+                {
+                    if (!IsJunction(link)) continue;            // 本地真实目录，别动
+
+                    var current = CurrentLinkTarget(link);
+                    if (current is not null &&
+                        string.Equals(System.IO.Path.GetFullPath(current), System.IO.Path.GetFullPath(target),
+                            StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (current is not null && HasContent(current) && !HasContent(target)) continue;
+
+                    Unlink(link);
+
+                    if (!Directory.Exists(link)) Link(link, target);
+                    continue;
+                }
 
                 Link(link, target);
+            }
+
+            // 设置文件：外部有就复制一份过来（第一份本地，之后游戏自己改）
+            foreach (var file in new[] { "options.txt", "servers.dat" })
+            {
+                var local = System.IO.Path.Combine(dir, file);
+                if (System.IO.File.Exists(local)) continue;
+
+                var external = System.IO.Path.Combine(versionDir, file);
+                if (!System.IO.File.Exists(external)) external = System.IO.Path.Combine(reference.Root, file);
+                if (!System.IO.File.Exists(external)) continue;
+
+                try
+                {
+                    System.IO.File.Copy(external, local, overwrite: false);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "copy " + file);
+                }
             }
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "ensure reference links");
+        }
+    }
+
+    /// <summary>
+    /// 选联接目标：优先「有内容的目录」——PCL2 这类启动器即使不按版本隔离，
+    /// 也会给每个版本建一个空的 mods/ 目录，直接链过去就是空壳。
+    /// </summary>
+    private static string? PickLinkTarget(string versionDir, string root, string name)
+    {
+        var withContent = new[]
+            {
+                System.IO.Path.Combine(versionDir, name),
+                System.IO.Path.Combine(root, name),
+            }
+            .FirstOrDefault(HasContent);
+
+        if (withContent is not null) return withContent;
+
+        var existing = new[]
+            {
+                System.IO.Path.Combine(versionDir, name),
+                System.IO.Path.Combine(root, name),
+            }
+            .FirstOrDefault(Directory.Exists);
+
+        return existing;
+    }
+
+    /// <summary>
+    /// 安全删除目录：碰到联接（reparse point）只删链接本身，绝不递归进目标目录。
+    /// .NET 的 Directory.Delete(recursive) 在某些场景会跟着联接把外部内容删掉，这里手动走。
+    /// </summary>
+    private static void DeleteSafely(string dir)
+    {
+        if (!Directory.Exists(dir)) return;
+
+        foreach (var entry in Directory.EnumerateFileSystemEntries(dir))
+        {
+            try
+            {
+                var attributes = System.IO.File.GetAttributes(entry);
+
+                if (attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    // 联接 / 符号链接：只删链接
+                    Directory.Delete(entry);
+                    continue;
+                }
+
+                if (Directory.Exists(entry)) DeleteSafely(entry);
+                else System.IO.File.Delete(entry);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "delete " + entry);
+            }
+        }
+
+        try
+        {
+            Directory.Delete(dir);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "delete dir " + dir);
+        }
+    }
+
+    private static bool HasContent(string dir)
+    {
+        try
+        {
+            return Directory.Exists(dir) && Directory.EnumerateFileSystemEntries(dir).Any();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsJunction(string path)
+    {
+        try
+        {
+            return new DirectoryInfo(path).Attributes.HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string? CurrentLinkTarget(string path)
+    {
+        try
+        {
+            return new DirectoryInfo(path).LinkTarget;
+        }
+        catch
+        {
+            return null;
         }
     }
 
