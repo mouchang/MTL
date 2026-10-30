@@ -67,7 +67,7 @@
                                 Height="30" Padding="14,0" Margin="8,0,0,0" Click="CopyName_Click" />
                         <Button x:Name="McmodButton" Style="{StaticResource SecondaryButton}" Content="MC百科"
                                 Height="30" Padding="14,0" Margin="8,0,0,0" Visibility="Collapsed"
-                                Click="OpenMcmod_Click" />
+                                FocusVisualStyle="{x:Null}" Click="OpenMcmod_Click" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
@@ -143,7 +143,7 @@
                                             </Grid>
                                         </Button>
 
-                                        <ItemsControl ItemsSource="{Binding Dependencies}" Margin="40,2,0,0">
+                                        <ItemsControl ItemsSource="{Binding Dependencies}" Margin="40,4,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel />
@@ -151,11 +151,21 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Button Style="{StaticResource GhostButton}" Padding="8,2"
-                                                            Margin="0,0,6,4" Tag="{Binding}"
-                                                            Click="Dependency_Click">
-                                                        <TextBlock Text="{Binding Label}" FontSize="11"
-                                                                   Foreground="{DynamicResource AccentDeep}" />
+                                                    <Button Style="{StaticResource DependencyChip}"
+                                                            Tag="{Binding}" Click="Dependency_Click"
+                                                            ToolTip="{Binding Tooltip}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="{DynamicResource AccentTintDeep}"
+                                                                    CornerRadius="4" Padding="5,1"
+                                                                    VerticalAlignment="Center">
+                                                                <TextBlock Text="前置" FontSize="10"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource AccentDeep}" />
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Name}" FontSize="11.5"
+                                                                       Margin="6,0,1,0" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource InkSoft}" />
+                                                        </StackPanel>
                                                     </Button>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

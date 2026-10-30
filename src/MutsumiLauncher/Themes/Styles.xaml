@@ -34,6 +34,7 @@
 
     <!-- ============ 标题栏按钮 ============ -->
     <Style x:Key="IconButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="40" />
         <Setter Property="Foreground" Value="{DynamicResource WindowChrome}" />
@@ -82,6 +83,7 @@
     </Style>
 
     <Style x:Key="LinkIconButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="24" />
         <Setter Property="Height" Value="24" />
         <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
@@ -107,6 +109,7 @@
 
     <!-- ============ 顶部导航 ============ -->
     <Style x:Key="NavTab" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Height" Value="44" />
@@ -133,6 +136,7 @@
 
     <!-- ============ 侧栏 ============ -->
     <Style x:Key="SidebarItem" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Height" Value="52" />
@@ -159,6 +163,7 @@
     </Style>
 
     <Style x:Key="SidebarSubItem" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Height" Value="38" />
@@ -186,6 +191,7 @@
 
     <!-- 侧栏分组标题（可折叠） -->
     <Style x:Key="SectionToggle" TargetType="ToggleButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Height" Value="52" />
@@ -279,6 +285,7 @@
 
     <!-- ============ 主按钮 ============ -->
     <Style x:Key="LaunchButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="238" />
         <Setter Property="Height" Value="58" />
         <Setter Property="Foreground" Value="{DynamicResource InkOnAccent}" />
@@ -314,6 +321,7 @@
 
     <!-- ============ 菜单项 ============ -->
     <Style x:Key="MenuItemButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="40" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="14" />
@@ -337,6 +345,7 @@
     <!-- ============ 表单控件 ============ -->
     <!-- 无边框按钮：用于胶囊内文字、弹层列表项 -->
     <Style x:Key="GhostButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
@@ -364,6 +373,7 @@
     </Style>
 
     <Style x:Key="MtlTextBox" TargetType="TextBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
@@ -389,6 +399,7 @@
 
     <!-- 白色浮层上的输入框：实底 + 更明显的描边 -->
     <Style x:Key="SheetTextBox" TargetType="TextBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
@@ -412,6 +423,7 @@
     </Style>
 
     <Style x:Key="MtlComboBoxItem" TargetType="ComboBoxItem">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Template">
@@ -434,6 +446,7 @@
     </Style>
 
     <Style x:Key="MtlComboBox" TargetType="ComboBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
@@ -488,6 +501,7 @@
     </Style>
 
     <Style x:Key="MtlCheckBox" TargetType="CheckBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
@@ -520,6 +534,7 @@
     </Style>
 
     <Style x:Key="MtlRadio" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
@@ -546,6 +561,7 @@
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
         <Setter Property="Padding" Value="18,0" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
@@ -572,6 +588,7 @@
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="40" />
         <Setter Property="Padding" Value="22,0" />
         <Setter Property="Foreground" Value="White" />
@@ -598,6 +615,7 @@
     </Style>
 
     <Style x:Key="SegmentItem" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="14,0" />
         <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
@@ -633,7 +651,36 @@
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{DynamicResource InkMute}" />
     </Style>
+    <!-- 前置标签：胶囊底 + 「前置」小徽标 + 名字，比一行纯文字更容易扫到 -->
+    <Style x:Key="DependencyChip" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Margin" Value="0,0,6,5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{DynamicResource AccentTint}"
+                            BorderBrush="{DynamicResource AccentTintDeep}" BorderThickness="1"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentTintSoft}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentTintDeep}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="DangerButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
         <Setter Property="Padding" Value="18,0" />
         <Setter Property="Foreground" Value="{DynamicResource Danger}" />
@@ -657,6 +704,7 @@
     </Style>
 
     <Style x:Key="CircleButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Width" Value="44" />
         <Setter Property="Height" Value="44" />
         <Setter Property="Foreground" Value="White" />
@@ -726,6 +774,7 @@
         </Setter>
     </Style>
     <Style x:Key="BareTextBox" TargetType="TextBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />

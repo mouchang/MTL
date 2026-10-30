@@ -14,7 +14,11 @@ public sealed class DependencyChip
 {
     public required string ProjectId { get; init; }
 
-    public required string Label { get; init; }
+    /// <summary>标签里显示的名字（有中文名就用中文）。</summary>
+    public required string Name { get; init; }
+
+    /// <summary>悬停提示：中英文一起给，方便确认是哪个 Mod。</summary>
+    public required string Tooltip { get; init; }
 }
 
 public sealed class ModrinthFileRow
@@ -328,26 +332,25 @@ public partial class ModrinthDetailView : UserControl
             if (versions.Count > 0 && !await DependencyCoversAsync(platform, projectId, versions))
                 continue;   // 这一版下前置没有对应构建：多半是老版本遗留的，不显示
 
-            string title;
+            string english = projectId;
+            string? chinese = null;
 
             try
             {
                 var project = await ResourceService.GetProjectAsync(platform, projectId, projectType);
-                title = project?.Title ?? projectId;
-
-                var chinese = McmodIndex.ChineseFor(project?.Slug, title);
-                if (!string.IsNullOrWhiteSpace(chinese)) title = chinese;
+                english = project?.Title ?? projectId;
+                chinese = McmodIndex.ChineseFor(project?.Slug, english);
             }
             catch (Exception ex)
             {
                 AppLog.Error(ex, "load dependency project");
-                title = projectId;
             }
 
             var chip = new DependencyChip
             {
                 ProjectId = projectId,
-                Label = "前置：" + title,
+                Name = string.IsNullOrWhiteSpace(chinese) ? english : chinese,
+                Tooltip = string.IsNullOrWhiteSpace(chinese) ? english : $"{chinese}\n{english}",
             };
 
             Dispatcher.Invoke(() =>
