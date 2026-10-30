@@ -103,7 +103,7 @@ public partial class ModrinthDetailView : UserControl
         if (IsMod(item.Hit.ProjectType))
         {
             ShowChineseTitle(item.Title);
-            _ = LoadMcmodAsync(item.Title);
+            LoadMcmod(item.Title, item.Hit.Slug);
         }
         AuthorText.Text = item.Author;
         DescriptionText.Text = item.Description;
@@ -136,7 +136,7 @@ public partial class ModrinthDetailView : UserControl
                     TitleText.Text = _project.Title;
 
                     if (IsMod(item.Hit.ProjectType))
-                        _ = LoadMcmodAsync(_project.Title);
+                        LoadMcmod(_project.Title, _project.Slug);
                 }
 
                 MetaText.Text = BuildMeta(_project, item.Platform);
@@ -294,47 +294,112 @@ public partial class ModrinthDetailView : UserControl
 
         FileList.ItemsSource = rows;
 
-        foreach (var row in rows)
+        // 只给最前面的若干行查前置：版本列表动辄上百行，全查一遍既慢又没必要
+        foreach (var row in rows.Take(DependencyPrefetchRows))
             _ = LoadDependenciesAsync(row);
     }
 
+    /// <summary>
+    /// 只加载这一版真正需要的前置：
+    /// 1. Modrinth 只认 required，CurseForge 只认 relationType = 3（在 GetVersionsAsync 里已过滤）；
+    /// 2. 跳过 Fabric API / Quilt API 这类"必装但不值得占位"的加载器本体；
+    /// 3. 前置在同一个游戏版本下已经没有构建的，说明只是老版本才需要，当前版本不显示。
+    /// </summary>
     private async Task LoadDependenciesAsync(ModrinthFileRow row)
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var platform = _item?.Platform ?? ResourcePlatform.Modrinth;
+        var projectType = _item?.Hit.ProjectType ?? "mod";
+        var versions = row.Version.GameVersions
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var ordered = row.Version.Dependencies
-            .Where(d => !string.IsNullOrWhiteSpace(d.ProjectId))
-            .Where(d => d.DependencyType is "required" or "optional")
-            .OrderBy(d => d.DependencyType == "required" ? 0 : 1);
+        var dependencies = row.Version.Dependencies
+            .Where(dependency => dependency.DependencyType == "required")
+            .Where(dependency => !string.IsNullOrWhiteSpace(dependency.ProjectId))
+            .Where(dependency => !IsLoaderDependency(dependency.ProjectId!))
+            .DistinctBy(dependency => dependency.ProjectId!)
+            .Take(MaxDependenciesPerVersion)
+            .ToList();
 
-        foreach (var dependency in ordered)
+        foreach (var dependency in dependencies)
         {
-            if (!seen.Add(dependency.ProjectId!)) continue;
+            var projectId = dependency.ProjectId!;
+
+            if (versions.Count > 0 && !await DependencyCoversAsync(platform, projectId, versions))
+                continue;   // 这一版下前置没有对应构建：多半是老版本遗留的，不显示
 
             string title;
 
             try
             {
-                var project = await ResourceService.GetProjectAsync(_item?.Platform ?? ResourcePlatform.Modrinth,
-                    dependency.ProjectId!, _item?.Hit.ProjectType ?? "mod");
+                var project = await ResourceService.GetProjectAsync(platform, projectId, projectType);
+                title = project?.Title ?? projectId;
 
-                title = project?.Title ?? dependency.ProjectId!;
+                var chinese = McmodIndex.ChineseFor(project?.Slug, title);
+                if (!string.IsNullOrWhiteSpace(chinese)) title = chinese;
             }
             catch (Exception ex)
             {
                 AppLog.Error(ex, "load dependency project");
-                title = dependency.ProjectId!;
+                title = projectId;
             }
 
-            var prefix = dependency.DependencyType == "required" ? "前置：" : "可选：";
-
-            Dispatcher.Invoke(() => row.Dependencies.Add(new DependencyChip
+            var chip = new DependencyChip
             {
-                ProjectId = dependency.ProjectId!,
-                Label = prefix + title,
-            }));
+                ProjectId = projectId,
+                Label = "前置：" + title,
+            };
+
+            Dispatcher.Invoke(() =>
+            {
+                if (!row.Dependencies.Any(item => item.ProjectId == chip.ProjectId))
+                    row.Dependencies.Add(chip);
+            });
         }
     }
+
+    private const int MaxDependenciesPerVersion = 6;
+
+    /// <summary>只为最前面这么多行预加载前置。</summary>
+    private const int DependencyPrefetchRows = 12;
+
+    /// <summary>Fabric API / Quilt API：几乎所有 Mod 都写着，显示出来只会刷屏。</summary>
+    private static bool IsLoaderDependency(string projectId) =>
+        projectId is "P7dR8mSH" or "qvIfYCYJ" or "306612" or "634179"
+        || projectId.Equals("fabric-api", StringComparison.OrdinalIgnoreCase)
+        || projectId.Equals("quilted-fabric-api", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>这个前置在给定游戏版本的任意版本里还有构建吗？查过的按项目缓存。</summary>
+    private async Task<bool> DependencyCoversAsync(ResourcePlatform platform, string projectId,
+        HashSet<string> versions)
+    {
+        var key = $"{platform}:{projectId}";
+
+        if (DependencyVersionCache.TryGetValue(key, out var known))
+            return known.Count == 0 || known.Overlaps(versions);
+
+        HashSet<string> supported;
+
+        try
+        {
+            var list = await ResourceService.GetVersionsAsync(platform, projectId);
+            supported = list
+                .SelectMany(version => version.GameVersions)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "dependency versions " + projectId);
+            supported = [];
+        }
+
+        DependencyVersionCache[key] = supported;
+        return supported.Count == 0 || supported.Overlaps(versions);
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, HashSet<string>>
+        DependencyVersionCache = new(StringComparer.OrdinalIgnoreCase);
 
     private async void Dependency_Click(object sender, RoutedEventArgs e)
     {
@@ -543,7 +608,8 @@ public partial class ModrinthDetailView : UserControl
 
     private void ShowChineseTitle(string title)
     {
-        var chinese = TranslationTable.ChineseFor(title);
+        var chinese = McmodIndex.ChineseFor(_item?.Hit.Slug, title)
+                      ?? TranslationTable.ChineseFor(title);
 
         ChineseTitleText.Text = chinese ?? string.Empty;
         ChineseTitleText.Visibility = chinese is null ? Visibility.Collapsed : Visibility.Visible;
@@ -551,27 +617,24 @@ public partial class ModrinthDetailView : UserControl
 
     private string? _mcmodUrl;
 
-    /// <summary>按项目名去 MC百科找对应条目，命中才显示「MC百科」按钮。</summary>
-    private async Task LoadMcmodAsync(string title)
+    /// <summary>按 slug / 项目名匹配 MC百科；命中百科页显示中文名，没命中就给搜索页。</summary>
+    private void LoadMcmod(string title, string? slug)
     {
-        try
-        {
-            var entry = await McmodService.LookupAsync(title);
-            if (entry is null) return;
+        var entry = McmodService.Lookup(title, slug);
 
-            await Dispatcher.InvokeAsync(() =>
-            {
-                _mcmodUrl = entry.Address;
-                McmodButton.Content = string.IsNullOrWhiteSpace(entry.ChineseName)
-                    ? "MC百科"
-                    : $"MC百科 · {entry.ChineseName}";
-                McmodButton.Visibility = Visibility.Visible;
-            });
-        }
-        catch (Exception ex)
+        if (entry is null)
         {
-            AppLog.Error(ex, "mcmod detail");
+            McmodButton.Visibility = Visibility.Collapsed;
+            return;
         }
+
+        _mcmodUrl = entry.Address;
+
+        McmodButton.Content = string.IsNullOrWhiteSpace(entry.ChineseName)
+            ? (entry.IsExact ? "MC百科" : "MC百科搜索")
+            : $"MC百科 · {entry.ChineseName}";
+
+        McmodButton.Visibility = Visibility.Visible;
     }
 
     private void OpenMcmod_Click(object sender, RoutedEventArgs e)

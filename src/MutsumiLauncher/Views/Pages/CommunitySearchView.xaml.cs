@@ -197,7 +197,8 @@ public partial class CommunitySearchView : UserControl
 
                     // 译名表只有 Mod 这一套数据，光影 / 资源包 / 整合包不套用
                     if (IsMod(card.Current.Hit.ProjectType))
-                        card.ChineseTitle = TranslationTable.ChineseFor(card.Title);
+                        card.ChineseTitle = McmodIndex.ChineseFor(card.Current.Hit.Slug, card.Title)
+                                            ?? TranslationTable.ChineseFor(card.Title);
 
                     return card;
                 })

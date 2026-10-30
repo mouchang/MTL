@@ -1,180 +1,67 @@
-using System.Collections.Concurrent;
-using System.Net.Http;
-using System.Text.Json;
+using System.Text;
 
 namespace MutsumiLauncher.Services;
 
 /// <summary>MC百科上的一条条目。</summary>
 public sealed class McmodEntry
 {
+    /// <summary>条目地址：命中百科页是 /class/{id}.html，没命中是站内搜索页。</summary>
     public required string Address { get; init; }
 
     public required string Title { get; init; }
 
     public string? ChineseName { get; init; }
 
-    public string? SubName { get; init; }
-
     public string? Abbr { get; init; }
 
     public string? McmodId { get; init; }
 
-    /// <summary>只认模组 / 整合包页面，条目（合成表、教程）不算。</summary>
-    public bool IsMod =>
-        Address.Contains("/class/", StringComparison.OrdinalIgnoreCase)
-        || Address.Contains("/modpack/", StringComparison.OrdinalIgnoreCase);
+    /// <summary>是否是精确命中的百科页（false 表示只给了搜索页）。</summary>
+    public bool IsExact => !string.IsNullOrWhiteSpace(McmodId);
 }
 
 /// <summary>
-/// mcmod-api（https://github.com/zkitefly/mcmod-api）：
-/// 英文名 → 中文名 + MC百科链接；中文关键词 → 英文名（用于社区搜索）。
+/// 项目 → MC百科链接。全程离线，不调第三方接口：
+///
+/// 1. 先用离线索引（mcmod-zh.json.gz）按 slug / 标题精确匹配，命中就用
+///    <c>https://www.mcmod.cn/class/{id}.html</c> 并带上中文名；
+/// 2. 匹配不上就退回站内搜索页（PCL2 对不认识的 Mod 也是这么处理的），
+///    这样按钮在任何情况下都有意义，也不会指到错误的条目上。
 /// </summary>
 public static class McmodService
 {
-    public const string BaseUrl = "https://mcmod-api.zkitefly.eu.org";
+    /// <summary>百科条目地址。</summary>
+    public static string ClassUrl(int id) => $"https://www.mcmod.cn/class/{id}.html";
 
-    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(20));
-    private static readonly SemaphoreSlim Gate = new(4, 4);
-    private static readonly ConcurrentDictionary<string, McmodEntry?> LookupCache = new();
+    /// <summary>站内搜索地址：匹配不上时的兜底。</summary>
+    public static string SearchUrl(string keyword) =>
+        "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword?.Trim() ?? string.Empty) + "&site=all&filter=0";
 
-    /// <summary>按关键词搜 MC百科（返回模组 / 整合包条目）。</summary>
-    public static async Task<IReadOnlyList<McmodEntry>> SearchAsync(string keyword,
-        CancellationToken cancellationToken = default)
+    /// <summary>按 slug / 标题找百科条目，永远返回一个可用的链接。</summary>
+    public static McmodEntry? Lookup(string title, string? slug = null)
     {
-        if (string.IsNullOrWhiteSpace(keyword)) return [];
+        if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(slug)) return null;
 
-        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var match = McmodIndex.Find(slug, title);
 
-        try
+        if (match is not null)
         {
-            var url = $"{BaseUrl}/s/key={Uri.EscapeDataString(keyword.Trim())}";
-            using var response = await Http.GetAsync(url, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            return new McmodEntry
             {
-                AppLog.Info($"mcmod search {keyword}: HTTP {(int)response.StatusCode}");
-                return [];
-            }
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-            if (document.RootElement.ValueKind != JsonValueKind.Array) return [];
-
-            var results = new List<McmodEntry>();
-
-            foreach (var element in document.RootElement.EnumerateArray())
-            {
-                var entry = Parse(element);
-                if (entry is not null && entry.IsMod) results.Add(entry);
-            }
-
-            return results;
+                Address = match.Url,
+                Title = match.English,
+                ChineseName = match.Chinese,
+                Abbr = match.Abbr,
+                McmodId = match.Id.ToString(),
+            };
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "mcmod search");
-            return [];
-        }
-        finally
-        {
-            Gate.Release();
-        }
-    }
 
-    /// <summary>英文名 → MC百科条目（中文名 + 链接）。查不到返回 null，并缓存这次「没有」。</summary>
-    public static async Task<McmodEntry?> LookupAsync(string name,
-        CancellationToken cancellationToken = default)
-    {
-        var key = Normalize(name);
-        if (key.Length == 0) return null;
-
-        if (LookupCache.TryGetValue(key, out var cached)) return cached;
-
-        var entries = await SearchAsync(name, cancellationToken).ConfigureAwait(false);
-        var best = PickBest(entries, name);
-
-        LookupCache[key] = best;
-        return best;
-    }
-
-    private static McmodEntry? Parse(JsonElement element)
-    {
-        if (element.ValueKind != JsonValueKind.Object) return null;
-
-        var address = element.TryGetProperty("address", out var a) ? a.GetString() : null;
-        if (string.IsNullOrWhiteSpace(address)) return null;
-
-        var title = element.TryGetProperty("title", out var t) ? t.GetString() ?? string.Empty : string.Empty;
-
-        string? chinese = null, sub = null, abbr = null, id = null;
-
-        if (element.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object)
-        {
-            chinese = Text(data, "chinese_name");
-            sub = Text(data, "sub_name");
-            abbr = Text(data, "abbr");
-            id = Text(data, "mcmod_id");
-        }
+        var keyword = !string.IsNullOrWhiteSpace(title) ? title : slug!;
 
         return new McmodEntry
         {
-            Address = address,
-            Title = title,
-            ChineseName = chinese,
-            SubName = sub,
-            Abbr = abbr,
-            McmodId = id,
+            Address = SearchUrl(keyword),
+            Title = keyword,
         };
-    }
-
-    private static string? Text(JsonElement data, string name) =>
-        data.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static McmodEntry? PickBest(IReadOnlyList<McmodEntry> entries, string name)
-    {
-        var target = Normalize(name);
-        if (target.Length == 0) return null;
-
-        McmodEntry? best = null;
-        var bestScore = 0;
-
-        foreach (var entry in entries)
-        {
-            var score = Math.Max(
-                Math.Max(Score(Normalize(entry.SubName), target, 100, 70),
-                    Score(Normalize(entry.ChineseName), target, 90, 60)),
-                Score(Normalize(entry.Title), target, 80, 50));
-
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = entry;
-            }
-        }
-
-        return bestScore >= 50 ? best : null;
-    }
-
-    private static int Score(string candidate, string target, int exact, int partial)
-    {
-        if (candidate.Length == 0) return 0;
-        if (candidate == target) return exact;
-        if (candidate.Contains(target, StringComparison.Ordinal)) return partial;
-
-        return 0;
-    }
-
-    private static string Normalize(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-
-        return new string(text.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
     }
 }
