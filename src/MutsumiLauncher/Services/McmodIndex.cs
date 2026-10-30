@@ -2,6 +2,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using RegexMatch = System.Text.RegularExpressions.Match;
 
 namespace MutsumiLauncher.Services;
 
@@ -73,6 +75,20 @@ public static class McmodIndex
                 return ToMatch(byAbbr);
         }
 
+        // 1.5 缩写展开：标题里的「TaCZ: Refabricated」把 TaCZ 换成
+        //     "Timeless and Classics Zero" 再匹配一次，就能对上百科的全名条目
+        var expanded = ExpandAbbreviation(data, title);
+
+        if (!string.IsNullOrWhiteSpace(expanded) && !string.Equals(expanded, title, StringComparison.Ordinal))
+        {
+            title = expanded;
+            titleKey = Normalize(expanded);
+            bareKey = Normalize(StripDecorations(expanded));
+
+            if (titleKey.Length > 0 && data.ByName.TryGetValue(titleKey, out var byExpanded))
+                return ToMatch(byExpanded);
+        }
+
         // 2. 扫一遍做包含 / 分词匹配
         Entry? best = null;
         var bestScore = 0;
@@ -112,6 +128,37 @@ public static class McmodIndex
 
         return false;
     }
+
+    /// <summary>
+    /// 把标题里的缩写换成条目全名：「TaCZ: Refabricated」→「Timeless and Classics Zero: Refabricated」。
+    ///
+    /// 只认「看起来就是缩写」的词（至少两个大写字母，如 TaCZ / JEI / AE2），
+    /// 否则像 "Timeless and Classics Zero" 里的 and / zero 也会被当成缩写换掉。
+    /// </summary>
+    private static string? ExpandAbbreviation(Data data, string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return title;
+
+        foreach (RegexMatch match in AbbreviationToken.Matches(title))
+        {
+            var token = match.Value;
+
+            if (token.Count(char.IsUpper) < 2) continue;
+            if (!data.ByAbbr.TryGetValue(Normalize(token), out var entry)) continue;
+            if (entry.English.Length <= token.Length) continue;
+
+            var replaced = Regex.Replace(title,
+                "\\b" + Regex.Escape(token) + "\\b",
+                entry.English,
+                RegexOptions.IgnoreCase);
+
+            if (!string.Equals(replaced, title, StringComparison.Ordinal)) return replaced;
+        }
+
+        return title;
+    }
+
+    private static readonly Regex AbbreviationToken = new("[A-Za-z][A-Za-z0-9]{1,9}", RegexOptions.Compiled);
 
     private static Match ToMatch(Entry entry) =>
         new(entry.Id, entry.English, CleanChinese(entry.Chinese), entry.Abbr, entry.IsModpack);

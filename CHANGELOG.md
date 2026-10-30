@@ -3,6 +3,16 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0-beta.8] - 2026-10-30
+
+### 中文名匹配：缩写展开
+
+- 标题里出现百科条目的缩写时，先展开成全名再匹配：
+  `TaCZ: Refabricated` → `Timeless and Classics Zero: Refabricated` → 命中「TaCZ：重织」
+- 只认「看起来就是缩写」的词（至少两个大写字母：TaCZ / JEI / AE2），
+  避免把 and / zero 这类普通词当成缩写替换
+- 站内搜索兜底已撤掉，中文名重新回到纯离线匹配
+
 ## [1.1.0-beta.7] - 2026-10-30
 
 ### 修复

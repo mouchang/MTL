@@ -694,8 +694,6 @@ public partial class ModrinthDetailView : UserControl
         _mcmodUrl = entry.Address;
         ApplyMcmodEntry(entry);
 
-        // 离线表没命中：后台去 MC百科搜一次，找到了就把「搜索」换成具体条目
-        if (!entry.IsExact) _ = UpgradeMcmodAsync(title);
     }
 
     private void ApplyMcmodEntry(McmodEntry entry)
@@ -707,32 +705,6 @@ public partial class ModrinthDetailView : UserControl
             : $"MC百科 · {entry.ChineseName}";
 
         McmodButton.Visibility = Visibility.Visible;
-    }
-
-    private async Task UpgradeMcmodAsync(string title)
-    {
-        try
-        {
-            var entry = await McmodService.SearchRemoteAsync(title);
-            if (entry is null) return;
-
-            Dispatcher.Invoke(() =>
-            {
-                ApplyMcmodEntry(entry);
-
-                // 顺带把中文副标题补上
-                if (entry.ChineseName is { Length: > 0 } chinese
-                    && string.IsNullOrWhiteSpace(ChineseTitleText.Text))
-                {
-                    ChineseTitleText.Text = chinese;
-                    ChineseTitleText.Visibility = Visibility.Visible;
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "upgrade mcmod");
-        }
     }
 
     private void OpenMcmod_Click(object sender, RoutedEventArgs e)
