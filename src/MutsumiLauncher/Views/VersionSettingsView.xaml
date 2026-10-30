@@ -27,9 +27,13 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                                 VerticalAlignment="Top">
                         <Button Style="{StaticResource GhostButton}" Content="引用 .minecraft…"
-                                Height="28" Padding="12,0" Margin="0,2,10,0"
+                                Height="28" Padding="12,0" Margin="0,2,8,0"
                                 Click="ReferenceMinecraft_Click"
                                 ToolTip="引用其它启动器里已有的版本，不复制文件" />
+                        <Button Style="{StaticResource GhostButton}" Content="导入 .minecraft…"
+                                Height="28" Padding="12,0" Margin="0,2,10,0"
+                                Click="ImportMinecraft_Click"
+                                ToolTip="把其它启动器的版本复制进来，可选导入后删除源版本" />
                         <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"
                                 VerticalAlignment="Top" Click="Close_Click" ToolTip="关闭" />
                     </StackPanel>
@@ -102,6 +106,9 @@
                                     <Button Style="{StaticResource SecondaryButton}" Content="引用 .minecraft…"
                                             Height="36" Padding="16,0" Margin="12,0,0,0"
                                             Click="ReferenceMinecraft_Click" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="导入 .minecraft…"
+                                            Height="36" Padding="16,0" Margin="8,0,0,0"
+                                            Click="ImportMinecraft_Click" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>

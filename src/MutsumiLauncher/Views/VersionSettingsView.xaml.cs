@@ -48,6 +48,44 @@ public partial class VersionSettingsView : UserControl
         (Window.GetWindow(this) as MainWindow)?.ShowDownloadPagePublic();
     }
 
+    /// <summary>导入其它启动器的版本（复制进来，可选删除源）。</summary>
+    private async void ImportMinecraft_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择要导入的 .minecraft 目录",
+            Multiselect = false,
+        };
+
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+
+        var root = dialog.FolderName;
+
+        if (!ExternalSourceService.LooksLikeMinecraft(root))
+        {
+            MessageDialog.Show(Window.GetWindow(this), "不是有效的目录",
+                "这个目录里没有 versions / libraries / assets，看起来不是 .minecraft。",
+                "知道了", null);
+            return;
+        }
+
+        var versions = await MinecraftImportService.ScanAsync(root);
+
+        if (versions.Count == 0)
+        {
+            MessageDialog.Show(Window.GetWindow(this), "没有可导入的版本",
+                "这个目录里没找到带版本 JSON 的版本。", "知道了", null);
+            return;
+        }
+
+        var importDialog = new ImportVersionsDialog(root, versions) { Owner = Window.GetWindow(this) };
+
+        if (importDialog.ShowDialog() != true) return;
+
+        RefreshEmptyState();
+        (Window.GetWindow(this) as MainWindow)?.RefreshInstances();
+    }
+
     /// <summary>引用其它启动器的 .minecraft（文件留在原处）。</summary>
     private void ReferenceMinecraft_Click(object sender, RoutedEventArgs e)
     {

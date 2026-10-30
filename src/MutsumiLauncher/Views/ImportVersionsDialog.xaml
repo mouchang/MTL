@@ -1,0 +1,99 @@
+<Window x:Class="MutsumiLauncher.Views.ImportVersionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="导入版本" Width="620" Height="620"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="{StaticResource UiFont}"
+        TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="Grayscale"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Grid Margin="24">
+        <Border Background="{DynamicResource SurfaceFloat}" CornerRadius="18"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+            <Grid Margin="24,20,24,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="导入现有 .minecraft" FontSize="17" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Ink}" />
+                <TextBlock x:Name="SourceText" Grid.Row="1" FontSize="12"
+                           Foreground="{DynamicResource InkMute}" Margin="0,6,0,12"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Row="1" Text="导入会把版本文件复制到本启动器，成功后按你的选择删除源版本。"
+                           Style="{StaticResource Caption}" Margin="0,26,0,0" />
+
+                <!-- 版本列表 -->
+                <Border Grid.Row="2" Background="{DynamicResource PaneBg}" CornerRadius="12" Padding="10,8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
+                            <Button x:Name="SelectAllButton" Style="{StaticResource GhostButton}"
+                                    Content="全选" Height="26" Padding="10,0" Click="SelectAll_Click" />
+                            <Button x:Name="SelectNoneButton" Style="{StaticResource GhostButton}"
+                                    Content="全不选" Height="26" Padding="10,0" Margin="8,0,0,0"
+                                    Click="SelectNone_Click" />
+                        </StackPanel>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="VersionList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Divider}"
+                                                Padding="0,7" MouseLeftButtonUp="Row_Click" Tag="{Binding}"
+                                                Background="Transparent" Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"
+                                                          VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13"
+                                                           Foreground="{DynamicResource Ink}" Margin="10,0,0,0"
+                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="11"
+                                                           Foreground="{DynamicResource InkMute}"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- 选项 -->
+                <StackPanel Grid.Row="3" Margin="2,12,0,0">
+                    <CheckBox x:Name="CopySharedCheck" IsChecked="True"
+                              Content="同时补齐缺失的 libraries / assets（已存在的跳过）" />
+                    <CheckBox x:Name="DeleteSourceCheck" IsChecked="True" Margin="0,8,0,0"
+                              Content="导入成功后删除源 versions&lt;版本&gt; 目录" />
+                    <CheckBox x:Name="DeleteWholeCheck" Margin="0,8,0,0"
+                              Content="全部成功后删除整个源 .minecraft（不可恢复）" />
+                    <TextBlock x:Name="StatusText" Style="{StaticResource Caption}" Margin="0,10,0,0" />
+                    <ProgressBar x:Name="Progress" Height="4" Margin="0,8,0,0" Minimum="0" Maximum="100"
+                                 Visibility="Collapsed" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                    <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" Content="取消"
+                            Width="96" Margin="0,0,10,0" Click="Cancel_Click" />
+                    <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}" Content="开始导入"
+                            Width="120" Click="Start_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
