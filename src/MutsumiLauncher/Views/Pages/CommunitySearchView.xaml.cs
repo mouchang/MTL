@@ -223,6 +223,9 @@ public partial class CommunitySearchView : UserControl
             ResultsList.ItemsSource = items;
             _ = LoadIconsAsync(items);
 
+            // 离线译名表没覆盖到的，后台去 MC百科搜一次补上（有磁盘缓存，不会重复请求）
+            _ = FillChineseTitlesAsync(items);
+
             // 翻页后回到顶部，不然还停在上一页的底部
             ScrollResultsToTop();
 
@@ -399,6 +402,42 @@ public partial class CommunitySearchView : UserControl
         {
             AppLog.Error(ex, "modrinth game versions");
         }
+    }
+
+    /// <summary>
+    /// 只给「离线译名表没命中」的卡片补中文名：查 MC百科站内搜索，结果写磁盘缓存。
+    /// 限制并发，避免一页二十个卡片同时打请求。
+    /// </summary>
+    private static async Task FillChineseTitlesAsync(IReadOnlyList<SearchResultCard> cards)
+    {
+        using var semaphore = new SemaphoreSlim(2);
+
+        var tasks = cards
+            .Where(card => string.IsNullOrWhiteSpace(card.ChineseTitle))
+            .Where(card => IsMod(card.Current.Hit.ProjectType))
+            .Select(async card =>
+            {
+                await semaphore.WaitAsync();
+
+                try
+                {
+                    var entry = await McmodService.SearchRemoteAsync(card.Title);
+                    if (entry?.ChineseName is not { Length: > 0 } chinese) return;
+
+                    Application.Current?.Dispatcher.Invoke(() => card.ChineseTitle = chinese);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "fill chinese title");
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            })
+            .ToList();
+
+        await Task.WhenAll(tasks);
     }
 
     private static async Task LoadIconsAsync(IReadOnlyList<SearchResultCard> cards)

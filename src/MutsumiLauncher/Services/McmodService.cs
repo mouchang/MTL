@@ -1,4 +1,10 @@
+using System.Collections.Concurrent;
+using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace MutsumiLauncher.Services;
 
@@ -63,5 +69,194 @@ public static class McmodService
             Address = SearchUrl(keyword),
             Title = keyword,
         };
+    }
+
+    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(15));
+    private static readonly SemaphoreSlim Gate = new(2, 2);
+    private static readonly ConcurrentDictionary<string, McmodEntry?> RemoteCache = new();
+
+    /// <summary>
+    /// 离线索引没命中时，去 MC百科站内搜索一次（PCL2 对不认识的 Mod 也是这么做的）。
+    /// 结果写磁盘缓存，同一个名字只查一次。
+    /// </summary>
+    public static async Task<McmodEntry?> SearchRemoteAsync(string title,
+        CancellationToken cancellationToken = default)
+    {
+        var keyword = title?.Trim();
+        var key = Normalize(keyword);
+        if (key.Length < 3) return null;
+
+        if (RemoteCache.TryGetValue(key, out var cached)) return cached;
+
+        if (TryLoadDisk(key, out var disk))
+        {
+            RemoteCache[key] = disk;
+            return disk;
+        }
+
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            var url = "https://search.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword!) + "&site=all&filter=0";
+            using var response = await Http.GetAsync(url, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                AppLog.Info($"mcmod remote search {keyword}: HTTP {(int)response.StatusCode}");
+                return null;
+            }
+
+            var html = await response.Content.ReadAsStringAsync(cancellationToken);
+            var entry = PickFromSearch(html, keyword!);
+
+            RemoteCache[key] = entry;
+            SaveDisk(key, entry);
+
+            if (entry is not null)
+                AppLog.Info($"mcmod remote hit {keyword} -> {entry.McmodId} {entry.ChineseName}");
+
+            return entry;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "mcmod remote search");
+            return null;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    private static readonly Regex ClassLink = new(
+        "<a[^>]+href=\"(?:https?:)?//www\\.mcmod\\.cn/class/(\\d+)\\.html\"[^>]*>(.*?)</a>",
+        RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex Tag = new("<[^>]+>", RegexOptions.Compiled);
+
+    private static McmodEntry? PickFromSearch(string html, string title)
+    {
+        var target = Normalize(title);
+        var tokens = Tokenize(title);
+
+        McmodEntry? best = null;
+        var bestScore = 0;
+
+        foreach (Match match in ClassLink.Matches(html))
+        {
+            var id = match.Groups[1].Value;
+            var text = WebUtility.HtmlDecode(Tag.Replace(match.Groups[2].Value, string.Empty)).Trim();
+
+            if (string.IsNullOrWhiteSpace(text)) continue;
+
+            var score = 0;
+
+            if (Normalize(text).Contains(target, StringComparison.Ordinal)) score = 100;
+            else if (tokens.Count > 0 && tokens.All(token => Normalize(text).Contains(token, StringComparison.Ordinal)))
+                score = 60 + tokens.Count;
+
+            if (score <= bestScore) continue;
+
+            bestScore = score;
+            best = new McmodEntry
+            {
+                Address = ClassUrl(int.TryParse(id, out var number) ? number : 0),
+                Title = text,
+                ChineseName = ChineseFromTitle(text),
+                McmodId = id,
+            };
+        }
+
+        return bestScore >= 60 ? best : null;
+    }
+
+    /// <summary>「[TaCZR] TaCZ：重织 (Timeless and Classics Zero: Refabricated)」→「TaCZ：重织」。</summary>
+    private static string? ChineseFromTitle(string text)
+    {
+        var value = text;
+
+        var bracket = value.IndexOf(']');
+        if (value.StartsWith('[') && bracket > 0) value = value[(bracket + 1)..];
+
+        var paren = value.IndexOf('(');
+        if (paren > 0) value = value[..paren];
+
+        value = value.Trim();
+
+        return value.Length > 0 && TranslationTable.HasChinese(value) ? value : null;
+    }
+
+    private static List<string> Tokenize(string text)
+    {
+        var builder = new StringBuilder();
+
+        foreach (var ch in text)
+            builder.Append(char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : ' ');
+
+        return builder.ToString()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(token => token.Length >= 3)
+            .ToList();
+    }
+
+    private static string Normalize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        var builder = new StringBuilder(text.Length);
+
+        foreach (var ch in text)
+        {
+            if (char.IsLetterOrDigit(ch)) builder.Append(char.ToLowerInvariant(ch));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string CachePath(string key) =>
+        Path.Combine(AppPaths.CacheDir, "mcmod-search", key + ".json");
+
+    private static bool TryLoadDisk(string key, out McmodEntry? entry)
+    {
+        entry = null;
+
+        try
+        {
+            var path = CachePath(key);
+            if (!File.Exists(path)) return false;
+
+            entry = JsonSerializer.Deserialize<McmodEntry>(File.ReadAllText(path));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void SaveDisk(string key, McmodEntry? entry)
+    {
+        try
+        {
+            var path = CachePath(key);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+            if (entry is null)
+            {
+                File.WriteAllText(path, "null");
+                return;
+            }
+
+            File.WriteAllText(path, JsonSerializer.Serialize(entry));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "mcmod cache save");
+        }
     }
 }

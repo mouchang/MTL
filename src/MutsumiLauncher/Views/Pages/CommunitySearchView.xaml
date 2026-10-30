@@ -148,22 +148,7 @@
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -177,22 +162,7 @@
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="0" />
                                                             </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -204,22 +174,7 @@
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -241,22 +196,7 @@
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -270,22 +210,7 @@
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="0" />
                                                             </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -297,22 +222,7 @@
                                                                 <Style TargetType="TextBlock">
                                                                     <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
-                                                                <DataTrigger.EnterActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="1" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.EnterActions>
-                                                                <DataTrigger.ExitActions>
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                                             To="0" Duration="0:0:0.18" />
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </DataTrigger.ExitActions>
+                                                                <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -328,30 +238,10 @@
                                                 <Style TargetType="StackPanel">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
-                                                            <DataTrigger.EnterActions>
-                                                                <BeginStoryboard>
-                                                                    <Storyboard>
-                                                                        <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity"
-                                                                                                       Duration="0:0:0.24">
-                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.2" />
-                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0.24" Value="1" />
-                                                                        </DoubleAnimationUsingKeyFrames>
-                                                                    </Storyboard>
-                                                                </BeginStoryboard>
-                                                            </DataTrigger.EnterActions>
+                                                            <Setter Property="Opacity" Value="1" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
-                                                            <DataTrigger.EnterActions>
-                                                                <BeginStoryboard>
-                                                                    <Storyboard>
-                                                                        <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity"
-                                                                                                       Duration="0:0:0.24">
-                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.2" />
-                                                                            <EasingDoubleKeyFrame KeyTime="0:0:0.24" Value="1" />
-                                                                        </DoubleAnimationUsingKeyFrames>
-                                                                    </Storyboard>
-                                                                </BeginStoryboard>
-                                                            </DataTrigger.EnterActions>
+                                                            <Setter Property="Opacity" Value="1" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
