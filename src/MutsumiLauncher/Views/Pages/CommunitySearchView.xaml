@@ -143,10 +143,11 @@
                                                     Visibility="{Binding HasModrinth, Converter={StaticResource BoolToVis}}">
 
                                                 <Grid>
-                                                    <Border CornerRadius="8" Background="{DynamicResource Accent}" Opacity="0">
+                                                    <Border CornerRadius="8" Background="{DynamicResource Accent}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
-                                                                <Style.Triggers>
+                                                                <Setter Property="Opacity" Value="0" />
+                                                            <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
                                                                 <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
@@ -168,11 +169,11 @@
                                                                 </Style>
                                                             </TextBlock.Style>
                                                         </TextBlock>
-                                                        <TextBlock Text="Modrinth" FontSize="10" Foreground="White"
-                                                                   Opacity="0" HorizontalAlignment="Center">
+                                                        <TextBlock Text="Modrinth" FontSize="10" Foreground="White" HorizontalAlignment="Center">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
-                                                                    <Style.Triggers>
+                                                                    <Setter Property="Opacity" Value="0" />
+                                                            <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ModrinthSelected}" Value="True">
                                                                 <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
@@ -191,10 +192,11 @@
 
                                                 <Grid>
                                                     <!-- 选中底色用 CurseForge 自己的橙色，和 Modrinth 的绿色区分开 -->
-                                                    <Border CornerRadius="8" Background="{DynamicResource SourceOrange}" Opacity="0">
+                                                    <Border CornerRadius="8" Background="{DynamicResource SourceOrange}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
-                                                                <Style.Triggers>
+                                                                <Setter Property="Opacity" Value="0" />
+                                                            <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
                                                                 <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>
@@ -216,11 +218,11 @@
                                                                 </Style>
                                                             </TextBlock.Style>
                                                         </TextBlock>
-                                                        <TextBlock Text="CurseForge" FontSize="10" Foreground="White"
-                                                                   Opacity="0" HorizontalAlignment="Center">
+                                                        <TextBlock Text="CurseForge" FontSize="10" Foreground="White" HorizontalAlignment="Center">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
-                                                                    <Style.Triggers>
+                                                                    <Setter Property="Opacity" Value="0" />
+                                                            <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CurseForgeSelected}" Value="True">
                                                                 <Setter Property="Opacity" Value="1" />
                                                             </DataTrigger>

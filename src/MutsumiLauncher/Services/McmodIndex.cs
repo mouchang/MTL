@@ -75,18 +75,19 @@ public static class McmodIndex
                 return ToMatch(byAbbr);
         }
 
-        // 1.5 缩写展开：标题里的「TaCZ: Refabricated」把 TaCZ 换成
-        //     "Timeless and Classics Zero" 再匹配一次，就能对上百科的全名条目
+        // 1.5 缩写展开：「TaCZ: Refabricated」把 TaCZ 换成 "Timeless and Classics Zero"
+        //     再匹配一次，就能对上百科的全名条目。
+        //     展开后必须**完全对上**才算数 —— 否则「TaCZ x Guns Lights Addon」这类附属
+        //     会被硬套成 TaCZ 本体，反而显示错的中文名。
         var expanded = ExpandAbbreviation(data, title);
 
         if (!string.IsNullOrWhiteSpace(expanded) && !string.Equals(expanded, title, StringComparison.Ordinal))
         {
-            title = expanded;
-            titleKey = Normalize(expanded);
-            bareKey = Normalize(StripDecorations(expanded));
+            var expandedKey = Normalize(expanded);
 
-            if (titleKey.Length > 0 && data.ByName.TryGetValue(titleKey, out var byExpanded))
-                return ToMatch(byExpanded);
+            return expandedKey.Length > 0 && data.ByName.TryGetValue(expandedKey, out var byExpanded)
+                ? ToMatch(byExpanded)
+                : null;
         }
 
         // 2. 扫一遍做包含 / 分词匹配
