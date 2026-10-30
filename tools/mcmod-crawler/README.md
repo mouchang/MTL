@@ -22,7 +22,8 @@ python crawl.py crawl --limit 3
 python crawl.py crawl
 
 # 4) 导出
-python crawl.py export        # -> mcmod-zh.json / mcmod-zh.json.gz
+python crawl.py export        # -> mcmod-zh.json / .gz（只有中文名的 1.4 万条，给中文→英文翻译用）
+python crawl.py export-all    # -> mcmod-all.json / .gz（全部 3.1 万条，给客户端匹配百科索引用）
 
 # 看进度
 python crawl.py stats

@@ -79,7 +79,7 @@ public static class McmodIndex
 
         foreach (var entry in data.All)
         {
-            var score = Score(entry, slugKey, titleKey, bareKey);
+            var score = Score(entry, slugKey, slug, titleKey, bareKey, title);
 
             if (score > bestScore)
             {
@@ -120,7 +120,8 @@ public static class McmodIndex
     private static string? CleanChinese(string? text) =>
         text is { Length: > 0 } && HasChinese(text) ? text : null;
 
-    private static int Score(Entry entry, string slugKey, string titleKey, string bareKey)
+    private static int Score(Entry entry, string slugKey, string? slug, string titleKey, string bareKey,
+        string? title)
     {
         // 名字太短（api / lib / core）一律只认精确匹配，免得把几百个 Mod 都配上同一个条目
         var specific = entry.EnKey.Length >= 4;
@@ -140,9 +141,13 @@ public static class McmodIndex
 
         if (!specific) return 0;
 
-        // 按「词」比较，避免 "Fabric" 把 "Fabric API" 吃掉这类误配
-        var titleWords = Words(bareKey.Length > 0 ? bareKey : titleKey);
-        var entryWords = Words(entry.EnKey);
+        // 按「词」比较，避免 "Fabric" 把 "Fabric API" 吃掉这类误配。
+        // 注意必须用原始标题切词：规范化后的 "3dskinlayers" 已经没分隔符了。
+        var titleWords = Words(StripDecorations(title) ?? titleKey);
+
+        if (titleWords.Count < 2) titleWords = Words(slug);
+
+        var entryWords = Words(entry.English);
 
         if (entryWords.Count == 0 || titleWords.Count == 0) return 0;
 
@@ -154,6 +159,15 @@ public static class McmodIndex
             if (rest is "api" or "lib" or "library" or "core" or "mod" or "utility" or "utilities"
                 or "fabric" or "forge" or "neoforge" or "quilt")
                 return 84;
+        }
+
+        // 词一样但顺序不同：「3D Skin Layers」vs「Skin Layers 3D」
+        if (entryWords.Count >= 2 && entryWords.Count == titleWords.Count)
+        {
+            var left = entryWords.OrderBy(word => word, StringComparer.Ordinal);
+            var right = titleWords.OrderBy(word => word, StringComparer.Ordinal);
+
+            if (left.SequenceEqual(right)) return 82;
         }
 
         // 条目名的每个词都在标题里（顺序一致但不连续，比如带副标题的情况）
@@ -296,10 +310,17 @@ public static class McmodIndex
     {
         var assembly = typeof(McmodIndex).Assembly;
 
-        var name = assembly.GetManifestResourceNames()
-            .FirstOrDefault(item => item.EndsWith("mcmod-zh.json.gz", StringComparison.OrdinalIgnoreCase));
+        // 优先全量表（3.1 万条，含没有中文名的条目），没有就退回只有中文名的旧表
+        var names = assembly.GetManifestResourceNames();
 
-        return name is null ? null : assembly.GetManifestResourceStream(name);
+        foreach (var suffix in new[] { "mcmod-all.json.gz", "mcmod-zh.json.gz" })
+        {
+            var name = names.FirstOrDefault(item => item.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+
+            if (name is not null) return assembly.GetManifestResourceStream(name);
+        }
+
+        return null;
     }
 
     private static int Int(JsonElement element, string name) =>

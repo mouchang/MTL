@@ -413,6 +413,41 @@ def export(args, conn):
     log(f"导出 {len(records)} 条 -> {args.out}（{raw_mb:.2f} MB，gz {gz_mb:.2f} MB）")
 
 
+def export_all(args, conn):
+    """导出全部已抓条目（含没有中文名的），给客户端的匹配索引用。
+
+    和 export 的区别：export 只留「有中文名」的，是给中文→英文翻译用的；
+    这里保留英文名齐全的全部条目，命中率能到三万多条。
+    """
+    rows = conn.execute(
+        "SELECT url, kind, chinese_name, english_name, abbr FROM urls "
+        "WHERE status='done' AND (english_name IS NOT NULL AND english_name <> '')"
+    ).fetchall()
+
+    records = []
+    for url, kind, chinese, english, abbr in rows:
+        match = re.search(r"/(\d+)\.html", url)
+        records.append({
+            "id": int(match.group(1)) if match else None,
+            "type": kind,
+            "cn": chinese or None,
+            "en": english,
+            "abbr": abbr or None,
+        })
+
+    records.sort(key=lambda item: (item["type"] or "", item["id"] or 0))
+
+    with open(args.out, "w", encoding="utf-8") as handle:
+        json.dump(records, handle, ensure_ascii=False, separators=(",", ":"))
+
+    with open(args.out, "rb") as source, gzip.open(args.out + ".gz", "wb", compresslevel=9) as target:
+        target.write(source.read())
+
+    raw_mb = os.path.getsize(args.out) / 1024 / 1024
+    gz_mb = os.path.getsize(args.out + ".gz") / 1024 / 1024
+    log(f"导出 {len(records)} 条（含无中文名）-> {args.out}（{raw_mb:.2f} MB，gz {gz_mb:.2f} MB）")
+
+
 def stats(args, conn):
     """打印进度 + 按已抓页的平均耗时估算剩余时间。"""
     print(total(args, conn))
@@ -458,7 +493,7 @@ def stats(args, conn):
 
 def main():
     parser = argparse.ArgumentParser(description="MC百科译名表爬虫")
-    parser.add_argument("command", choices=["sync", "crawl", "export", "stats"])
+    parser.add_argument("command", choices=["sync", "crawl", "export", "export-all", "stats"])
     parser.add_argument("--db", default="state.db")
     parser.add_argument("--out", default="mcmod-zh.json")
     parser.add_argument("--delay", type=float, default=1.5, help="每页间隔秒数（默认 1.5）")
@@ -488,6 +523,8 @@ def main():
             crawl(args, conn)
         elif args.command == "export":
             export(args, conn)
+        elif args.command == "export-all":
+            export_all(args, conn)
         else:
             stats(args, conn)
     except KeyboardInterrupt:

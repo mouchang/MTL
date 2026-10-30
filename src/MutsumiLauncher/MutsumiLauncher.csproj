@@ -17,6 +17,8 @@
     <Resource Include="Assets\**\*" Exclude="Assets\mcmod-zh.json.gz" />
     <!-- MC百科译名表（离线，来自 tools/mcmod-crawler），走嵌入资源方便直接读流 -->
     <EmbeddedResource Include="Assets\mcmod-zh.json.gz" />
+    <!-- 全量百科表（31432 条，含没有中文名的），给 mcmod 匹配索引用 -->
+    <EmbeddedResource Include="Assets\mcmod-all.json.gz" />
   </ItemGroup>
 
   <!-- 内核 zip 一起打进安装包：首次启动不用再下 22 MB。

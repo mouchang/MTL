@@ -2,6 +2,8 @@ state.db
 state.db-journal
 mcmod-zh.json
 mcmod-zh.json.gz
+mcmod-all.json
+mcmod-all.json.gz
 verify.txt
 crawl.log
 crawl.err
