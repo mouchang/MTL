@@ -120,6 +120,10 @@ dotnet run --project src/MutsumiLauncher
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - 参与开发：[CONTRIBUTING.md](CONTRIBUTING.md)
 
+## 赞助
+
+- 爱发电主页：https://afdian.com/a/box_star
+
 ## 许可
 
 [MIT](LICENSE)
