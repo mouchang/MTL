@@ -48,6 +48,8 @@ public partial class MainWindow : Window
             UpdateShellClip();
 
             // 从别的窗口点开启动器时，窗口经常被挡在后面：先激活，再短暂置顶，
+            _ = OfferLayoutMigrationAsync();
+
             // 等界面画完（ApplicationIdle）再取消置顶，否则系统有时不理会这次前置
             Activate();
             Topmost = true;
@@ -433,6 +435,47 @@ public partial class MainWindow : Window
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
+    }
+
+    /// <summary>
+    /// 旧目录布局（game\versions）升级提示：确认后把 versions/libraries/assets
+    /// 收进 game\.minecraft\，失败会回滚，不影响下次启动。
+    /// </summary>
+    private async Task OfferLayoutMigrationAsync()
+    {
+        if (!GamePaths.NeedsLayoutMigration) return;
+
+        await Task.Delay(600);
+
+        try
+        {
+            var (files, bytes) = LayoutMigrator.Measure();
+
+            var go = MessageDialog.Show(this, "整理游戏目录",
+                $"检测到旧版目录结构：\n{GamePaths.Root}\versions …\n\n" +
+                $"整理后这些内容会移动到 .minecraft 子目录里（共 {files} 个文件，" +
+                $"{PathMigrator.FormatSize(bytes)}），和主流启动器的目录一致。\n\n" +
+                "整理过程中请不要关闭启动器；失败会自动回滚。",
+                "开始整理", "以后再说");
+
+            if (!go) return;
+
+            ShowToast("正在整理游戏目录…");
+
+            var result = await Task.Run(() => LayoutMigrator.Migrate());
+
+            if (!result.Ok)
+            {
+                MessageDialog.Show(this, "整理失败", result.Error ?? "未知错误", "知道了", null);
+                return;
+            }
+
+            ShowToast("目录整理完成，重启启动器后生效");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "layout migration");
+        }
     }
 
     /// <summary>首次启动弹一次公告页（代理内核提示 + 免责申明），之后不再出现。</summary>

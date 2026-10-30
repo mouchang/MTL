@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0-beta.3] - 2026-10-31
+
+### 目录结构（第二步）
+
+- 游戏文件收进 `game\.minecraft\`（versions / libraries / assets），和主流启动器的目录一致
+- 整合包独立到 `game\modpacks\downloads` 与 `game\modpacks\exports`，不再塞进实例目录
+- 安装器临时文件仍在 `game\temp\`
+- 旧布局（`game\versions`）启动后会弹确认框，确认才整理；
+  同盘直接改名、跨盘复制并校验文件数，失败自动回滚，不影响下次启动
+- 整理完成后提示重启生效
+
 ## [1.1.0-beta.2] - 2026-10-31
 
 ### 数据不再写进 C 盘

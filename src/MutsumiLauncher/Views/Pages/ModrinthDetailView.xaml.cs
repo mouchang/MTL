@@ -567,7 +567,11 @@ public partial class ModrinthDetailView : UserControl
         {
             DownloadCenter.Report(task, "正在下载文件…", 20);
 
-            var directory = Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
+            // 整合包统一放到 <GameRoot>\modpacks\downloads，不再塞进实例目录
+            var directory = _item.Hit.ProjectType == "modpack"
+                ? GamePaths.ModpacksDownloadsDir
+                : Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
+
             Directory.CreateDirectory(directory);
 
             var dialog = new Microsoft.Win32.SaveFileDialog

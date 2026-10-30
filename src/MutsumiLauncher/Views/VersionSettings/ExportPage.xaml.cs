@@ -39,9 +39,14 @@ public partial class ExportPage : UserControl, IInstancePage
         }
 
         var isMrpack = MrpackRadio.IsChecked == true;
+
+        // 导出默认落在 <GameRoot>modpacksexports
+        Directory.CreateDirectory(GamePaths.ModpacksExportsDir);
+
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Title = "导出整合包",
+            InitialDirectory = GamePaths.ModpacksExportsDir,
             FileName = $"{Sanitize(NameBox.Text, _version)}-{VersionBox.Text.Trim()}",
             DefaultExt = isMrpack ? ".mrpack" : ".zip",
             Filter = isMrpack

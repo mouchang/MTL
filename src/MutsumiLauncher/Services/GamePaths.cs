@@ -5,6 +5,14 @@ namespace MutsumiLauncher.Services;
 /// <summary>
 /// 游戏目录优先级：MTL_GAME_DIR 环境变量 → 设置里的 GameRoot → 安装目录下的 game\。
 /// 不再往 %APPDATA% 写任何东西，数据全在用户自己的安装目录里。
+///
+/// 目录结构（LayoutVersion 2）：
+///   &lt;GameRoot&gt;\.minecraft\versions|  libraries|  assets|   ← 标准 Minecraft 布局
+///   &lt;GameRoot&gt;\modpacks\downloads|exports                  ← 整合包
+///   &lt;GameRoot&gt;\temp                                        ← 安装器临时文件
+///
+/// 旧版本（LayoutVersion 1）把 versions / libraries / assets 直接放在 GameRoot 下，
+/// 迁移前继续按旧布局工作，界面会提示用户整理。
 /// </summary>
 public static class GamePaths
 {
@@ -13,14 +21,31 @@ public static class GamePaths
 
     public static string Root { get; private set; } = Resolve();
 
-    public static string VersionsDir => Path.Combine(Root, "versions");
+    /// <summary>标准 Minecraft 目录（layout 2 才有意义；layout 1 下等于 Root）。</summary>
+    public static string MinecraftDir => _layout == 2 ? Path.Combine(Root, ".minecraft") : Root;
 
-    public static string LibrariesDir => Path.Combine(Root, "libraries");
+    public static string VersionsDir => Path.Combine(MinecraftDir, "versions");
 
-    public static string AssetsDir => Path.Combine(Root, "assets");
+    public static string LibrariesDir => Path.Combine(MinecraftDir, "libraries");
+
+    public static string AssetsDir => Path.Combine(MinecraftDir, "assets");
+
+    public static string ModpacksDir => Path.Combine(Root, "modpacks");
+
+    public static string ModpacksDownloadsDir => Path.Combine(ModpacksDir, "downloads");
+
+    public static string ModpacksExportsDir => Path.Combine(ModpacksDir, "exports");
 
     /// <summary>安装器解压 / 临时文件都放在游戏目录里，别再落到 C 盘的 TEMP。</summary>
     public static string TempDir => Path.Combine(Root, "temp");
+
+    /// <summary>当前生效的布局版本（1 = 旧的扁平结构，2 = .minecraft 子目录）。</summary>
+    public static int Layout => _layout;
+
+    /// <summary>检测到旧布局、等用户确认后迁移。</summary>
+    public static bool NeedsLayoutMigration { get; private set; }
+
+    private static int _layout;
 
     public static void EnsureCreated()
     {
@@ -28,6 +53,8 @@ public static class GamePaths
         Directory.CreateDirectory(LibrariesDir);
         Directory.CreateDirectory(AssetsDir);
         Directory.CreateDirectory(TempDir);
+        Directory.CreateDirectory(ModpacksDownloadsDir);
+        Directory.CreateDirectory(ModpacksExportsDir);
     }
 
     /// <summary>设置里改了游戏目录：写进配置并重新解析（重启后所有服务才会跟着换）。</summary>
@@ -38,19 +65,55 @@ public static class GamePaths
         Root = Resolve();
     }
 
-    public static void Reload() => Root = Resolve();
+    public static void Reload()
+    {
+        Root = Resolve();
+    }
 
     private static string Resolve()
     {
         var custom = Environment.GetEnvironmentVariable("MTL_GAME_DIR");
-        if (!string.IsNullOrWhiteSpace(custom) && TryCreate(custom)) return custom;
+        if (!string.IsNullOrWhiteSpace(custom) && TryCreate(custom))
+        {
+            _layout = DetectLayout(custom);
+            return custom;
+        }
 
         var configured = AppConfig.Current.GameRoot;
-        if (!string.IsNullOrWhiteSpace(configured) && TryCreate(configured)) return configured;
+        if (!string.IsNullOrWhiteSpace(configured) && TryCreate(configured))
+        {
+            _layout = DetectLayout(configured);
+            return configured;
+        }
 
-        // 安装目录下的 game（默认位置）
+        // 安装目录下的 game\（默认位置）
         TryCreate(DefaultRoot);
+        _layout = DetectLayout(DefaultRoot);
         return DefaultRoot;
+    }
+
+    /// <summary>
+    /// 判断布局：.minecraft\versions 存在 = 新；只有 versions = 旧（并标记待迁移）；
+    /// 都没有 = 新（首次使用，目录按需创建）。
+    /// </summary>
+    private static int DetectLayout(string root)
+    {
+        var modern = Path.Combine(root, ".minecraft", "versions");
+        if (Directory.Exists(modern))
+        {
+            NeedsLayoutMigration = false;
+            return 2;
+        }
+
+        var legacy = Path.Combine(root, "versions");
+        if (Directory.Exists(legacy) && Directory.EnumerateFileSystemEntries(legacy).Any())
+        {
+            NeedsLayoutMigration = true;
+            return 1;
+        }
+
+        NeedsLayoutMigration = false;
+        return 2;
     }
 
     /// <summary>

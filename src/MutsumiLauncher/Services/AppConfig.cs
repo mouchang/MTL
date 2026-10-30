@@ -53,6 +53,9 @@ public sealed class AppConfig
     /// <summary>游戏目录（版本 / 库 / 资源）。留空 = 安装目录下的 game\。</summary>
     public string GameRoot { get; set; } = string.Empty;
 
+    /// <summary>目录布局版本：1 = 旧的扁平结构，2 = .minecraft 子目录。</summary>
+    public int LayoutVersion { get; set; } = 1;
+
     /// <summary>更新检查仓库（owner/repo）。</summary>
     public string UpdateRepo { get; set; } = "mouchang/MTL";
 

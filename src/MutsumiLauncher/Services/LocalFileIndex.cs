@@ -195,6 +195,7 @@ public static class LocalFileIndex
     private static IEnumerable<string> CandidateRoots()
     {
         if (Directory.Exists(GamePaths.VersionsDir)) yield return GamePaths.VersionsDir;
+        if (Directory.Exists(GamePaths.LibrariesDir)) yield return GamePaths.LibrariesDir;
 
         string? roaming;
         try
