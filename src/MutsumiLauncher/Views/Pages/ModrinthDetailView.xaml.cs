@@ -560,7 +560,8 @@ public partial class ModrinthDetailView : UserControl
         if (_installing) return;
 
         _installing = true;
-        var task = DownloadCenter.Begin($"安装 {row.Version.Name}", indeterminate: true);
+        // 不要 indeterminate：进度条要跟着真实百分比走
+        var task = DownloadCenter.Begin($"安装 {row.Version.Name}");
         task.RetryAction = () => InstallFile_Click(sender, new RoutedEventArgs());
 
         try
@@ -599,7 +600,8 @@ public partial class ModrinthDetailView : UserControl
                 var percent = total > 0 ? Math.Clamp(p.Received * 100.0 / total, 0, 100) : 0;
                 var speed = p.BytesPerSecond > 0 ? $" · {FormatSpeed((long)p.BytesPerSecond)}" : string.Empty;
 
-                DownloadCenter.Report(task, $"正在下载… {percent:0}%{speed}", percent);
+                // 带上已收字节，面板才能算出总下载速度
+                DownloadCenter.Report(task, $"正在下载… {percent:0}%{speed}", percent, p.Received);
             });
 
             var downloaded = await ResourceService.DownloadAsync(row.File, targetDirectory, progress, task.Token);

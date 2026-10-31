@@ -92,15 +92,14 @@
                         <Border x:Name="EmptyState" Visibility="Collapsed"
                                 Background="{DynamicResource PaneBg}" CornerRadius="18">
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                                        MaxWidth="420">
+                                        MaxWidth="560" Margin="24,0">
                                 <TextBlock Text="还没有可用的版本" FontSize="18"
                                            Foreground="{DynamicResource Ink}"
                                            HorizontalAlignment="Center" />
                                 <TextBlock Text="先在「下载」里安装一个，或者引用其它启动器已有的 .minecraft。"
                                            Style="{StaticResource Caption}" Margin="0,8,0,0"
                                            TextWrapping="Wrap" TextAlignment="Center" />
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                                            Margin="0,18,0,0">
+                                <WrapPanel HorizontalAlignment="Center" Margin="0,18,0,0">
                                     <Button Style="{StaticResource PrimaryButton}" Content="去下载"
                                             Height="36" Width="120" Click="GoDownload_Click" />
                                     <Button Style="{StaticResource SecondaryButton}" Content="引用 .minecraft…"
@@ -109,7 +108,7 @@
                                     <Button Style="{StaticResource SecondaryButton}" Content="导入 .minecraft…"
                                             Height="36" Padding="16,0" Margin="8,0,0,0"
                                             Click="ImportMinecraft_Click" />
-                                </StackPanel>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
                     </Grid>
