@@ -85,22 +85,24 @@ public static class ModpackImporter
         {
             var list = files.EnumerateArray().ToList();
             var total = Math.Max(1, list.Count);
+            var done = 0;
 
-            for (var i = 0; i < list.Count; i++)
+            // 整合包动辄一两百个文件，串行下载每个都要重新握手，慢得离谱。
+            // PCL2 也是并发拉，这里开 6 条，速度能翻好几倍。
+            using var gate = new SemaphoreSlim(6);
+
+            var tasks = list.Select(async item =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var item = list[i];
-
                 var clientEnv = item.TryGetProperty("env", out var env)
                                 && env.ValueKind == JsonValueKind.Object
                                 && env.TryGetProperty("client", out var client)
                     ? client.GetString()
                     : null;
 
-                if (string.Equals(clientEnv, "unsupported", StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(clientEnv, "unsupported", StringComparison.OrdinalIgnoreCase)) return;
 
                 var path = item.TryGetProperty("path", out var pathElement) ? pathElement.GetString() : null;
-                if (string.IsNullOrWhiteSpace(path)) continue;
+                if (string.IsNullOrWhiteSpace(path)) return;
 
                 var url = item.TryGetProperty("downloads", out var downloads)
                           && downloads.ValueKind == JsonValueKind.Array
@@ -109,7 +111,7 @@ public static class ModpackImporter
                         .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
                     : null;
 
-                if (string.IsNullOrWhiteSpace(url)) continue;
+                if (string.IsNullOrWhiteSpace(url)) return;
 
                 string? sha1 = null;
                 if (item.TryGetProperty("hashes", out var hashes)
@@ -118,15 +120,33 @@ public static class ModpackImporter
                     sha1 = sha1Element.GetString();
 
                 var target = Path.Combine(gameDir, path.Replace('/', Path.DirectorySeparatorChar));
+
                 if (File.Exists(target)
                     && (sha1 is null || await MatchesAsync(target, sha1, cancellationToken)))
-                    continue;
+                {
+                    var skipped = Interlocked.Increment(ref done);
+                    progress?.Report(new InstallProgress(
+                        62 + 30.0 * skipped / total, $"整合包文件 {skipped}/{total}…"));
+                    return;
+                }
 
-                progress?.Report(new InstallProgress(62 + 30.0 * i / total,
-                    $"下载整合包文件 {i + 1}/{list.Count}…"));
+                await gate.WaitAsync(cancellationToken);
 
-                await DownloadWithHashAsync(url!, target, sha1, cancellationToken);
-            }
+                try
+                {
+                    await DownloadWithHashAsync(url!, target, sha1, cancellationToken);
+                }
+                finally
+                {
+                    gate.Release();
+                }
+
+                var current = Interlocked.Increment(ref done);
+                progress?.Report(new InstallProgress(
+                    62 + 30.0 * current / total, $"下载整合包文件 {current}/{total}…"));
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         ExtractOverrides(archive, "overrides/", gameDir, progress);

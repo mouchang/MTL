@@ -49,6 +49,9 @@ public partial class App : Application
             GamePaths.MigrateFromAppDataIfNeeded();
             GamePaths.EnsureCreated();
 
+            // 旧版本自带 mihomo 内核，现在不再使用：清掉残留（内核、配置、缓存）
+            LegacyProxyCleanup.Run();
+
             // 必须在主窗口创建之前套主题，否则第一帧会闪一下浅色
             ThemeService.ApplyFromConfig();
             ThemeService.Verify();

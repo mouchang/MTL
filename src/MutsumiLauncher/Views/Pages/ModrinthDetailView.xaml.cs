@@ -32,16 +32,46 @@ public sealed class ModrinthFileRow
 
     public string Title => Version.Name;
 
-    public string LoaderInitial => Version.Loaders.FirstOrDefault()?.ToLowerInvariant() switch
+    /// <summary>项目级的加载器（CurseForge 的单条版本经常没有，用它兜底）。</summary>
+    public IReadOnlyList<string> ProjectLoaders { get; init; } = [];
+
+    /// <summary>项目类型：modpack 的版本没有加载器信息时显示「包」而不是「?」。</summary>
+    public string ProjectType { get; init; } = "mod";
+
+    private string? EffectiveLoader
+    {
+        get
+        {
+            var loader = Version.Loaders.FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(loader)) return loader.ToLowerInvariant();
+
+            var project = ProjectLoaders.FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(project)) return project.ToLowerInvariant();
+
+            // 名字里带加载器字样的（RLCraft 2.9.2d 这类）也认一下
+            var name = Version.Name.ToLowerInvariant();
+
+            if (name.Contains("neoforge")) return "neoforge";
+            if (name.Contains("forge")) return "forge";
+            if (name.Contains("fabric")) return "fabric";
+            if (name.Contains("quilt")) return "quilt";
+
+            return null;
+        }
+    }
+
+    public string LoaderInitial => EffectiveLoader switch
     {
         "fabric" => "F",
         "forge" => "Fg",
         "neoforge" => "N",
         "quilt" => "Q",
-        _ => "?",
+        _ => ProjectType == "modpack" ? "包" : "?",
     };
 
-    public System.Windows.Media.Brush LoaderBrush => Version.Loaders.FirstOrDefault()?.ToLowerInvariant() switch
+    public System.Windows.Media.Brush LoaderBrush => EffectiveLoader switch
     {
         "fabric" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4E, 0x9E, 0x72)),
         "forge" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC9, 0x7B, 0x4A)),
@@ -291,6 +321,8 @@ public partial class ModrinthDetailView : UserControl
             .Select(v => new ModrinthFileRow
             {
                 Version = v,
+                ProjectLoaders = string.IsNullOrEmpty(_loaderFilter) ? [] : [_loaderFilter],
+                ProjectType = _item?.Hit.ProjectType ?? "mod",
                 File = v.Files.FirstOrDefault(f => f.Primary) ?? v.Files.FirstOrDefault()!,
             })
             .Where(row => row.File is not null)
