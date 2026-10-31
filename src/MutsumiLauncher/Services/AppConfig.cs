@@ -86,10 +86,10 @@ public sealed class AppConfig
     /// <summary>自定义主题的底色：light / dark。</summary>
     public string ThemeBase { get; set; } = "light";
 
-    /// <summary>内置代理（自带 mihomo 内核）。默认开启，只控制功能开关，不控制内核启停。</summary>
+    /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;
 
-    /// <summary>内置代理优先使用的节点（按名称包含匹配），找不到时按顺序试其余真实节点。</summary>
+    /// <summary>（已废弃）内置代理节点，仅为兼容旧配置保留。</summary>
     public string BuiltInProxyNode { get; set; } = "美国|BGP②|X0.2";
 
     /// <summary>设备标识，首次运行生成，用于订阅网关白名单。</summary>

@@ -176,9 +176,7 @@ public static class HttpUtil
         private DateTime _proxyResolvedAt = DateTime.MinValue;
         private bool _proxyProbeFailed;
 
-        /// <summary>内置代理失败后的冷却时间（静态：所有请求共享，别每次都白等一遍）。</summary>
-
-        /// <summary>本机代理（7890 之类）失败后的冷却时间，同上。</summary>
+        /// <summary>本机代理（7890 之类）失败后的冷却时间，所有请求共享，别每次都白等一遍。</summary>
         private static long _proxyDownUntilTicks;
 
         public RouteHandler(string mode)
