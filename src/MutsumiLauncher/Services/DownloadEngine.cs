@@ -95,10 +95,18 @@ public static class DownloadEngine
         return Math.Max(48 * 1024, median / 4);
     }
 
-    /// <summary>分段下载时连接太慢：带着「已经写了多少」抛出去，让 failover 从断点换源续传。</summary>
-    private sealed class SlowSourceException(long written) : Exception("下载源太慢")
+    /// <summary>分段下载时连接太慢：failover 会从断点续传，不重下。</summary>
+    private sealed class SlowSourceException() : Exception("下载源太慢");
+
+    /// <summary>
+    /// 一个分段的进度游标。任何失败（超时/断流/换源）都从 Start 继续，
+    /// 这样既不会重复下载，也不会把同一批字节统计两遍（之前“下载不完整”就是重复计数造成的）。
+    /// </summary>
+    private sealed class PieceCursor(long start)
     {
-        public long Written { get; } = written;
+        public long Start { get; set; } = start;
+
+        public long Written { get; set; }
     }
 
     private const long MinSplitSize = 256 * 1024;
@@ -415,11 +423,10 @@ public static class DownloadEngine
         long end, long totalSize, CancellationToken cancellationToken, Action<long> onBytes)
     {
         Exception? lastError = null;
-
-        // 慢源换源的上限，避免无限重试
+        var cursor = new PieceCursor(start);
         var slowSwitches = 0;
 
-        while (true)
+        while (cursor.Start <= end)
         {
             var endpoint = pool.Next(needSplit: true);
 
@@ -434,18 +441,19 @@ public static class DownloadEngine
 
             try
             {
-                await DownloadPieceAsync(endpoint, path, start, end, cancellationToken, onBytes);
+                await DownloadPieceAsync(endpoint, path, cursor, end, cancellationToken, onBytes);
                 return;
             }
-            catch (SlowSourceException slow)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // 这条连接太慢：从它已经写到的位置接着换下一个源（PCL2 的做法）
+                throw;
+            }
+            catch (SlowSourceException)
+            {
+                // 太慢：保留已写的数据，换个源从断点继续
                 slowSwitches++;
-                start += slow.Written;
-
-                AppLog.Info($"piece slow: {endpoint.Url} 已写 {slow.Written} 字节，换源续传");
-
-                if (start > end) return;
+                cursor.Start += cursor.Written;
+                cursor.Written = 0;
 
                 pool.MarkSlow(endpoint);
 
@@ -458,23 +466,23 @@ public static class DownloadEngine
             {
                 pool.MarkRangeBroken(endpoint);
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
             catch (Exception ex)
             {
                 lastError = ex;
+
+                // 断流 / 超时：已写多少就从哪儿接着下，别整段重来
+                cursor.Start += cursor.Written;
+                cursor.Written = 0;
+
                 pool.Fail(endpoint, ex);
                 AppLog.Error(ex, $"piece {start}-{end} failed: {endpoint.Url}");
             }
         }
     }
 
-    private static async Task DownloadPieceAsync(DownloadEndpoint endpoint, string path, long start,
+    private static async Task DownloadPieceAsync(DownloadEndpoint endpoint, string path, PieceCursor cursor,
         long end, CancellationToken cancellationToken, Action<long> onBytes)
     {
-        var length = end - start + 1;
         var attempt = 0;
 
         while (true)
@@ -485,7 +493,7 @@ public static class DownloadEngine
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, endpoint.Url);
-                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(start, end);
+                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(cursor.Start, end);
 
                 using var response = await SendAsync(request, endpoint, cancellationToken);
 
@@ -499,9 +507,10 @@ public static class DownloadEngine
                 await using var file = new FileStream(path, FileMode.Open, FileAccess.Write,
                     FileShare.ReadWrite, 81920, FileOptions.Asynchronous);
 
-                file.Seek(start, SeekOrigin.Begin);
+                file.Seek(cursor.Start, SeekOrigin.Begin);
 
                 var buffer = ArrayPool<byte>.Shared.Rent(81920);
+                var length = end - cursor.Start + 1;
                 var written = 0L;
 
                 // 测速窗口：每 2 秒算一次这条连接的速度
@@ -516,6 +525,7 @@ public static class DownloadEngine
                     {
                         await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                         written += read;
+                        cursor.Written = written;
                         sampleBytes += read;
                         onBytes(read);
 
@@ -540,7 +550,7 @@ public static class DownloadEngine
                             slowWindows++;
 
                             if (slowWindows >= 3)
-                                throw new SlowSourceException(written);
+                                throw new SlowSourceException();
                         }
                         else
                         {
@@ -569,11 +579,20 @@ public static class DownloadEngine
             {
                 throw;
             }
+            catch (SlowSourceException)
+            {
+                // 慢源交给 failover 处理，不必在这一层重试
+                throw;
+            }
             catch (Exception ex)
             {
                 if (attempt >= 2) throw;
 
-                AppLog.Error(ex, $"piece {start}-{end} retry {attempt}");
+                // 这一次已经写进去的字节要计入游标，重试才不会重复下载/重复计数
+                cursor.Start += cursor.Written;
+                cursor.Written = 0;
+
+                AppLog.Error(ex, $"piece retry {attempt}: {endpoint.Url}");
                 await Task.Delay(300 * attempt, cancellationToken);
             }
             finally
