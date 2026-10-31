@@ -53,57 +53,6 @@ public partial class DownloadSourceView : UserControl
             : "CurseForge：社区镜像（官方反代不可用时的兜底，一次搜索要十几秒）";
 
         RefreshSpeed();
-        RefreshBuiltIn();
-    }
-
-    private void RefreshBuiltIn()
-    {
-        var config = AppConfig.Current;
-
-        BuiltInToggle.Content = config.BuiltInProxyEnabled ? "停用" : "启用";
-
-        if (!config.BuiltInProxyEnabled)
-        {
-            BuiltInStatus.Text = "已停用：资源下载只走直连 / 系统代理。";
-            return;
-        }
-
-        BuiltInStatus.Text = ProxyCore.Shared.IsRunning
-            ? "运行中"
-            : "已启用：取用资源时自动启动，完成后自动停止。";
-    }
-
-    private void BuiltInToggle_Click(object sender, RoutedEventArgs e)
-    {
-        var config = AppConfig.Current;
-        config.BuiltInProxyEnabled = !config.BuiltInProxyEnabled;
-        config.Save();
-
-        if (!config.BuiltInProxyEnabled) ProxyCore.Shared.Stop("用户停用");
-
-        RefreshBuiltIn();
-        _onChanged?.Invoke();
-    }
-
-    private async void BuiltInTest_Click(object sender, RoutedEventArgs e)
-    {
-        BuiltInTest.IsEnabled = false;
-        BuiltInStatus.Text = "正在启动内核自检…";
-
-        try
-        {
-            var (ok, milliseconds, message) = await ProxyCore.Shared.RunSelfTestAsync();
-
-            BuiltInStatus.Text = ok ? "已成功连接代理" : $"连接代理失败：{message}";
-        }
-        catch (Exception ex)
-        {
-            BuiltInStatus.Text = "连接代理失败：" + ex.Message;
-        }
-        finally
-        {
-            BuiltInTest.IsEnabled = true;
-        }
     }
 
     private void RefreshSpeed()

@@ -19,15 +19,6 @@
     <EmbeddedResource Include="Assets\mcmod-all.json.gz" />
   </ItemGroup>
 
-  <!-- 内核 zip 一起打进安装包：首次启动不用再下 22 MB。
-       仓库里不放这个文件（.gitignore），构建前用 tools/get-core.ps1 拉一次。 -->
-  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\tools\core\mihomo.zip')">
-    <Content Include="$(MSBuildThisFileDirectory)..\..\tools\core\mihomo.zip"
-             Link="core\mihomo.zip"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
-
   <!-- 精简版 Windows 可能没有 VC++ 运行库：发布时放进程序目录，避免“缺少 vcruntime140.dll” -->
   <Target Name="CopyVCRuntime" AfterTargets="Publish">
     <ItemGroup>

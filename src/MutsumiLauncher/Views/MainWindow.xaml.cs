@@ -70,8 +70,6 @@ public partial class MainWindow : Window
             }
 
             _ = ShowFirstRunAnnouncementAsync();
-
-            _ = RunFirstProxySelfTestAsync();
         };
         SizeChanged += (_, _) => UpdateShellClip();
     }
@@ -501,32 +499,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Error(ex, "first run announcement");
-        }
-    }
-
-    /// <summary>首次启动时自动跑一次代理自检：成功/失败都在全局提示一次。</summary>
-    private async Task RunFirstProxySelfTestAsync()
-    {
-        var config = AppConfig.Current;
-        if (config.ProxySelfTestDone || !config.BuiltInProxyEnabled) return;
-
-        try
-        {
-            // 等窗口稳定一点再开始，别和首屏动画抢资源
-            await Task.Delay(1500);
-
-            var (ok, _, message) = await ProxyCore.Shared.RunSelfTestAsync();
-
-            ShowToast(ok
-                ? "已成功连接代理"
-                : $"连接代理失败：{message}");
-
-            config.ProxySelfTestDone = true;
-            config.Save();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "first proxy self test");
         }
     }
 

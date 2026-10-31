@@ -177,7 +177,6 @@ public static class HttpUtil
         private bool _proxyProbeFailed;
 
         /// <summary>内置代理失败后的冷却时间（静态：所有请求共享，别每次都白等一遍）。</summary>
-        private static long _builtInDownUntilTicks;
 
         /// <summary>本机代理（7890 之类）失败后的冷却时间，同上。</summary>
         private static long _proxyDownUntilTicks;
@@ -246,26 +245,7 @@ public static class HttpUtil
 
             var routes = BuildRoutes(url, proxyCooling ? null : proxy);
 
-            // 内置代理优先：只有境外资源域名会命中；最近失败过就先别用它
-            HttpClient? builtIn = null;
-
-            if (DateTime.UtcNow.Ticks >= Interlocked.Read(ref _builtInDownUntilTicks))
-            {
-                builtIn = await ProxyCore.Shared.TryGetClientAsync(url, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (builtIn is not null)
-                {
-                    // 内置代理是这个产品的默认上网通道，必须排在最前面；
-                    // 本机代理只在内置代理不可用时兜底。
-                    routes.Insert(0, builtIn);
-                    ProxyCore.Shared.EnterRequest();
-                }
-            }
-
-            try
-            {
-                var body = request.Content is null
+            var body = request.Content is null
                     ? null
                     : await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 
@@ -299,44 +279,29 @@ public static class HttpUtil
                         clone.Dispose();
                         last = ex;
 
-                        var label = ReferenceEquals(route, builtIn) ? "内置代理"
-                            : ReferenceEquals(route, proxy) ? "代理"
-                            : "直连";
+                        var label = ReferenceEquals(route, proxy) ? "代理" : "直连";
 
                         AppLog.Info($"网络失败，换下一条路（{label}）：{url} -> {ex.Message}");
 
-                        // 挂掉的路先冷静一会儿，别让每个请求都先白等一遍
-                        if (ReferenceEquals(route, builtIn))
-                            Interlocked.Exchange(ref _builtInDownUntilTicks,
-                                DateTime.UtcNow.AddMinutes(5).Ticks);
-                        else if (ReferenceEquals(route, proxy))
+                        // 挂掉的代理先冷静一会儿，别让每个请求都先白等一遍
+                        if (ReferenceEquals(route, proxy))
                             Interlocked.Exchange(ref _proxyDownUntilTicks,
                                 DateTime.UtcNow.AddMinutes(5).Ticks);
                     }
                 }
 
-                throw new HttpRequestException(
-                    BuildFailureMessage(last, proxy, builtIn), last);
-            }
-            finally
-            {
-                if (builtIn is not null) ProxyCore.Shared.ExitRequest();
-            }
+            throw new HttpRequestException(BuildFailureMessage(last, proxy), last);
         }
 
-        private string BuildFailureMessage(Exception? last, HttpClient? proxy, HttpClient? builtIn)
+        private string BuildFailureMessage(Exception? last, HttpClient? proxy)
         {
             var message = $"请求失败（直连 / 代理都试过了）：{last?.Message}";
 
-            if (proxy is null && builtIn is null)
+            if (proxy is null)
             {
                 message += Environment.NewLine +
                            "提示：没检测到可用代理（系统代理没开，本机 7890 / 7897 / 10808 / 1080 也连不上）。" +
-                           "这类域名在国内通常直连不通，可以打开 Clash 后重试，或在「设置 → 下载 → 更改下载源与网络」里指定代理。";
-            }
-            else if (builtIn is not null)
-            {
-                message += Environment.NewLine + "提示：内置代理也没连上，可能是订阅节点暂时不可用。";
+                           "这类域名在国内通常直连不通，打开自己的代理后重试即可。";
             }
 
             return message;

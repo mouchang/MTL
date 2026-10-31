@@ -132,9 +132,6 @@ public static class DownloadEngine
         if (endpoints.Count == 0)
             throw new InvalidOperationException("没有可用的下载地址。");
 
-        // 整次下载算一个会话：期间内核保持运行，结束后几秒内自动停止
-        using var proxySession = ProxyCore.Shared.Pin();
-
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         ApplySpeedLimit();
 
@@ -345,11 +342,7 @@ public static class DownloadEngine
         string? sha1, IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
     {
         var temp = targetPath + ".part";
-        // 每节点最多 3 条连接：节点多的订阅可以多开，节点少就少开，避免全部挤在少数节点上
-        var nodes = Math.Max(1, ProxyCore.NodeCount);
-        var maxPieces = Math.Clamp(nodes * 3, 2, MaxPieces);
-
-        var pieceCount = Math.Clamp((int)(size / PreferredPiece), 2, maxPieces);
+        var pieceCount = Math.Clamp((int)(size / PreferredPiece), 2, MaxPieces);
         var pieceSize = (size + pieceCount - 1) / pieceCount;
 
         var received = 0L;
