@@ -124,7 +124,8 @@ public static class ClashConfigBuilder
         builder.AppendLine("tcp-concurrent: true");
         builder.AppendLine("external-controller: ''");
         // GeoIP 数据库别从 GitHub 下（国内经常卡住），换成 jsDelivr
-        builder.AppendLine("geodata-mode: true");
+        // 不要 MMDB：GeoLite 数据库要额外下载，国内经常卡住，代理直接起不来
+        builder.AppendLine("geodata-mode: false");
         builder.AppendLine("geo-auto-update: false");
         builder.AppendLine("geox-url:");
         builder.AppendLine("  mmdb: \"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb\"");
@@ -144,7 +145,7 @@ public static class ClashConfigBuilder
         builder.AppendLine("  nameserver: ['https://doh.pub/dns-query', 'https://dns.alidns.com/dns-query', 'tls://dns.alidns.com:853', 'tls://dot.pub:853']");
         builder.AppendLine("  fallback: ['https://dns.alidns.com/dns-query', 'https://doh.pub/dns-query']");
         builder.AppendLine("  fake-ip-filter: ['*.lan', '*.local', '*.localhost', '*.test', '+.stun.*.*']");
-        builder.AppendLine("  fallback-filter: { geoip: true, geoip-code: CN, ipcidr: [240.0.0.0/4, 0.0.0.0/32] }");
+        builder.AppendLine("  fallback-filter: { geoip: false, ipcidr: [240.0.0.0/4, 0.0.0.0/32] }");
         builder.AppendLine("proxies:");
         builder.AppendLine(block);
         builder.AppendLine("proxy-groups:");

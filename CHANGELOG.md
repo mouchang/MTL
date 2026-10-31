@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.21] - 2026-10-31
+
+### 修复：代理内核启动失败
+
+beta.20 的 DNS 配置里开了 `geodata-mode: true` 和 `fallback-filter.geoip`，
+mihomo 启动时必须先加载 GeoIP 数据库，本地没有就去 GitHub/jsDelivr 下载——
+下载卡住，内核启动超时，就报「内核启动失败」。
+
+- `geodata-mode: false`、`fallback-filter.geoip: false`：不再依赖 MMDB
+
+实测（同一订阅）：内核启动 **606 ms**，下载 **18 MB/s**（15 秒 270MB）。
 ## [1.1.1-beta.20] - 2026-10-31
 
 ### DNS 配置照抄实测满速的那份
