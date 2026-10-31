@@ -25,6 +25,38 @@ public static class ModMetadata
         {
             using var archive = ZipFile.OpenRead(jarPath);
 
+            var legacy = archive.GetEntry("mcmod.info");
+            if (legacy is not null)
+            {
+                using var stream = legacy.Open();
+                using var document = JsonDocument.Parse(stream);
+                var root = document.RootElement;
+
+                // mcmod.info 可能是数组，也可能是 { "modList": [...] }
+                if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+                {
+                    var first = root[0];
+
+                    return new Info(
+                        Text(first, "name") ?? Text(first, "modid") ?? string.Empty,
+                        Text(first, "version"),
+                        Text(first, "modid"));
+                }
+
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("modList", out var list)
+                    && list.ValueKind == JsonValueKind.Array
+                    && list.GetArrayLength() > 0)
+                {
+                    var first = list[0];
+
+                    return new Info(
+                        Text(first, "name") ?? Text(first, "modid") ?? string.Empty,
+                        Text(first, "version"),
+                        Text(first, "modid"));
+                }
+            }
+
             var fabric = archive.GetEntry("fabric.mod.json");
             if (fabric is not null)
             {

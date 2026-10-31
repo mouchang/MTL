@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.38] - 2026-11-01
+
+### 1.12.2 的 Mod 恢复中文名
+
+1.12.2 的 Forge Mod 用 `mcmod.info`（JSON 数组）记录名称，不是 `mods.toml`，
+之前读不到就退回文件名了。现在补上 `mcmod.info` 解析，中文名能正常显示。
+
+### 检查更新后新增「可更新」筛选
+
+- 检查完只有存在可更新项时才出现「可更新 (N)」按钮
+- 点击切换只看这些 Mod，再点一次恢复全部
 ## [1.1.1-beta.37] - 2026-11-01
 
 ### 修复：部分 CurseForge 文件永远下不下来

@@ -113,6 +113,18 @@ public partial class ModManagePage : UserControl, IInstancePage
         ApplyFilter();
     }
 
+    private bool _updatesOnly;
+
+    private void UpdatesOnly_Click(object sender, RoutedEventArgs e)
+    {
+        _updatesOnly = !_updatesOnly;
+
+        UpdatesOnlyButton.Style = (Style)FindResource(
+            _updatesOnly ? "PrimaryButton" : "SecondaryButton");
+
+        ApplyFilter();
+    }
+
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this) as MainWindow;
@@ -232,6 +244,14 @@ public partial class ModManagePage : UserControl, IInstancePage
         {
             AppLog.Error(ex, "curseforge update check");
         }
+
+        // 有更新才显示筛选按钮，点一下只看可更新的
+        UpdatesOnlyButton.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
+        UpdatesOnlyButton.Content = $"可更新 ({found})";
+
+        if (found == 0) _updatesOnly = false;
+
+        ApplyFilter();
 
         owner?.ShowToast(found == 0 ? "所有 Mod 都是最新的。" : $"发现 {found} 个可更新的 Mod。");
     }
@@ -415,6 +435,9 @@ public partial class ModManagePage : UserControl, IInstancePage
             "disabled" => items.Where(item => !item.Enabled),
             _ => items,
         };
+
+        if (_updatesOnly)
+            items = items.Where(item => item.Update is not null);
 
         if (_query.Length > 0)
             items = items.Where(item =>

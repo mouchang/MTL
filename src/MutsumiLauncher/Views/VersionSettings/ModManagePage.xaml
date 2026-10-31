@@ -27,6 +27,8 @@
                     Margin="0,0,10,0" Click="CheckUpdates_Click" />
             <Button x:Name="UpdateAllButton" Style="{StaticResource SecondaryButton}" Content="全部更新"
                     Width="110" Click="UpdateAll_Click" />
+            <Button x:Name="UpdatesOnlyButton" Style="{StaticResource SecondaryButton}" Content="可更新"
+                    Width="110" Margin="10,0,0,0" Visibility="Collapsed" Click="UpdatesOnly_Click" />
         </WrapPanel>
 
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
