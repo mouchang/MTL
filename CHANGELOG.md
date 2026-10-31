@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.30] - 2026-11-01
+
+### Forge 安装器改走 BMCLAPI 镜像（快很多）
+
+以前直接跑官方安装器，它内部会去 `maven.minecraftforge.net` 一个个下几百个库，
+国内基本卡在「运行安装器（可能需要几分钟）」。
+
+- 安装前改写安装器 jar 里的 maven 地址：`maven.minecraftforge.net` / `files.minecraftforge.net/maven`
+  → `https://bmclapi2.bangbang93.com/maven`（NeoForge 早就是这么做的）
+
+### 安装器进度实时显示
+
+- 解析安装器输出（Downloading / Extracting 每行推进），进度条不再停在 20%
+
+### 任务面板速度不再显示 —
+
+- 下载引擎累加全局已收字节，`DownloadCenter.Report` 只有百分比时也能换算速度
 ## [1.1.1-beta.29] - 2026-11-01
 
 ### 清掉公告页残留的代理区块

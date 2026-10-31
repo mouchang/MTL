@@ -142,6 +142,12 @@ public sealed class ForgeLoader
             {
                 await DownloadAsync(DownloadSources.ForgeInstaller(gameVersion, loaderVersion), installer,
                     cancellationToken);
+
+                // 安装器内部会直接连 maven.minecraftforge.net 拉几百个库，国内很慢。
+                // 改写到 BMCLAPI 的 maven 镜像，装 Forge 能从几分钟降到十几秒。
+                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
+                await PatchInstallerHostsAsync(installer, "https://bmclapi2.bangbang93.com/maven",
+                    ["maven.minecraftforge.net", "files.minecraftforge.net/maven"], cancellationToken);
             }
             else
             {
@@ -159,7 +165,8 @@ public sealed class ForgeLoader
 
                 // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
                 progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
-                await PatchInstallerHostsAsync(installer, NeoForgeCdnBase, cancellationToken);
+                await PatchInstallerHostsAsync(installer, NeoForgeCdnBase, ["maven.neoforged.net"],
+                    cancellationToken);
             }
 
             // 3. 选 Java
@@ -169,7 +176,7 @@ public sealed class ForgeLoader
             // 4. 运行安装器
             progress?.Report(new InstallProgress(20,
                 $"运行安装器（可能需要几分钟）…"));
-            var log = await RunInstallerAsync(java.ExecutablePath, installer, temp, cancellationToken);
+            var log = await RunInstallerAsync(java.ExecutablePath, installer, temp, progress, cancellationToken);
 
             // 5. 合并结果
             progress?.Report(new InstallProgress(80, "合并安装结果…"));
@@ -224,7 +231,7 @@ public sealed class ForgeLoader
     }
 
     private static async Task<string> RunInstallerAsync(string java, string installer, string workingDir,
-        CancellationToken cancellationToken)
+        IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo(java)
         {
@@ -243,14 +250,29 @@ public sealed class ForgeLoader
         using var process = new Process { StartInfo = startInfo };
         var output = new StringBuilder();
 
-        process.OutputDataReceived += (_, e) =>
+        // 安装器会一行行打印 Downloading / Extracting，拿它当进度源：
+        // 每行推进一点，进度条就不会一直停在 20% 不动
+        var lines = 0;
+
+        void OnLine(string? line)
         {
-            if (e.Data is not null) output.AppendLine(e.Data);
-        };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null) output.AppendLine(e.Data);
-        };
+            if (line is null) return;
+
+            output.AppendLine(line);
+
+            if (!line.Contains("Downloading", StringComparison.OrdinalIgnoreCase)
+                && !line.Contains("Extracting", StringComparison.OrdinalIgnoreCase)
+                && !line.Contains("Install", StringComparison.OrdinalIgnoreCase)) return;
+
+            lines++;
+
+            // 20% ~ 75% 之间缓慢推进，实际完成后再跳到后面
+            var percent = Math.Min(75, 20 + lines * 0.5);
+            progress?.Report(new InstallProgress(percent, $"安装 Forge（已处理 {lines} 个文件）…"));
+        }
+
+        process.OutputDataReceived += (_, e) => OnLine(e.Data);
+        process.ErrorDataReceived += (_, e) => OnLine(e.Data);
 
         process.Start();
         process.BeginOutputReadLine();
@@ -273,7 +295,7 @@ public sealed class ForgeLoader
     /// 这样安装器自身下载依赖时也走 CDN（无需代理）。
     /// </summary>
     private static async Task PatchInstallerHostsAsync(string jarPath, string cdnBaseUrl,
-        CancellationToken cancellationToken)
+        string[] hosts, CancellationToken cancellationToken)
     {
         using var archive = ZipFile.Open(jarPath, ZipArchiveMode.Update);
 
@@ -292,11 +314,16 @@ public sealed class ForgeLoader
                 text = await reader.ReadToEndAsync(cancellationToken);
             }
 
-            if (!text.Contains("maven.neoforged.net", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!hosts.Any(host => text.Contains(host, StringComparison.OrdinalIgnoreCase))) continue;
 
-            var patched = text
-                .Replace("https://maven.neoforged.net", cdnBaseUrl, StringComparison.OrdinalIgnoreCase)
-                .Replace("http://maven.neoforged.net", cdnBaseUrl, StringComparison.OrdinalIgnoreCase);
+            var patched = text;
+
+            foreach (var host in hosts)
+            {
+                patched = patched
+                    .Replace("https://" + host, cdnBaseUrl, StringComparison.OrdinalIgnoreCase)
+                    .Replace("http://" + host, cdnBaseUrl, StringComparison.OrdinalIgnoreCase);
+            }
 
             var name = entry.FullName;
             entry.Delete();

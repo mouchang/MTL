@@ -29,6 +29,14 @@ public static class DownloadEngine
 {
     public static int MaxThreads { get; set; } = 16;
 
+    /// <summary>累计收到的字节：给任务面板算速度用（很多上层调用只有百分比）。</summary>
+    public static long TotalReceived => Interlocked.Read(ref _totalReceived);
+
+    private static long _totalReceived;
+
+    /// <summary>下载引擎每读一块就累加，任务面板据此换算速度。</summary>
+    private static void CountBytes(long bytes) => Interlocked.Add(ref _totalReceived, bytes);
+
     private static readonly SemaphoreSlim Slots = new(MaxThreads, MaxThreads);
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(30));
 
@@ -291,6 +299,7 @@ public static class DownloadEngine
                             await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                             hash.AppendData(buffer, 0, read);
                             received += read;
+                            CountBytes(read);
 
                             await Limiter.AcquireAsync(read, cancellationToken);
 
@@ -524,6 +533,7 @@ public static class DownloadEngine
                         written += read;
                         cursor.Written = written;
                         sampleBytes += read;
+                        CountBytes(read);
                         onBytes(read);
 
                         await Limiter.AcquireAsync(read, cancellationToken);

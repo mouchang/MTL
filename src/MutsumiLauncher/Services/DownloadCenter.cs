@@ -138,10 +138,41 @@ public static class DownloadCenter
         }
     }
 
+    /// <summary>上次采样时全局累计的字节数，用来给「只报百分比」的任务算速度。</summary>
+    private static long _lastGlobalBytes;
+    private static DateTime _lastGlobalAt = DateTime.UtcNow;
+
     public static void Report(DownloadTask task, string message, double? percent = null, long bytes = 0)
     {
         task.Status = message;
         if (percent is not null) task.Percent = Math.Clamp(percent.Value, 0, 100);
+
+        // 上层很多地方只有百分比（整合包、安装器），这里用下载引擎的全局字节补速度
+        if (bytes == 0)
+        {
+            var sampleAt = DateTime.UtcNow;
+            var total = DownloadEngine.TotalReceived;
+            var elapsed = (sampleAt - _lastGlobalAt).TotalSeconds;
+
+            if (elapsed >= 1 && total > _lastGlobalBytes)
+            {
+                var mb = (total - _lastGlobalBytes) / 1048576.0 / elapsed;
+
+                task.SpeedMb = mb;
+                task.SpeedStamp = sampleAt;
+                task.SpeedText = mb >= 1 ? $"{mb:0.0} MB/s" : $"{mb * 1024:0} KB/s";
+
+                Changed?.Invoke();
+            }
+
+            if (elapsed >= 1)
+            {
+                _lastGlobalBytes = total;
+                _lastGlobalAt = sampleAt;
+            }
+
+            return;
+        }
 
         var now = DateTime.UtcNow;
         if (SpeedSamples.TryGetValue(task.Id, out var last))
