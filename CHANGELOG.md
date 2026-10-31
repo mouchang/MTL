@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.41] - 2026-11-01
+
+### 修复：中文名前缀白加了
+
+日志已经证明名字算对了：`slug=3dskinlayers title=3D Skin Layers chinese=3D 皮肤层`。
+问题在保存那一步——对话框里只取了**目录**，真正下载时又按原始文件名落地，
+前缀被丢掉了。
+
+```csharp
+var chosenName = Path.GetFileName(dialog.FileName);
+await ResourceService.DownloadAsync(row.File, targetDirectory, chosenName, ...);
+```
+
+### Mod 管理界面
+
+- 「可更新 (N)」移到筛选行，和「全部 / 启用 / 禁用」同款标签样式
+- 点「检查更新」时列表被遮住，显示「检查更新中，请稍后…」
 ## [1.1.1-beta.40] - 2026-11-01
 
 ### 排查：中文名前缀没生效

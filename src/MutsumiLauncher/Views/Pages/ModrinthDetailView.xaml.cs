@@ -636,7 +636,11 @@ public partial class ModrinthDetailView : UserControl
                 DownloadCenter.Report(task, $"正在下载… {percent:0}%{speed}", percent, p.Received);
             });
 
-            var downloaded = await ResourceService.DownloadAsync(row.File, targetDirectory, progress, task.Token);
+            // 对话框里可能改过文件名（默认带了 [中文名] 前缀），按选中的名字落地
+            var chosenName = Path.GetFileName(dialog.FileName);
+
+            var downloaded = await ResourceService.DownloadAsync(row.File, targetDirectory, chosenName,
+                progress, task.Token);
 
             // 整合包：下载完直接安装，不用再手动去「安装已有整合包」里选一次
             if (_item.Hit.ProjectType == "modpack")

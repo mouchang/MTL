@@ -113,18 +113,6 @@ public partial class ModManagePage : UserControl, IInstancePage
         ApplyFilter();
     }
 
-    private bool _updatesOnly;
-
-    private void UpdatesOnly_Click(object sender, RoutedEventArgs e)
-    {
-        _updatesOnly = !_updatesOnly;
-
-        UpdatesOnlyButton.Style = (Style)FindResource(
-            _updatesOnly ? "PrimaryButton" : "SecondaryButton");
-
-        ApplyFilter();
-    }
-
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this) as MainWindow;
@@ -164,6 +152,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         }
 
         owner?.ShowToast("正在检查 Mod 更新…");
+        CheckingOverlay.Visibility = Visibility.Visible;
         var found = 0;
 
         // Modrinth：SHA-1 反查。update 接口只会返回**比本地新**、且匹配游戏版本/加载器的文件
@@ -245,11 +234,17 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Error(ex, "curseforge update check");
         }
 
-        // 有更新才显示筛选按钮，点一下只看可更新的
-        UpdatesOnlyButton.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
-        UpdatesOnlyButton.Content = $"可更新 ({found})";
+        CheckingOverlay.Visibility = Visibility.Collapsed;
 
-        if (found == 0) _updatesOnly = false;
+        // 有更新才显示筛选标签
+        UpdatesFilter.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
+        UpdatesFilterText.Text = $"可更新 ({found})";
+
+        if (found == 0 && UpdatesFilter.IsChecked == true)
+        {
+            UpdatesFilter.IsChecked = false;
+            AllFilter.IsChecked = true;
+        }
 
         ApplyFilter();
 
@@ -439,7 +434,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             _ => items,
         };
 
-        if (_updatesOnly)
+        if (_filter == "updates")
             items = items.Where(item => item.Update is not null);
 
         if (_query.Length > 0)

@@ -27,8 +27,7 @@
                     Margin="0,0,10,0" Click="CheckUpdates_Click" />
             <Button x:Name="UpdateAllButton" Style="{StaticResource SecondaryButton}" Content="全部更新"
                     Width="110" Click="UpdateAll_Click" />
-            <Button x:Name="UpdatesOnlyButton" Style="{StaticResource SecondaryButton}" Content="可更新"
-                    Width="110" Margin="10,0,0,0" Visibility="Collapsed" Click="UpdatesOnly_Click" />
+<!-- 「可更新」按钮在筛选行里（和全部/启用/禁用同款） -->
         </WrapPanel>
 
         <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="18,12" Margin="0,12,0,0">
@@ -46,8 +45,8 @@
                 </Border>
 
                 <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
-                    <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="all"
-                                 IsChecked="True" Checked="Filter_Checked" Margin="0,0,4,0">
+                    <RadioButton x:Name="AllFilter" Style="{StaticResource SegmentItem}" GroupName="ModFilter"
+                                 Tag="all" IsChecked="True" Checked="Filter_Checked" Margin="0,0,4,0">
                         <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
                     </RadioButton>
                     <RadioButton Style="{StaticResource SegmentItem}" GroupName="ModFilter" Tag="enabled"
@@ -58,7 +57,22 @@
                                  Checked="Filter_Checked" Margin="4,0,0,0">
                         <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
                     </RadioButton>
+                    <RadioButton x:Name="UpdatesFilter" Style="{StaticResource SegmentItem}"
+                                 GroupName="ModFilter" Tag="updates" Checked="Filter_Checked"
+                                 Margin="4,0,0,0" Visibility="Collapsed">
+                        <TextBlock x:Name="UpdatesFilterText" Text="可更新 (0)" />
+                    </RadioButton>
                 </StackPanel>
+
+                <!-- 检查更新时盖住列表 -->
+                <Border x:Name="CheckingOverlay" Grid.Row="1" Visibility="Collapsed"
+                        Background="{DynamicResource PaneBg}" CornerRadius="12">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <ProgressBar IsIndeterminate="True" Width="180" Height="4" />
+                        <TextBlock Text="检查更新中，请稍后…" Margin="0,12,0,0"
+                                   Foreground="{DynamicResource InkSoft}" FontSize="13" />
+                    </StackPanel>
+                </Border>
 
                 <!-- 虚拟化：Mod 多的时候只创建可见行 -->
                 <ItemsControl x:Name="ModList" Grid.Row="1" Style="{StaticResource VirtualList}"
