@@ -10,6 +10,10 @@ namespace MutsumiLauncher.Services;
 /// </summary>
 public static class ClashConfigBuilder
 {
+    /// <summary>机场订阅里的 ech-opts 配置，生成 Clash 配置时一律去掉。</summary>
+    private static readonly Regex EchOptions = new(
+        @",\s*ech-opts:\s*\{[^{}]*\}", RegexOptions.Compiled);
+
     private static readonly Regex NamePattern = new(
         @"^\s*-\s*(?:\{\s*)?name:\s*(?:'([^']*)'|""([^""]*)""|([^,}]+))",
         RegexOptions.Multiline);
@@ -91,6 +95,11 @@ public static class ClashConfigBuilder
         var (block, names) = ReadProxies(subscriptionYaml);
         if (block.Length == 0 || names.Count == 0) return null;
 
+        // 机场给节点加了 ech-opts: { enable: true }，但 mihomo 解析 ECH 配置失败时
+        // 整条连接会直接 "context deadline exceeded"，节点全废。
+        // 实测去掉之后同一个订阅能跑到 10 MB/s。
+        block = EchOptions.Replace(block, string.Empty);
+
         var node = PickNode(names, preferredNode);
         if (node is null) return null;
 
@@ -113,11 +122,24 @@ public static class ClashConfigBuilder
         builder.AppendLine("unified-delay: true");
         builder.AppendLine("tcp-concurrent: true");
         builder.AppendLine("external-controller: ''");
-        // 节点域名用 DoH 解析：机场节点常用境外域名，系统 DNS 被污染时也能连上
+        // GeoIP 数据库别从 GitHub 下（国内经常卡住），换成 jsDelivr
+        builder.AppendLine("geodata-mode: true");
+        builder.AppendLine("geo-auto-update: false");
+        builder.AppendLine("geox-url:");
+        builder.AppendLine("  mmdb: \"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb\"");
+        // 节点域名用 DoH 解析。节点域名（bgp.cn.xxx）在国内 DNS 上经常被污染成
+        // Cloudflare 的 IP，连过去拿到的是 cloudflare-ech.com 的证书，TLS 校验必挂。
+        // 所以优先用 Cloudflare 自己的 DoH 解析节点域名。
         builder.AppendLine("dns:");
         builder.AppendLine("  enable: true");
         builder.AppendLine("  ipv6: false");
+        builder.AppendLine("  enhanced-mode: fake-ip");
+        builder.AppendLine("  fake-ip-range: 198.18.0.1/16");
+        builder.AppendLine("  default-nameserver:");
+        builder.AppendLine("    - 223.5.5.5");
+        builder.AppendLine("    - 1.1.1.1");
         builder.AppendLine("  nameserver:");
+        builder.AppendLine("    - https://cloudflare-dns.com/dns-query");
         builder.AppendLine("    - https://dns.alidns.com/dns-query");
         builder.AppendLine("    - https://doh.pub/dns-query");
         builder.AppendLine("proxies:");

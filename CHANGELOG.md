@@ -3,6 +3,26 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.15] - 2026-10-31
+
+### 修复：内置代理全是几百 KB/s（真正的原因）
+
+机场订阅给每个节点都加了 `ech-opts: { enable: true }`。mihomo 处理 ECH 时
+如果探测失败，整条连接直接 `context deadline exceeded`，**所有节点全部连不上**，
+下载只能退回直连（几 KB/s）。
+
+实测同一个订阅（同一台机器、同一个 mihomo）：
+
+| 配置 | 355MB 整合包 20 秒 |
+| --- | --- |
+| 保留 ech-opts | 0 字节（全部超时） |
+| 去掉 ech-opts | **210 MB（10.5 MB/s）** |
+
+改动：
+
+- 生成 Clash 配置时自动去掉节点里的 `ech-opts`
+- GeoIP 数据库改从 jsDelivr 下载（原来走 GitHub，国内经常卡住导致代理起不来）
+
 ## [1.1.1-beta.14] - 2026-10-31
 
 ### 修复：开头几秒快、中段开始变慢
