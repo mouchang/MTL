@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.22] - 2026-10-31
+
+### 下载面板速度不再卡在旧数字
+
+整合包是一个文件接一个文件下的，换文件时旧速度会一直挂在面板上（比如固定 6.7 MB/s）。
+
+- 任务记录「最近一次收到字节的时间」，超过 3 秒没数据就视为速度失效
+- 面板合计速度和行内速度文字只用新鲜数据
+- 面板每秒自刷新一次，没有新事件时也会自然降到 —
+
+### 修 Mod 管理的加载器误判
+
+Forge 1.20.1+ 的主类是 `cpw.mods.bootstraplauncher.BootstrapLauncher`，
+旧逻辑只认名字/mainClass 里的 forge，导致整合包实例被当成「原版没有加载器」。
+
+- 新增依赖判定：`net.minecraftforge:` / `net.neoforged:` / `net.fabricmc:`
+- 认 `bootstraplauncher`、`knot` 这两个主类标记
 ## [1.1.1-beta.21] - 2026-10-31
 
 ### 修复：代理内核启动失败

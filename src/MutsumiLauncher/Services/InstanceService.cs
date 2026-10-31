@@ -75,7 +75,21 @@ public static class InstanceService
                     ? main.GetString() ?? string.Empty
                     : string.Empty;
 
-                loader = DetectLoader(name, mainClass);
+                // Forge 1.20.1+ 的主类是 BootstrapLauncher，光看 mainClass 认不出来，
+                // 得看依赖里有 net.minecraftforge / net.neoforged / net.fabricmc
+                var libraries = new List<string>();
+
+                if (root.TryGetProperty("libraries", out var libs) && libs.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var library in libs.EnumerateArray())
+                    {
+                        if (library.TryGetProperty("name", out var libName)
+                            && libName.ValueKind == JsonValueKind.String)
+                            libraries.Add(libName.GetString() ?? string.Empty);
+                    }
+                }
+
+                loader = DetectLoader(name, mainClass, libraries);
             }
         }
         catch (Exception ex)
@@ -95,24 +109,33 @@ public static class InstanceService
         };
     }
 
-    private static string DetectLoader(string name, string mainClass)
+    private static string DetectLoader(string name, string mainClass, IReadOnlyList<string> libraries)
     {
-        if (mainClass.Contains("fabric", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase))
-            return "Fabric";
+        bool Has(string marker) =>
+            libraries.Any(library => library.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
-        if (name.StartsWith("neoforge-", StringComparison.OrdinalIgnoreCase)
-            || mainClass.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
-            return "NeoForge";
+        var fabric = mainClass.Contains("fabric", StringComparison.OrdinalIgnoreCase)
+                     || mainClass.Contains("knot", StringComparison.OrdinalIgnoreCase)
+                     || name.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase)
+                     || Has("net.fabricmc:");
 
-        if (name.Contains("optifine", StringComparison.OrdinalIgnoreCase))
-            return "OptiFine";
+        if (fabric) return "Fabric";
 
-        if (name.Contains("forge", StringComparison.OrdinalIgnoreCase)
-            || mainClass.Contains("forge", StringComparison.OrdinalIgnoreCase))
-            return "Forge";
+        var neoForge = name.StartsWith("neoforge-", StringComparison.OrdinalIgnoreCase)
+                       || mainClass.Contains("neoforge", StringComparison.OrdinalIgnoreCase)
+                       || Has("net.neoforged:");
 
-        return "原版";
+        if (neoForge) return "NeoForge";
+
+        if (name.Contains("optifine", StringComparison.OrdinalIgnoreCase)) return "OptiFine";
+
+        // Forge 现代版本主类是 cpw.mods.bootstraplauncher.BootstrapLauncher
+        var forge = name.Contains("forge", StringComparison.OrdinalIgnoreCase)
+                    || mainClass.Contains("forge", StringComparison.OrdinalIgnoreCase)
+                    || mainClass.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase)
+                    || Has("net.minecraftforge:");
+
+        return forge ? "Forge" : "原版";
     }
 
     internal static long DirectorySize(string dir)

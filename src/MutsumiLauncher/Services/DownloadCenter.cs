@@ -43,6 +43,12 @@ public sealed class DownloadTask : INotifyPropertyChanged
     /// <summary>最近一次测得的下载速度（MB/s），用于汇总。</summary>
     public double SpeedMb { get; set; }
 
+    /// <summary>最近一次真正收到字节的时间（UTC）。超过 3 秒就认为速度已失效。</summary>
+    public DateTime SpeedStamp { get; set; } = DateTime.MinValue;
+
+    /// <summary>速度是否还有效（太久没收到字节就别再显示旧值）。</summary>
+    public bool SpeedFresh => (DateTime.UtcNow - SpeedStamp).TotalSeconds < 3;
+
     public string SpeedText
     {
         get => _speedText;
@@ -145,6 +151,7 @@ public static class DownloadCenter
             {
                 var mbPerSecond = (bytes - last.Bytes) / 1048576.0 / seconds;
                 task.SpeedMb = mbPerSecond;
+                task.SpeedStamp = now;
                 task.SpeedText = mbPerSecond >= 1
                     ? $"{mbPerSecond:0.0} MB/s"
                     : $"{mbPerSecond * 1024:0} KB/s";

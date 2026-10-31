@@ -16,6 +16,15 @@ public partial class DownloadPanelView : UserControl
         TaskList.ItemsSource = DownloadCenter.Tasks;
         DownloadCenter.Changed += OnChanged;
         DownloadCenter.Tasks.CollectionChanged += OnCollectionChanged;
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1),
+        };
+
+        timer.Tick += OnTick;
+        Loaded += (_, _) => timer.Start();
+        Unloaded += (_, _) => timer.Stop();
+
         Loaded += (_, _) =>
         {
             PlayOpen();
@@ -44,6 +53,9 @@ public partial class DownloadPanelView : UserControl
 
     private void OnChanged() => Dispatcher.Invoke(UpdateSummary);
 
+    /// <summary>没有新事件时也要刷新：速度超过 3 秒没更新就会失效。</summary>
+    private void OnTick(object? sender, EventArgs e) => UpdateSummary();
+
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => Dispatcher.Invoke(UpdateSummary);
 
@@ -52,7 +64,14 @@ public partial class DownloadPanelView : UserControl
         var active = DownloadCenter.Tasks.Where(task => !task.IsDone).ToList();
 
         var percent = active.Count == 0 ? 0 : active.Average(task => task.Percent);
-        var speed = active.Sum(task => task.SpeedMb);
+
+        // 只统计 3 秒内真的收到过字节的任务：整合包是一个文件接一个文件下，
+        // 换文件时旧的 6.7 MB/s 会一直挂在面板上，看着像卡住了。
+        // 行内速度文字同样清掉，否则单个任务会一直挂着旧数字
+        foreach (var task in active.Where(task => !task.SpeedFresh && task.SpeedText.Length > 0))
+            task.SpeedText = string.Empty;
+
+        var speed = active.Where(task => task.SpeedFresh).Sum(task => task.SpeedMb);
 
         TotalPercentText.Text = $"{percent:0}%";
         SpeedText.Text = speed <= 0.001
