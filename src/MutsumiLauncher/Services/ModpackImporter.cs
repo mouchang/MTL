@@ -327,12 +327,15 @@ public static class ModpackImporter
             var modsDir = Path.Combine(gameDir, "mods");
             Directory.CreateDirectory(modsDir);
 
-            // CurseForge 的包每个文件都要先查一次 API 再下载，串行做一百多个就是几分钟。
-            // 并发 6 路：查询和下载同时进行。
+            // CurseForge 的包每个文件都要先查一次 API 再下载。API 并发太高会被限流
+            // （返回 null），所以查询单独限到 2 路；每个文件最多重试 3 次；
+            // 最后只要有一个文件没下到就整体报错——静默漏装会让整合包启动直接崩。
             var done = 0;
             var total = Math.Max(1, list.Count);
+            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
 
-            using var gate = new SemaphoreSlim(6);
+            using var apiGate = new SemaphoreSlim(2);
+            using var fileGate = new SemaphoreSlim(6);
 
             var tasks = list.Select(async item =>
             {
@@ -345,19 +348,46 @@ public static class ModpackImporter
 
                 if (projectId == 0 || fileId == 0) return;
 
-                await gate.WaitAsync(cancellationToken);
-
                 try
                 {
-                    var file = await client.GetFileAsync(projectId, fileId, cancellationToken);
-                    if (file is null) return;
+                    CurseForgeFile? file = null;
+
+                    for (var attempt = 0; attempt < 3 && file is null; attempt++)
+                    {
+                        await apiGate.WaitAsync(cancellationToken);
+
+                        try
+                        {
+                            file = await client.GetFileAsync(projectId, fileId, cancellationToken);
+                        }
+                        finally
+                        {
+                            apiGate.Release();
+                        }
+
+                        if (file is null) await Task.Delay(400 * (attempt + 1), cancellationToken);
+                    }
+
+                    if (file is null)
+                    {
+                        failures.Add($"#{projectId}/{fileId}（查询失败）");
+                        return;
+                    }
 
                     var target = Path.Combine(modsDir, file.FileName);
 
-                    if (!File.Exists(target) || new FileInfo(target).Length != file.Length)
+                    if (File.Exists(target) && new FileInfo(target).Length == file.Length) return;
+
+                    await fileGate.WaitAsync(cancellationToken);
+
+                    try
                     {
                         await DownloadEngine.DownloadAsync(DownloadSources.ModFile(file.DownloadUrl),
                             target, file.Sha1, file.Length, null, cancellationToken);
+                    }
+                    finally
+                    {
+                        fileGate.Release();
                     }
                 }
                 catch (OperationCanceledException)
@@ -367,18 +397,24 @@ public static class ModpackImporter
                 catch (Exception ex)
                 {
                     AppLog.Error(ex, $"curseforge pack file {projectId}/{fileId}");
+                    failures.Add($"{projectId}/{fileId}（{ex.Message}）");
                 }
                 finally
                 {
-                    gate.Release();
+                    var current = Interlocked.Increment(ref done);
+                    progress?.Report(new InstallProgress(62 + 30.0 * current / total,
+                        $"下载整合包文件 {current}/{total}…"));
                 }
-
-                var current = Interlocked.Increment(ref done);
-                progress?.Report(new InstallProgress(62 + 30.0 * current / total,
-                    $"下载整合包文件 {current}/{total}…"));
             });
 
             await Task.WhenAll(tasks);
+
+            if (!failures.IsEmpty)
+            {
+                throw new InvalidOperationException(
+                    $"有 {failures.Count} 个文件没能下载，整合包不完整（启动会崩溃）：" +
+                    string.Join("、", failures.Take(3)));
+            }
         }
 
         ExtractOverrides(archive, "overrides/", gameDir, progress);
