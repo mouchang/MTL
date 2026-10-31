@@ -127,6 +127,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             return;
         }
 
+        AppLog.Info($"check updates: version={_version} loader={info.Loader} items={_items.Count}");
+
         var sha1Map = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
         var fingerprintMap = new Dictionary<uint, ModFileItem>();
 
@@ -145,6 +147,8 @@ public partial class ModManagePage : UserControl, IInstancePage
                 }
             }
         });
+
+        AppLog.Info($"check updates: hashed={sha1Map.Count} fingerprints={fingerprintMap.Count}");
 
         if (sha1Map.Count == 0)
         {
@@ -481,7 +485,9 @@ public partial class ModManagePage : UserControl, IInstancePage
             new PropertyPath(System.Windows.Media.TranslateTransform.XProperty));
 
         _busyStory.Children.Add(animation);
-        _busyStory.Begin();
+
+        // 不传容器的话动画找不到 name scope，会静默不动
+        _busyStory.Begin(this);
     }
 
     private void StopBusy()

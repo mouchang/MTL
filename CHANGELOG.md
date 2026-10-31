@@ -3,6 +3,21 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.43] - 2026-11-01
+
+### 检查更新遮罩
+
+上一版遮罩插在了列表卡片内部，只盖住列表，上面的按钮照样能点；
+进度条不显示是因为 Storyboard 没有指定容器，动画静默不执行。
+
+- 遮罩移到根 Grid，`RowSpan=3` 覆盖整页（含顶部按钮）
+- `Storyboard.Begin(this)` 指定容器，滑块动画正常
+
+### 补检查更新的诊断日志
+
+- 入口：`check updates: version=… loader=… items=…`
+- 哈希完成：`check updates: hashed=… fingerprints=…`
+- 之前一次检查日志里完全没出现 `modrinth update check`，说明在更早的分支就返回了
 ## [1.1.1-beta.42] - 2026-11-01
 
 ### 进度条重新设计

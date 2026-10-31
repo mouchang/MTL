@@ -64,31 +64,6 @@
                     </RadioButton>
                 </StackPanel>
 
-                <!-- 检查更新时盖住整页：也挡住上面的按钮，避免重复触发 -->
-                <Border x:Name="CheckingOverlay" Grid.Row="0" Grid.RowSpan="3"
-                        Background="{DynamicResource GlassMedium}" Visibility="Collapsed">
-                    <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
-                            Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
-                                              Opacity="0.15" Color="{DynamicResource ShadowColor}" />
-                        </Border.Effect>
-                        <StackPanel Width="220">
-                            <Grid Height="6" ClipToBounds="True">
-                                <Border Background="{DynamicResource Divider}" CornerRadius="3" />
-                                <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
-                                        Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
-                                    <Border.RenderTransform>
-                                        <TranslateTransform x:Name="BusyTranslate" X="-64" />
-                                    </Border.RenderTransform>
-                                </Border>
-                            </Grid>
-                            <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource InkSoft}" FontSize="13" />
-                        </StackPanel>
-                    </Border>
-                </Border>
 
                 <!-- 虚拟化：Mod 多的时候只创建可见行 -->
                 <ItemsControl x:Name="ModList" Grid.Row="1" Style="{StaticResource VirtualList}"
@@ -159,6 +134,32 @@
                            Style="{StaticResource Caption}" HorizontalAlignment="Center"
                            VerticalAlignment="Center" Visibility="Collapsed" />
             </Grid>
+        </Border>
+
+        <!-- 检查更新时盖住整页：也挡住上面的按钮，避免重复触发 -->
+        <Border x:Name="CheckingOverlay" Grid.Row="0" Grid.RowSpan="3"
+                Background="{DynamicResource GlassStrong}" Visibility="Collapsed">
+            <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
+                    Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
+                                      Opacity="0.15" Color="{DynamicResource ShadowColor}" />
+                </Border.Effect>
+                <StackPanel Width="220">
+                    <Grid Height="6" ClipToBounds="True">
+                        <Border Background="{DynamicResource Divider}" CornerRadius="3" />
+                        <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
+                                Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="BusyTranslate" X="-64" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource InkSoft}" FontSize="13" />
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </UserControl>
