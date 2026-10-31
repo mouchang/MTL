@@ -465,14 +465,10 @@ public partial class ModManagePage : UserControl, IInstancePage
         ApplyFilter();
     }
 
-    /// <summary>遮罩里的滑块动画：不依赖 ProgressBar 的 indeterminate 模板。</summary>
-    private Storyboard? _busyStory;
-
+    /// <summary>遮罩里的滑块动画：直接对 TranslateTransform 做动画，不经 Storyboard 的名字解析。</summary>
     private void StartBusy()
     {
         CheckingOverlay.Visibility = Visibility.Visible;
-
-        _busyStory = new Storyboard();
 
         var animation = new DoubleAnimation(-64, 220, TimeSpan.FromSeconds(1.1))
         {
@@ -480,20 +476,12 @@ public partial class ModManagePage : UserControl, IInstancePage
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
         };
 
-        Storyboard.SetTarget(animation, BusyTranslate);
-        Storyboard.SetTargetProperty(animation,
-            new PropertyPath(System.Windows.Media.TranslateTransform.XProperty));
-
-        _busyStory.Children.Add(animation);
-
-        // 不传容器的话动画找不到 name scope，会静默不动
-        _busyStory.Begin(this);
+        BusyTranslate.BeginAnimation(TranslateTransform.XProperty, animation);
     }
 
     private void StopBusy()
     {
-        _busyStory?.Stop();
-        _busyStory = null;
+        BusyTranslate.BeginAnimation(TranslateTransform.XProperty, null);
         CheckingOverlay.Visibility = Visibility.Collapsed;
     }
 

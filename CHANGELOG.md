@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.44] - 2026-11-01
+
+### 检查更新的进度条终于会动了
+
+Storyboard 解析不到 `TranslateTransform` 这个目标，动画一直静默不执行，
+滑块停在轨道外（X=-64）看起来就像没有进度条。
+
+改成直接对变换做动画：
+
+```csharp
+BusyTranslate.BeginAnimation(TranslateTransform.XProperty, animation);
+```
+
+### 「可更新」筛选确认正常
+
+日志：`check updates: hashed=179` → `modrinth 13/179 命中` → `curseforge 178/179 命中`
+→ `mod filter: updates 可更新=44 显示=44`。之前那次是检查没跑完就被打断。
 ## [1.1.1-beta.43] - 2026-11-01
 
 ### 检查更新遮罩
