@@ -3,6 +3,15 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.39] - 2026-11-01
+
+### 更新 Mod 时也带中文名前缀
+
+之前只有「单独下载」会加 `[中文名]`，检查更新后替换文件走的是另一条路径，
+文件名保持原样。现在两条路径统一：`[3D皮肤层] skinlayers3d-….jar`。
+
+- ModManagePage.ApplyUpdateAsync 使用带前缀的文件名
+- 没有中文名（显示名==文件名）时保持原名，不出现空的 `[]`
 ## [1.1.1-beta.38] - 2026-11-01
 
 ### 1.12.2 的 Mod 恢复中文名

@@ -385,10 +385,13 @@ public partial class ModManagePage : UserControl, IInstancePage
         try
         {
             var directory = ModsDir;
-            var downloaded = await ResourceService.DownloadAsync(file, directory);
+
+            // 和单独下载一致：文件名前加中文名，方便在资源管理器里认
+            var downloadName = PrefixedFileName(item, file.Filename);
+            var downloaded = await ResourceService.DownloadAsync(file, directory, downloadName);
 
             // 原来是被禁用的，新文件保持 .disabled
-            var finalName = item.Enabled ? file.Filename : file.Filename + ".disabled";
+            var finalName = item.Enabled ? downloadName : downloadName + ".disabled";
             var finalPath = Path.Combine(directory, finalName);
 
             if (!string.Equals(Path.GetFullPath(downloaded), Path.GetFullPath(finalPath),
@@ -464,6 +467,23 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (sender is not RadioButton { Tag: string filter }) return;
         _filter = filter;
         ApplyFilter();
+    }
+
+    /// <summary>「[中文名] 原文件名」，没有中文名就用原名。</summary>
+    private static string PrefixedFileName(ModFileItem item, string fileName)
+    {
+        var display = item.DisplayName?.Trim();
+
+        if (string.IsNullOrWhiteSpace(display) || display.Length < 2) return fileName;
+        if (display.StartsWith("[", StringComparison.Ordinal)) return fileName;
+        if (fileName.StartsWith(display, StringComparison.OrdinalIgnoreCase)) return fileName;
+
+        // 显示名本身就是文件名（没有中文名）时别加前缀
+        if (string.Equals(display, Path.GetFileNameWithoutExtension(fileName),
+                StringComparison.OrdinalIgnoreCase))
+            return fileName;
+
+        return $"[{display}] {fileName}";
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();

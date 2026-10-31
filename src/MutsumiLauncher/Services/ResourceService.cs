@@ -693,10 +693,18 @@ public static class ResourceService
 
     public static async Task<string> DownloadAsync(ModrinthFile file, string targetDirectory,
         IProgress<DownloadProgress>? progress = null, CancellationToken cancellationToken = default)
+        => await DownloadAsync(file, targetDirectory, null, progress, cancellationToken);
+
+    /// <summary>可指定落地文件名（用于加中文前缀）。</summary>
+    public static async Task<string> DownloadAsync(ModrinthFile file, string targetDirectory,
+        string? fileName, IProgress<DownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(targetDirectory);
 
-        var target = Path.Combine(targetDirectory, file.Filename);
+        var target = Path.Combine(targetDirectory, string.IsNullOrWhiteSpace(fileName)
+            ? file.Filename
+            : fileName);
         var endpoints = DownloadSources.ModFile(file.Url);
 
         // 接口已经给了文件大小，直接传给下载引擎，省掉一次 HEAD 探测（不通的源一次探测就要 15 秒）
