@@ -284,6 +284,8 @@ public sealed class GameLauncher
 
         foreach (var library in AllowedLibraries(detail))
         {
+            if (library.Downloads?.Classifiers is { Count: > 0 }) continue;
+
             var path = library.Downloads?.Artifact?.Path
                        ?? (library.Name is { Length: > 0 } name ? MavenPathFromName(name) : null);
 
@@ -340,10 +342,14 @@ public sealed class GameLauncher
         var entries = new List<string> { jarPath };
         missing = [];
 
+        // 只有 natives 的库（jinput-platform 这种）不在 classpath 上：
+        // 它们的 downloads.artifact 是空的，按 maven 坐标拼出来的 jar 根本不存在，
+        // 以前会被当成“缺失依赖”，导致启动失败。
         var paths = AllowedLibraries(detail)
-            .Select(library => library.Downloads?.Artifact?.Path is { } artifactPath
-                ? artifactPath
-                : MavenPathFromName(library.Name))
+            .Select(library => library.Downloads?.Artifact?.Path
+                               ?? (library.Downloads?.Classifiers is { Count: > 0 }
+                                   ? null
+                                   : MavenPathFromName(library.Name)))
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .ToList();
 

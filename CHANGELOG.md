@@ -3,6 +3,16 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.33] - 2026-11-01
+
+### 修复：1.12.2 整合包启动报「缺少 jinput-platform-2.0.5.jar」
+
+`jinput-platform` 这类库在版本 JSON 里只有 `downloads.classifiers`（natives），
+**没有** `downloads.artifact`。我们按 maven 坐标硬拼出一个 `jinput-platform-2.0.5.jar`
+当作 classpath 条目，那个文件根本不存在（官方/镜像都 404），于是被判成缺失依赖。
+
+- `BuildClasspath`：只有 classifiers 的库直接跳过，不进 classpath
+- `EnsureLibrariesAsync`：同样跳过，不再对这些库发起无意义的下载
 ## [1.1.1-beta.32] - 2026-11-01
 
 ### CurseForge 整合包并发下载
