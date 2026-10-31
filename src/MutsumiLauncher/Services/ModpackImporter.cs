@@ -327,11 +327,15 @@ public static class ModpackImporter
             var modsDir = Path.Combine(gameDir, "mods");
             Directory.CreateDirectory(modsDir);
 
-            for (var i = 0; i < list.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var item = list[i];
+            // CurseForge 的包每个文件都要先查一次 API 再下载，串行做一百多个就是几分钟。
+            // 并发 6 路：查询和下载同时进行。
+            var done = 0;
+            var total = Math.Max(1, list.Count);
 
+            using var gate = new SemaphoreSlim(6);
+
+            var tasks = list.Select(async item =>
+            {
                 var projectId = item.TryGetProperty("projectID", out var projectElement)
                     ? projectElement.GetInt32()
                     : 0;
@@ -339,20 +343,42 @@ public static class ModpackImporter
                     ? fileElement.GetInt32()
                     : 0;
 
-                if (projectId == 0 || fileId == 0) continue;
+                if (projectId == 0 || fileId == 0) return;
 
-                progress?.Report(new InstallProgress(62 + 30.0 * i / Math.Max(1, list.Count),
-                    $"下载整合包文件 {i + 1}/{list.Count}…"));
+                await gate.WaitAsync(cancellationToken);
 
-                var file = await client.GetFileAsync(projectId, fileId, cancellationToken);
-                if (file is null) continue;
+                try
+                {
+                    var file = await client.GetFileAsync(projectId, fileId, cancellationToken);
+                    if (file is null) return;
 
-                var target = Path.Combine(modsDir, file.FileName);
-                if (File.Exists(target) && new FileInfo(target).Length == file.Length) continue;
+                    var target = Path.Combine(modsDir, file.FileName);
 
-                await DownloadEngine.DownloadAsync(DownloadSources.ModFile(file.DownloadUrl), target,
-                    file.Sha1, file.Length, null, cancellationToken);
-            }
+                    if (!File.Exists(target) || new FileInfo(target).Length != file.Length)
+                    {
+                        await DownloadEngine.DownloadAsync(DownloadSources.ModFile(file.DownloadUrl),
+                            target, file.Sha1, file.Length, null, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, $"curseforge pack file {projectId}/{fileId}");
+                }
+                finally
+                {
+                    gate.Release();
+                }
+
+                var current = Interlocked.Increment(ref done);
+                progress?.Report(new InstallProgress(62 + 30.0 * current / total,
+                    $"下载整合包文件 {current}/{total}…"));
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         ExtractOverrides(archive, "overrides/", gameDir, progress);

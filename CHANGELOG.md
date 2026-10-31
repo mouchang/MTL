@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.32] - 2026-11-01
+
+### CurseForge 整合包并发下载
+
+以前每个文件都要「查 API → 下载」串行做一遍，RLCraft 一百多个文件就是几分钟。
+改成 6 路并发（查询和下载同时进行）。
+
+### 启动前自动补齐缺失依赖
+
+1.12.2 的 jinput 这类老库，Forge 安装器经常漏装，启动就报「缺少 1 个依赖文件」。
+现在启动时先自动下载：BMCLAPI maven → libraries.minecraft.net → forge maven，
+补不齐才提示用户。
+
+### 停用自建文件镜像 Worker
+
+实测不比直连快，已从下载源里移除（官方 CDN → MCIM）。
 ## [1.1.1-beta.31] - 2026-11-01
 
 ### 整合包文件并发下载

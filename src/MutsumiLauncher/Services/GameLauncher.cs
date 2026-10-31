@@ -154,6 +154,15 @@ public sealed class GameLauncher
 
         var classpath = BuildClasspath(detail, jarPath, id, out var missing);
 
+        // 缺库先尝试自动补齐（PCL2 也是启动前拉齐依赖，不让用户去重装版本）
+        if (missing.Count > 0)
+        {
+            progress?.Report(new LaunchProgress(12, $"补齐 {missing.Count} 个缺失文件…"));
+            await EnsureLibrariesAsync(detail, missing, progress, cancellationToken);
+
+            classpath = BuildClasspath(detail, jarPath, id, out missing);
+        }
+
         if (!File.Exists(jarPath)) missing.Insert(0, jarPath);
 
         if (missing.Count > 0)
@@ -262,6 +271,67 @@ public sealed class GameLauncher
         progress?.Report(new LaunchProgress(100, $"已启动 {id}（Java {java.Version}）"));
 
         return new LaunchResult(true, $"已启动 {id}（Java {java.Version}）", logPath, process.Id);
+    }
+
+    /// <summary>
+    /// 把缺失的库补下来：优先走 BMCLAPI 的 maven 镜像，失败再回官方地址。
+    /// 1.12.2 的 jinput 这类老依赖经常在 Forge 安装器里被跳过，启动前补齐比让用户重装友好得多。
+    /// </summary>
+    private static async Task EnsureLibrariesAsync(VersionDetail detail, IReadOnlyList<string> missing,
+        IProgress<LaunchProgress>? progress, CancellationToken cancellationToken)
+    {
+        var byPath = new Dictionary<string, Library>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var library in AllowedLibraries(detail))
+        {
+            var path = library.Downloads?.Artifact?.Path
+                       ?? (library.Name is { Length: > 0 } name ? MavenPathFromName(name) : null);
+
+            if (string.IsNullOrWhiteSpace(path)) continue;
+
+            byPath[path] = library;
+        }
+
+        var done = 0;
+
+        foreach (var relative in missing)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var target = Path.Combine(GamePaths.LibrariesDir, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+
+            var urls = new List<string>();
+
+            if (byPath.TryGetValue(relative, out var library) && library.Downloads?.Artifact?.Url is { Length: > 0 } url)
+                urls.Add(url);
+
+            urls.Add($"{DownloadSources.Bmclapi}/maven/{relative.Replace('\\', '/')}");
+            urls.Add($"https://libraries.minecraft.net/{relative.Replace('\\', '/')}");
+            urls.Add($"https://maven.minecraftforge.net/{relative.Replace('\\', '/')}");
+
+            var ok = false;
+
+            foreach (var source in urls.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    await DownloadEngine.DownloadAsync([source], target, null, null, null, cancellationToken);
+                    ok = true;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, $"补库 {relative}");
+                }
+            }
+
+            if (!ok) AppLog.Info($"补库失败：{relative}");
+
+            done++;
+            progress?.Report(new LaunchProgress(12 + 4.0 * done / Math.Max(1, missing.Count),
+                $"补齐依赖 {done}/{missing.Count}…"));
+        }
     }
 
     private static string BuildClasspath(VersionDetail detail, string jarPath, string instance,

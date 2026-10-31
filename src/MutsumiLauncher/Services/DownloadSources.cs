@@ -194,12 +194,11 @@ public static class DownloadSources
 
         // 文件不走 MCIM：它只是个 302 跳转器，还会给半截文件和错文件名。
         // 现在只走 官方 CDN + 自建 Worker 镜像（墙外回源 + 边缘缓存）。
-        // 顺序：官方（走代理）→ MCIM 镜像 → 自家 Worker 镜像。
-        // 官方源一律不走直连；多一个源，下载引擎就能把分段摊到不同主机上并行。
+        // 顺序：官方（走系统代理）→ MCIM 镜像。
+        // 自建的文件镜像 Worker 实测不比自己拉快，已停用。
         var urls = new List<string>();
         urls.AddRange(OfficialVariants(officialUrl));
         urls.AddRange(McimVariants(officialUrl));
-        urls.AddRange(WorkerVariants(officialUrl));
 
         return urls
             .Where(url => !string.IsNullOrWhiteSpace(url))
