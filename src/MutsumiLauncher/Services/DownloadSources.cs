@@ -41,6 +41,11 @@ public static class DownloadSources
     private static readonly string[] WorkerMirroredHosts =
     [
         "cdn.modrinth.com",
+        // CurseForge 文件：Worker 那边要在 mtl-modrinth 上放行这三个域名，
+        // 路由形如 mtl.dpdns.org/mediafilez.forgecdn.net/*
+        "edge.forgecdn.net",
+        "mediafilez.forgecdn.net",
+        "media.forgecdn.net",
     ];
 
     private static Task<bool>? _probe;

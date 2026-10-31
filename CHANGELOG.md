@@ -3,6 +3,14 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.10] - 2026-10-31
+
+### 下载源
+
+- CurseForge 文件也接上了自家的 Cloudflare Worker 镜像
+  （`mtl.dpdns.org/mediafilez.forgecdn.net/...`，Worker 侧已放行三个 forgecdn 域名并开启边缘缓存）
+- 源顺序仍是 官方（代理）→ MCIM → Worker，Worker 作为兜底
+
 ## [1.1.1-beta.9] - 2026-10-31
 
 ### 下载引擎：补上 PCL2 的换源策略
