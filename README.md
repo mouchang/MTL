@@ -1,6 +1,5 @@
 # Mutsumi Launcher
 
-[![GitHub](https://img.shields.io/badge/GitHub-mouchang%2FMTL-2E3E35?logo=github)](https://github.com/mouchang/MTL)
 [![Release](https://img.shields.io/github/v/release/mouchang/MTL?label=release&color=4E9E72)](https://github.com/mouchang/MTL/releases/latest)
 [![Build](https://github.com/mouchang/MTL/actions/workflows/build.yml/badge.svg)](https://github.com/mouchang/MTL/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-4E9E72)](LICENSE)
@@ -9,9 +8,9 @@
 
 **MTL** 是一个面向 Minecraft Java 版的 Windows 启动器：WPF + .NET 10，**零第三方 NuGet 依赖**。
 
-装版本、找 Mod、管存档、改主题，都在一个窗口里完成。
+安装游戏、管理实例与 Mod、导入导出整合包、备份存档、切换主题，都在一个窗口里完成。
 
-> 当前版本：**MTL Release v1.0.0 build 1** · [下载最新版](https://github.com/mouchang/MTL/releases/latest)
+> [下载最新版本](https://github.com/mouchang/MTL/releases/latest) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/mouchang/MTL/issues)
 
 ![启动页](docs/screenshots/launch.png)
 
@@ -19,107 +18,132 @@
 
 | 形式 | 说明 |
 | --- | --- |
-| **安装版** `MutsumiLauncher-1.0.0-Setup.exe` | NSIS 单文件安装器，自带 VC++ 运行库，写注册表 / 开始菜单 / 卸载项 |
-| **便携版** `MutsumiLauncher-1.0.0-portable.zip` | 解压即用，游戏数据写在程序目录下的 `game\\` |
+| **安装版** `MutsumiLauncher-*-Setup.exe` | NSIS 单文件安装器，自带 VC++ 运行库，创建开始菜单快捷方式与卸载项 |
+| **便携版** `MutsumiLauncher-*-portable.zip` | 解压即用，所有数据都留在程序目录里 |
 
-两者都是**自包含发布**，目标机器不需要安装 .NET 运行时。启动器与安装器都需要管理员权限。
-
-## 界面
-
-![社区资源](docs/screenshots/community.png)
-
-| 启动 | 安装版本 | Mod 管理 |
-| --- | --- | --- |
-| ![启动](docs/screenshots/launch.png) | ![安装](docs/screenshots/download.png) | ![Mod](docs/screenshots/version-mods.png) |
-
-### 主题
-
-![主题切换](docs/screenshots/theme-switch.gif)
-
-| 明亮（默认） | 暗色 | 自定义 |
-| --- | --- | --- |
-| ![明亮](docs/screenshots/settings.png) | ![暗色](docs/screenshots/settings-dark.png) | ![自定义](docs/screenshots/settings-custom.png) |
+两者都是**自包含发布**，目标机器无需安装 .NET 运行时。启动器与安装器都需要管理员权限。
 
 ## 功能
 
-### 安装
+### 安装与启动
 
-- 原版 / **Fabric / Forge / NeoForge / OptiFine**，加载器与基版本自动合并成独立实例
-- 版本清单与文件下载可分别指定来源（官方 / BMCLAPI），也可以让程序自己测速择优
-- 下载引擎：全局线程池、HTTP Range 多段并发、失败换源、流式 SHA-1 校验、低速自动切换
-- 装新实例时复用本机已有的 jar / 依赖 / Mod；下载限速、安装并发上限都在设置里
+- 支持原版 / **Fabric / Forge / NeoForge / OptiFine**，加载器与基版本合并成独立实例
+- 版本清单与文件下载来源可分别选择（官方 / BMCLAPI），也可以让程序测速择优
+- 自动探测本机 Java；每个实例可单独指定 Java 与内存，全局内存支持「自动」或自定义
+- 离线账号与微软正版账号；正版令牌可免密续期，头像与皮肤自动缓存
 
-### 启动
+### 实例管理
 
-- 自动探测本机 Java，缺合适的运行时自动下载 Adoptium JRE
-- 每个实例可单独指定 Java、内存与版本隔离；全局内存支持「自动（物理内存的一半）」或自定义
-- 离线 / 微软正版账号；正版可免密续期，头像与皮肤自动缓存
+- 安装、重命名、删除实例；版本列表显示游戏版本与加载器
+- **引用**其它启动器的 `.minecraft`：不复制文件，用影子实例把 mods / 存档 / 配置指回原处
+- **导入**其它启动器的 `.minecraft`：选择版本复制进来，可只补缺失的 libraries / assets
+- 启动前自动补齐缺失依赖，Forge 安装器走国内镜像
 
 ### 社区资源
 
-- **Modrinth 与 CurseForge 聚合搜索**：一次搜索同时查两边，同名资源合并成一张卡片，
-  卡片顶部切换来源；两边的结果交替排列，翻页时两边都有
+- **Modrinth 与 CurseForge 聚合搜索**：一次搜索同时查两边，同名资源合并，卡片顶部切换来源
 - 支持 Mod / 整合包 / 数据包 / 资源包 / 光影包，可按游戏版本、加载器、类型、排序筛选
-- 详情页直接看简介、画廊、版本列表，一键下载并安装到指定实例
-- 接入两个自建的反向代理，国内不挂梯子也能正常搜索和下载
+- 详情页展示简介、画廊与版本列表，一键下载并安装到指定实例
+- 前置依赖折叠成胶囊标签，只显示必需项
+- 下载文件名自动加上中文名前缀（如 `[钠] sodium-fabric-….jar`）
+
+### 整合包
+
+- 支持 `.mrpack` / CurseForge / MMC 格式，导入后自动装好基版本与加载器
+- 文件并发下载，缺失文件自动重试；安装完成后删除安装包本体
+- 可导出为 `.mrpack` 或普通压缩包
 
 ### Mod 管理
 
-- 列表显示名称、版本、启用状态，支持启用 / 禁用 / 删除、按文件名搜索
-- **检查更新**：按文件指纹或 Modrinth 版本比对，自动跳过「已经是最新」的情况，
-  兼容性不匹配的版本不会被推荐
-- 从文件安装、打开 Mod 文件夹、全部更新一键完成
+- 显示真实 Mod 名与图标（优先中文名，图标优先读 jar 自带图片）
+- 启用 / 禁用 / 删除、按名称搜索
+- **检查更新**：按文件指纹与版本比对，只推荐兼容当前游戏版本与加载器的版本
+- 检查完成后可一键筛选「可更新」，支持单个更新与全部更新
 
 ### 存档
 
-- 读取 `level.dat` 显示存档名、游戏版本和最后游玩时间
+- 读取 `level.dat` 显示存档名、游戏版本与最后游玩时间
 - 一键打包备份，按时间点还原，备份文件可单独拷走
 
-### 其它
+### 界面
 
-- **内置代理**：随安装包分发 mihomo 内核，可切换节点、测速、自检；不需要时随时关闭
-- 三个主题：明亮 / 暗色 / 自定义（8 个预设主色，也能填 `#RRGGBB`，深浅底可选）
-- 整合包导出为 `.mrpack` 或普通压缩包，也能导入别人分享的整合包
-- 下载任务在独立的浮窗里排队，支持暂停 / 继续 / 取消
+- 三个主题：明亮 / 暗色 / 自定义（8 个预设主色，也能填任意 `#RRGGBB`）
+- 列表虚拟化，几百个 Mod 也能流畅滚动
+- 下载任务面板显示进度、速度与剩余任务，可取消与重试
 
-## 系统要求
+## 网络
 
-| 项目 | 要求 |
-| --- | --- |
-| 系统 | Windows 10 1809 及以上（64 位） |
-| 运行时 | 无需预装，安装包自带 |
-| 权限 | 首次运行需要管理员权限（写安装目录、结束游戏进程） |
-| 磁盘 | 安装版约 70 MB，游戏文件另算 |
+启动器**不内置任何代理**，下载走系统代理：
 
-## 常见问题
+- 系统 / 本机代理可用时自动使用（Clash、v2ray 等常见端口都能识别）
+- 原版资源优先走 BMCLAPI 镜像，Modrinth / CurseForge 的接口走自建反代
+- 也可以在「设置 → 下载」里手动指定代理地址与端口
 
-**杀软报毒？** 没有签名证书，NSIS 安装包偶尔会被误报，加白名单即可。
+## 数据存放位置
 
-**搜索很慢 / 拿不到结果？** 先确认网络能直连，再在「设置 → 下载 → 内置代理」里点一次测试；
-两项都正常还慢的话，多半是上游接口在抽风。
+全部数据都在安装目录（或便携版所在目录）内，不写系统盘的用户目录：
 
-**换了代理之后要重启吗？** 不用。程序会在每次请求时重新判断走直连还是走代理。
+```
+<安装目录>\
+  ├ data\            配置、账号、缓存、图标、日志
+  ├ game\
+  │   ├ .minecraft\  versions / libraries / assets
+  │   ├ modpacks\    整合包下载与导出
+  │   └ temp\        安装器临时文件
+  └ data-root.txt     可选：数据目录被改到别处时记录指针
+```
 
-**数据存哪？** 全部在安装目录里：游戏文件在 `game\\`，配置、缓存和日志在 `data\\`，
-不再往 C 盘的 AppData 写东西。设置页「其他」里能查看路径、改到别的盘。
+数据目录与游戏目录都可以在「设置 → 其他」里改到别的盘，支持连同现有数据一起迁移。
 
 ## 从源码构建
 
-需要 .NET 10 SDK：
+需要 .NET 10 SDK 与 Windows。
 
 ```bash
-dotnet build MutsumiLauncher.slnx -c Release
-dotnet run --project src/MutsumiLauncher
+dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 \
+  --self-contained true -o dist/publish
+
+# 可选：打安装包（需要 NSIS 3.x）
+makensis installer/MutsumiLauncher.nsi
 ```
 
-打包（NSIS 3.11+，内核 zip 放 `tools/core/mihomo.zip`）见 [docs/packaging.md](docs/packaging.md)。
+仓库结构：
+
+```
+src/MutsumiLauncher/   启动器主体（WPF）
+installer/             NSIS 安装脚本
+tools/                 辅助工具（MC百科数据抓取等）
+worker/                反向代理 Worker 的源码
+docs/                  截图与文档
+```
+
+## 常见问题
+
+**启动报「缺少依赖文件」？**
+启动器会在启动前自动补齐缺失的 libraries；如果仍然失败，日志里会写明缺哪个文件。
+
+**引用的实例改了原目录还在吗？**
+引用模式不移动任何文件，mods / 存档 / 配置都留在原 `.minecraft` 里；
+「断开引用」只会删除启动器这边的影子实例。
+
+**卸载会删掉我的存档吗？**
+不会。卸载前会先断开所有引用实例，再删除安装目录，不会顺着目录联接到外部游戏目录。
+
+**游戏启动后又立刻退出？**
+看「启动」面板里的实时日志，或者 `game\.minecraft\versions\<实例>\crash-reports\` 下的报告。
 
 ## 反馈
 
-- 问题与建议：[Issues](https://github.com/mouchang/MTL/issues)
-- 更新记录：[CHANGELOG.md](CHANGELOG.md)
-- 参与开发：[CONTRIBUTING.md](CONTRIBUTING.md)
+- Bug 与功能建议请走 [Issues](https://github.com/mouchang/MTL/issues)
+- 提交代码前请先看 [CONTRIBUTING.md](CONTRIBUTING.md)
 
-## 许可
+## 许可证
 
 [MIT](LICENSE)
+
+## 致谢
+
+- [PCL2](https://github.com/Meloong-Git/PCL)：下载引擎的分源与重试策略、MC百科条目匹配思路
+- [OpenBMCLAPI](https://github.com/bangbang93/openbmclapi)：原版游戏文件的国内镜像
+- [MCIM](https://mcimirror.top)：CurseForge 接口的社区镜像
+- [MC百科](https://www.mcmod.cn)：Mod 中文名与缩写数据
