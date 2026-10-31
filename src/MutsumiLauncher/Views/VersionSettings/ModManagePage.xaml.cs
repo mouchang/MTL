@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
 using MutsumiLauncher.Views;
@@ -152,7 +153,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         }
 
         owner?.ShowToast("正在检查 Mod 更新…");
-        CheckingOverlay.Visibility = Visibility.Visible;
+        StartBusy();
         var found = 0;
 
         // Modrinth：SHA-1 反查。update 接口只会返回**比本地新**、且匹配游戏版本/加载器的文件
@@ -234,7 +235,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Error(ex, "curseforge update check");
         }
 
-        CheckingOverlay.Visibility = Visibility.Collapsed;
+        StopBusy();
 
         // 有更新才显示筛选标签
         UpdatesFilter.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -442,6 +443,9 @@ public partial class ModManagePage : UserControl, IInstancePage
                 item.DisplayName.Contains(_query, StringComparison.OrdinalIgnoreCase));
 
         var list = items.ToList();
+
+        AppLog.Info($"mod filter: {_filter} 总={_items.Count} 可更新={_items.Count(item => item.Update is not null)} 显示={list.Count}");
+
         ModList.ItemsSource = list;
         _ = LoadMetadataAsync(list);
         _ = LoadIconsAsync(list);
@@ -455,6 +459,36 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         _query = SearchBox.Text.Trim();
         ApplyFilter();
+    }
+
+    /// <summary>遮罩里的滑块动画：不依赖 ProgressBar 的 indeterminate 模板。</summary>
+    private Storyboard? _busyStory;
+
+    private void StartBusy()
+    {
+        CheckingOverlay.Visibility = Visibility.Visible;
+
+        _busyStory = new Storyboard();
+
+        var animation = new DoubleAnimation(-64, 220, TimeSpan.FromSeconds(1.1))
+        {
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+        };
+
+        Storyboard.SetTarget(animation, BusyTranslate);
+        Storyboard.SetTargetProperty(animation,
+            new PropertyPath(System.Windows.Media.TranslateTransform.XProperty));
+
+        _busyStory.Children.Add(animation);
+        _busyStory.Begin();
+    }
+
+    private void StopBusy()
+    {
+        _busyStory?.Stop();
+        _busyStory = null;
+        CheckingOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void Filter_Checked(object sender, RoutedEventArgs e)

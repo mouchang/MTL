@@ -83,8 +83,8 @@
                     <CheckBox x:Name="DeleteWholeCheck" Margin="0,8,0,0"
                               Content="全部成功后删除整个源 .minecraft（不可恢复）" />
                     <TextBlock x:Name="StatusText" Style="{StaticResource Caption}" Margin="0,10,0,0" />
-                    <ProgressBar x:Name="Progress" Height="4" Margin="0,8,0,0" Minimum="0" Maximum="100"
-                                 Visibility="Collapsed" />
+                    <ProgressBar x:Name="Progress" Style="{StaticResource RoundedProgress}"
+                                 Margin="0,10,0,0" Minimum="0" Maximum="100" Visibility="Collapsed" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">

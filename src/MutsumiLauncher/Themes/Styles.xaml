@@ -478,6 +478,24 @@
         </Setter>
     </Style>
 
+    <!-- 圆角进度条：默认的 WPF 进度条又细又方，这里统一成胶囊形 -->
+    <Style x:Key="RoundedProgress" TargetType="ProgressBar">
+        <Setter Property="Height" Value="6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid ClipToBounds="True">
+                        <Border Background="{DynamicResource Divider}" CornerRadius="3" />
+                        <Border x:Name="PART_Track">
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                    Background="{DynamicResource AccentDeep}" CornerRadius="3" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="MtlComboBox" TargetType="ComboBox">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Height" Value="38" />
