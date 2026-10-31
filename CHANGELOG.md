@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.40] - 2026-11-01
+
+### 排查：中文名前缀没生效
+
+离线验证 `McmodIndex` 本身是好的：
+`ChineseFor("3dskinlayers", "3D Skin Layers")` → `3D 皮肤层`。
+
+所以问题在调用现场。这版加了两点：
+
+- 标题为空时退回版本名（`_item?.Hit.Title ?? row.Version.Name`）
+- 日志里打印 `slug / title / chinese`，下次安装可以直接看出是哪一环为空
 ## [1.1.1-beta.39] - 2026-11-01
 
 ### 更新 Mod 时也带中文名前缀

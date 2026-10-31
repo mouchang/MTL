@@ -752,14 +752,19 @@ public partial class ModrinthDetailView : UserControl
 
         try
         {
-            var chinese = McmodIndex.ChineseFor(_item?.Hit.Slug, _item?.Hit.Title);
+            var slug = _item?.Hit.Slug;
+            var title = _item?.Hit.Title ?? row.Version.Name;
+
+            var chinese = McmodIndex.ChineseFor(slug, title);
+
+            AppLog.Info($"download name: slug={slug} title={title} chinese={chinese ?? "(null)"}");
 
             if (!string.IsNullOrWhiteSpace(chinese) && !name.Contains(chinese, StringComparison.Ordinal))
                 return $"[{chinese}] {name}";
         }
-        catch
+        catch (Exception ex)
         {
-            // 拿不到中文名就用原名
+            AppLog.Error(ex, "download name");
         }
 
         return name;
