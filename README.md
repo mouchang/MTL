@@ -147,3 +147,7 @@ docs/                  截图与文档
 - [OpenBMCLAPI](https://github.com/bangbang93/openbmclapi)：原版游戏文件的国内镜像
 - [MCIM](https://mcimirror.top)：CurseForge 接口的社区镜像
 - [MC百科](https://www.mcmod.cn)：Mod 中文名与缩写数据
+
+## 赞助
+
+- 爱发电主页：https://afdian.com/a/box_star
