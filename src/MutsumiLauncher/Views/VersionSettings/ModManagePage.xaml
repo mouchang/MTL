@@ -89,7 +89,8 @@
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding DisplayName}" FontSize="15"
                                                        Foreground="{DynamicResource Ink}"
-                                                       TextTrimming="CharacterEllipsis" />
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding FileName}" />
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <TextBlock Text="{Binding StateText}" FontSize="11"
                                                            Foreground="{DynamicResource AccentDeep}" />

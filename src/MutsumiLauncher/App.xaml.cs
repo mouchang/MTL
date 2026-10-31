@@ -30,6 +30,17 @@ public partial class App : Application
                 return;
             }
 
+            // 卸载程序调用：先断开所有引用实例，再让 NSIS 删目录
+            if (Environment.GetCommandLineArgs().Any(arg =>
+                    arg.Equals("--cleanup-references", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (ExternalSourceService.DisconnectAll() is var removed)
+                    AppLog.Info($"uninstall cleanup: 断开 {removed} 个引用实例");
+
+                Shutdown(0);
+                return;
+            }
+
             NormalizePath();
 
             // 老版本把配置/缓存写在 %LOCALAPPDATA%：搬到安装目录后删掉旧的，C 盘不留东西

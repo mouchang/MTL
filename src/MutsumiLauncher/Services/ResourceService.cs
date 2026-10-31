@@ -692,7 +692,7 @@ public static class ResourceService
     }
 
     public static async Task<string> DownloadAsync(ModrinthFile file, string targetDirectory,
-        CancellationToken cancellationToken = default)
+        IProgress<DownloadProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(targetDirectory);
 
@@ -701,7 +701,7 @@ public static class ResourceService
 
         // 接口已经给了文件大小，直接传给下载引擎，省掉一次 HEAD 探测（不通的源一次探测就要 15 秒）
         await DownloadEngine.DownloadAsync(endpoints, target, file.Hashes?.Sha1,
-            file.Size > 0 ? file.Size : null, null, cancellationToken);
+            file.Size > 0 ? file.Size : null, progress, cancellationToken);
 
         return target;
     }

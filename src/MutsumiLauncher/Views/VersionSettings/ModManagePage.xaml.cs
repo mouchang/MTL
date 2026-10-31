@@ -87,7 +87,7 @@ public partial class ModManagePage : UserControl, IInstancePage
                 _items.Add(new ModFileItem
                 {
                     FileName = name,
-                    DisplayName = display,
+                    DisplayName = display,   // 先用文件名占位，后台解析 jar 元数据后替换
                     FullPath = file,
                     SizeText = InstanceService.FormatSize(size),
                     Enabled = enabled,
@@ -422,6 +422,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         var list = items.ToList();
         ModList.ItemsSource = list;
+        _ = LoadMetadataAsync(list);
         _ = LoadIconsAsync(list);
         EmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Text = _items.Count == 0
@@ -463,6 +464,40 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>后台给列表补图标：先读 jar 里的，再按 SHA-1 查 Modrinth（走内置代理）。</summary>
+    /// <summary>
+    /// 后台读 jar 元数据，把显示名从文件名换成真正的 Mod 名（有 MC百科中文名就用中文）。
+    /// 并发 4，别一口气开几百个 zip。
+    /// </summary>
+    private static async Task LoadMetadataAsync(IReadOnlyList<ModFileItem> items)
+    {
+        using var semaphore = new SemaphoreSlim(4);
+
+        var tasks = items.Select(async item =>
+        {
+            await semaphore.WaitAsync();
+
+            try
+            {
+                var display = await Task.Run(() =>
+                    ModMetadata.DisplayNameFor(item.FullPath, item.DisplayName));
+
+                if (string.IsNullOrWhiteSpace(display) || display == item.DisplayName) return;
+
+                Application.Current?.Dispatcher.Invoke(() => item.DisplayName = display);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "load mod metadata");
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
     private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
     {
         using var gate = new SemaphoreSlim(4);

@@ -12,7 +12,22 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public required string FileName { get; init; }
 
-    public required string DisplayName { get; init; }
+    private string _displayName = string.Empty;
+
+    /// <summary>界面上显示的名字：jar 里的 Mod 名称（有中文名就用中文），不是文件名。</summary>
+    public string DisplayName
+    {
+        get => _displayName;
+        set
+        {
+            if (_displayName == value) return;
+
+            _displayName = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Initial)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconBrush)));
+        }
+    }
 
     public required string FullPath { get; init; }
 

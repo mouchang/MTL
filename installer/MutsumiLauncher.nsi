@@ -58,6 +58,12 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
+  ; 先断开所有引用实例：只删影子目录和联接，外部 .minecraft 一个字节都不碰。
+  ; 不先断开的话，RMDir /r 有可能顺着联接删到玩家自己的游戏目录。
+  IfFileExists "$INSTDIR\${APP_EXE}" 0 mtl_skip_cleanup
+    ExecWait '"$INSTDIR\${APP_EXE}" --cleanup-references'
+  mtl_skip_cleanup:
+
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"

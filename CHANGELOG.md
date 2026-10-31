@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.2] - 2026-10-31
+
+### 卸载与引用安全
+
+- 卸载程序先调用 `MutsumiLauncher.exe --cleanup-references` 断开所有引用实例，
+  再删安装目录——避免卸载时顺着目录联接把玩家自己的 .minecraft 删掉
+
+### 下载
+
+- 单文件下载显示进度（百分比 + 速度），整合包下载完自动安装，不用再手动导入
+- 下载文件名按 MC百科中文名加前缀（如 `[钠] sodium-fabric-….jar`），没有中文名就保持原名
+
+### Mod 列表
+
+- 版本设置里的 Mod 显示改为 jar 里的真实 Mod 名（优先中文名），不再是文件名；
+  鼠标悬停可看文件名
+
 ## [1.1.1-beta.1] - 2026-10-31
 
 ### 数据位置

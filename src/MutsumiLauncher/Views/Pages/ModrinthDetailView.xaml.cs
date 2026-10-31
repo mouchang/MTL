@@ -578,7 +578,7 @@ public partial class ModrinthDetailView : UserControl
             {
                 Title = "确认安装位置",
                 InitialDirectory = directory,
-                FileName = row.File.Filename,
+                FileName = DownloadFileName(row),
                 Filter = "文件 (*.*)|*.*",
                 OverwritePrompt = false,
                 CheckPathExists = true,
@@ -591,7 +591,33 @@ public partial class ModrinthDetailView : UserControl
             }
 
             var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
-            await ResourceService.DownloadAsync(row.File, targetDirectory, task.Token);
+
+            // 进度：按已收字节 / 总大小换算百分比
+            var total = row.File.Size > 0 ? row.File.Size : 0;
+            var progress = new Progress<DownloadProgress>(p =>
+            {
+                var percent = total > 0 ? Math.Clamp(p.Received * 100.0 / total, 0, 100) : 0;
+                var speed = p.BytesPerSecond > 0 ? $" · {FormatSpeed((long)p.BytesPerSecond)}" : string.Empty;
+
+                DownloadCenter.Report(task, $"正在下载… {percent:0}%{speed}", percent);
+            });
+
+            var downloaded = await ResourceService.DownloadAsync(row.File, targetDirectory, progress, task.Token);
+
+            // 整合包：下载完直接安装，不用再手动去「安装已有整合包」里选一次
+            if (_item.Hit.ProjectType == "modpack")
+            {
+                DownloadCenter.Report(task, "正在安装整合包…", 0);
+
+                var packProgress = new Progress<InstallProgress>(p =>
+                    DownloadCenter.Report(task, p.Message, p.Percent));
+
+                var instance = await ModpackImporter.ImportAsync(downloaded, packProgress, task.Token);
+                DownloadCenter.Complete(task, $"已安装整合包 {instance}");
+                _toast?.Invoke($"整合包已安装：{instance}");
+                (Window.GetWindow(this) as MainWindow)?.RefreshInstances();
+                return;
+            }
 
             DownloadCenter.Complete(task, "已安装");
             _toast?.Invoke($"{row.Version.Name} 安装完成");
@@ -681,6 +707,36 @@ public partial class ModrinthDetailView : UserControl
         ChineseTitleText.Text = chinese ?? string.Empty;
         ChineseTitleText.Visibility = chinese is null ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    /// <summary>
+    /// 下载文件名：有 MC百科中文名就加个前缀（PCL2 的做法，如「[3D 皮肤层] skinlayers3d-….jar」），
+    /// 没有中文名就保持原文件名。整包文件也照样处理。
+    /// </summary>
+    private string DownloadFileName(ModrinthFileRow row)
+    {
+        var name = row.File.Filename;
+
+        try
+        {
+            var chinese = McmodIndex.ChineseFor(_item?.Hit.Slug, _item?.Hit.Title);
+
+            if (!string.IsNullOrWhiteSpace(chinese) && !name.Contains(chinese, StringComparison.Ordinal))
+                return $"[{chinese}] {name}";
+        }
+        catch
+        {
+            // 拿不到中文名就用原名
+        }
+
+        return name;
+    }
+
+    private static string FormatSpeed(long bytesPerSecond) => bytesPerSecond switch
+    {
+        >= 1024L * 1024 => $"{bytesPerSecond / 1024.0 / 1024:0.#} MB/s",
+        >= 1024 => $"{bytesPerSecond / 1024.0:0.#} KB/s",
+        _ => $"{bytesPerSecond} B/s",
+    };
 
     private string? _mcmodUrl;
 

@@ -216,6 +216,28 @@ public static class ExternalSourceService
         }
     }
 
+    /// <summary>断开所有引用实例（卸载前调用）。返回处理了几个。</summary>
+    public static int DisconnectAll()
+    {
+        var count = 0;
+
+        foreach (var instance in GameLauncher.InstalledVersions())
+        {
+            if (!IsReference(instance)) continue;
+
+            try
+            {
+                if (Disconnect(instance, out _)) count++;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "disconnect all " + instance);
+            }
+        }
+
+        return count;
+    }
+
     /// <summary>断开引用：删影子实例（只删链接和我们补的父版本 json），原目录不动。</summary>
     public static bool Disconnect(string instance, out string? error)
     {
