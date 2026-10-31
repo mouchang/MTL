@@ -62,7 +62,36 @@ public static class ModIconLoader
         }
     }
 
-    /// <summary>只取 jar 自带的图标（不走网络）。大多数 Mod 都有，优先用它。</summary>
+    /// <summary>只按 SHA-1 去 Modrinth 找图标（不读 jar 内图标）。</summary>
+    public static async Task<string?> TryModrinthAsync(string jarPath, long size,
+        CancellationToken cancellationToken = default)
+    {
+        var key = CacheKeyFor(jarPath, size);
+        var cached = Path.Combine(IconCache.CacheDir, key + ".png");
+
+        if (File.Exists(cached)) return cached;
+
+        try
+        {
+            var sha1 = FileIntegrity.Sha1Of(jarPath);
+            if (string.IsNullOrWhiteSpace(sha1)) return null;
+
+            var projectId = await GetProjectIdAsync(sha1, cancellationToken);
+            if (projectId is null) return null;
+
+            var iconUrl = await GetProjectIconAsync(projectId, cancellationToken);
+            if (iconUrl is null) return null;
+
+            return await IconCache.EnsureAsync(iconUrl, key, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "modrinth icon");
+            return null;
+        }
+    }
+
+    /// <summary>只取 jar 自带的图标（不走网络）。</summary>
     public static string? TryIconFromJar(string jarPath, long size)
     {
         var key = CacheKeyFor(jarPath, size);

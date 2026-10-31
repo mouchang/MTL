@@ -59,9 +59,10 @@ public static class DownloadEngine
         "mtl.dpdns.org",
     };
 
-    private const long MinSplitSize = 1024 * 1024;
-    private const long PreferredPiece = 16 * 1024 * 1024;
-    private const int MaxPieces = 8;
+    // 单连接经常被 CDN / 代理限到几百 KB/s，所以 512KB 以上就允许分段
+    private const long MinSplitSize = 512 * 1024;
+    private const long PreferredPiece = 4 * 1024 * 1024;
+    private const int MaxPieces = 16;
     private const int ReadTimeoutSeconds = 10;
 
     public static Task<string> DownloadAsync(IReadOnlyList<string> urls, string targetPath,

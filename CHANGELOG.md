@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.6] - 2026-10-31
+
+### 图标顺序
+
+- 改为 CurseForge → Modrinth → jar 自带（CF 的图标更统一）
+
+### 下载速度
+
+- 分段更积极：512KB 以上就开始分段，每段 4MB，最多 16 段
+- 之前 4.8MB 的 Mod 只开 1 条连接，单连接被 CDN / 代理限到几百 KB/s
+
 ## [1.1.1-beta.5] - 2026-10-31
 
 ### 图标顺序
