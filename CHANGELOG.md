@@ -3,6 +3,15 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.25] - 2026-10-31
+
+### 代理只管 Modrinth / CurseForge，且按需启动
+
+- `ProxyCore.ShouldRoute` 只对 modrinth.com / curseforge.com / forgecdn.net / overwolf.wtf 放行，
+  其它请求（GitHub、更新检查、镜像站）一律直连
+- 首次启动不再预热内核：去掉了公告页的「代理内核安装中」区块和相关倒计时状态
+- CurseForge 文件恢复到「代理优先」，和 Modrinth 一致
+- 下载限速默认值 10 MB/s → **5 MB/s**
 ## [1.1.1-beta.24] - 2026-10-31
 
 ### 修复：版本下拉选完之后框里是空的

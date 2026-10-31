@@ -15,23 +15,6 @@
             <TextBlock x:Name="VersionText" FontSize="12" Foreground="{DynamicResource InkMute}"
                        Margin="0,4,0,0" />
 
-            <!-- 代理内核 -->
-            <Border Background="{DynamicResource AccentTintSoft}" CornerRadius="14" Padding="16,13"
-                    Margin="0,16,0,0">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="代理内核安装中，最好等待 5 秒，体验更加" FontSize="14"
-                                   FontWeight="SemiBold" Foreground="{DynamicResource AccentDeep}"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-                    <TextBlock x:Name="CoreStatus" Text="正在准备…" FontSize="12"
-                               Foreground="{DynamicResource InkSoft}" Margin="0,6,0,0"
-                               TextWrapping="Wrap" />
-                    <ProgressBar x:Name="CoreProgress" Height="4" IsIndeterminate="True"
-                                 Margin="0,10,0,0" BorderThickness="0" />
-                </StackPanel>
-            </Border>
-
             <!-- 免责申明 -->
             <TextBlock Text="免责申明" FontSize="14" FontWeight="SemiBold"
                        Foreground="{DynamicResource Ink}" Margin="0,18,0,6" />

@@ -102,8 +102,17 @@ public sealed class ProxyCore
         if (IsGatewayHost(host)) return false;
         if (IsVanillaHost(host)) return false;
 
-        return true;
+        // 只在下载 Modrinth / CurseForge 资源时启用内置代理：
+        // 其它请求（GitHub、更新检查等）走直连，避免内核被无谓地拉起来
+        return IsCommunityHost(host);
     }
+
+    /// <summary>社区资源：Modrinth 与 CurseForge 的 API / 文件 CDN。</summary>
+    private static bool IsCommunityHost(string host) =>
+        host.EndsWith("modrinth.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("curseforge.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("forgecdn.net", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith("overwolf.wtf", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// 原版资源（Mojang 版本清单 / client jar / libraries / assets）和它们的国内镜像走直连：

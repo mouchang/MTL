@@ -15,7 +15,6 @@ public partial class FirstRunDialog : Window
     private const int WaitSeconds = 5;
 
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromMilliseconds(600) };
 
     private int _remaining = WaitSeconds;
     private bool _unlocked;
@@ -28,16 +27,9 @@ public partial class FirstRunDialog : Window
         VersionText.Text = $"{AppInfo.DisplayName} · 首次启动公告";
 
         BuildDisclaimer();
-        UpdateCoreStatus();
 
         _timer.Tick += (_, _) => Tick();
         _timer.Start();
-
-        _statusTimer.Tick += (_, _) => UpdateCoreStatus();
-        _statusTimer.Start();
-
-        // 公告页打开的同时开始装内核/拉订阅，等这 10 秒正好用来下载
-        _ = PrepareCoreAsync();
 
         ContinueButton.Content = $"请稍候 {_remaining} 秒";
     }
@@ -78,45 +70,6 @@ public partial class FirstRunDialog : Window
         Close();
     }
 
-    private async Task PrepareCoreAsync()
-    {
-        try
-        {
-            await ProxyCore.Shared.EnsureRunningAsync();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "first run proxy prepare");
-        }
-    }
-
-    private bool _coreReady;
-
-    private void UpdateCoreStatus()
-    {
-        // 装好之后状态就定住，不再跟着后面的停止/重启跳来跳去
-        if (_coreReady) return;
-
-        if (ProxyCore.Shared.IsRunning)
-        {
-            _coreReady = true;
-            CoreProgress.IsIndeterminate = false;
-            CoreProgress.Value = 100;
-            CoreStatus.Text = "代理内核已就绪";
-            return;
-        }
-
-        if (ProxyCore.Shared.LastError is { Length: > 0 } error)
-        {
-            CoreProgress.IsIndeterminate = false;
-            CoreProgress.Value = 0;
-            CoreStatus.Text = $"代理内核没装好：{error}。不影响使用，之后可以在「设置 → 下载 → 内置代理」里重试。";
-            return;
-        }
-
-        CoreProgress.IsIndeterminate = true;
-        CoreStatus.Text = "正在释放随安装包自带的内核，完成后会自动启动。";
-    }
 
     private void BuildDisclaimer()
     {
