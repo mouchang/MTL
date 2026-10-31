@@ -88,11 +88,11 @@ public static class DownloadEngine
         while (SpeedSamples.Count > 64) SpeedSamples.TryDequeue(out _);
     }
 
-    /// <summary>低于中位数的 1/4、且不到 48KB/s，才算这条连接有问题。</summary>
+    /// <summary>低于中位数的 1/6、且不到 32KB/s，才算这条连接有问题。</summary>
     private static long SlowThreshold()
     {
         var median = MedianSpeed();
-        return Math.Max(48 * 1024, median / 4);
+        return Math.Max(32 * 1024, median / 6);
     }
 
     /// <summary>分段下载时连接太慢：failover 会从断点续传，不重下。</summary>
@@ -549,7 +549,7 @@ public static class DownloadEngine
                         {
                             slowWindows++;
 
-                            if (slowWindows >= 3)
+                            if (slowWindows >= 4)
                                 throw new SlowSourceException();
                         }
                         else

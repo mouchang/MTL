@@ -145,16 +145,32 @@ public static class ClashConfigBuilder
         builder.AppendLine("proxies:");
         builder.AppendLine(block);
         builder.AppendLine("proxy-groups:");
+        // 1) 普通请求：延迟最低的节点
         builder.AppendLine("  - name: mtl-auto");
-        // url-test：自动选延迟最低的节点（fallback 只会用第一个活着的，可能很慢）
         builder.AppendLine("    type: url-test");
         builder.AppendLine("    url: https://www.gstatic.com/generate_204");
-        builder.AppendLine("    interval: 600");
+        builder.AppendLine("    interval: 120");
         builder.AppendLine("    tolerance: 100");
         builder.AppendLine("    lazy: false");
         builder.AppendLine("    proxies:");
         foreach (var name in group) builder.AppendLine($"      - {Quote(name)}");
+
+        // 2) 文件下载：轮询分摊到所有健康节点
+        //    单节点带宽有限，而且机场节点经常个别掉线，8 条分段全挤在一个节点上必然互相拖累。
+        builder.AppendLine("  - name: mtl-balance");
+        builder.AppendLine("    type: load-balance");
+        builder.AppendLine("    strategy: round-robin");
+        builder.AppendLine("    url: https://www.gstatic.com/generate_204");
+        builder.AppendLine("    interval: 60");
+        builder.AppendLine("    lazy: false");
+        builder.AppendLine("    proxies:");
+        foreach (var name in group) builder.AppendLine($"      - {Quote(name)}");
+
         builder.AppendLine("rules:");
+        // 大文件走负载均衡组：每个连接落到不同节点，互不抢占
+        builder.AppendLine("  - \"DOMAIN-SUFFIX,cdn.modrinth.com,mtl-balance\"");
+        builder.AppendLine("  - \"DOMAIN-SUFFIX,forgecdn.net,mtl-balance\"");
+        builder.AppendLine("  - \"DOMAIN-SUFFIX,overwolf.wtf,mtl-balance\"");
         builder.AppendLine("  - \"MATCH,mtl-auto\"");
 
         return (builder.ToString(), node);

@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.17] - 2026-10-31
+
+### 下载按节点分摊
+
+日志里所有分段都挤在同一个节点上，节点一抖全部停摆：
+
+```
+dial mtl-auto --> cdn.modrinth.com:443 error: bgp.cn.kawaii520.icu:443 connect error: i/o timeout
+```
+
+- 新增 `mtl-balance` 组（load-balance / round-robin，健康检查 60 秒）：**每个连接落到不同节点**
+- 规则把 CDN 域名指向这个组：`cdn.modrinth.com`、`forgecdn.net`、`overwolf.wtf`
+- 普通接口仍走 `mtl-auto`（延迟最低节点），健康检查 600s → 120s
+- 慢源判定再放宽：低于中位数 1/6 且不到 32KB/s，连续 4 个窗口才换源
+
+实测（同一订阅，355MB 整合包）：单连接 5.1 MB/s，8 段并行全部正常完成。
 ## [1.1.1-beta.16] - 2026-10-31
 
 ### 修复：下载完成却提示「下载不完整」
