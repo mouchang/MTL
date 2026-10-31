@@ -517,7 +517,8 @@
                         <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False"
                                PopupAnimation="Fade" VerticalOffset="6"
                                IsOpen="{TemplateBinding IsDropDownOpen}">
-                            <Border Background="{DynamicResource SurfaceFloat}" CornerRadius="12" Padding="6" MinWidth="180" Margin="10">
+                            <!-- 用实色：SurfaceFloat 是 97% 白，弹层会透出下面的搜索按钮 -->
+                            <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="12" Padding="6" MinWidth="180" Margin="10">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270"
                                                       Opacity="0.15" Color="{DynamicResource ShadowColor}" />

@@ -21,11 +21,9 @@ public static class HttpUtil
     /// （CurseForge / Modrinth 都挂在 Cloudflare 上）。
     /// 绕代理反而会先失败两次，实测能把一次搜索从 2 秒拖到 23 秒。
     /// </summary>
-    /// <summary>官方文件源：一律走代理，不做直连尝试。</summary>
+    /// <summary>需要强制走代理的官方源：目前只剩 Modrinth（CF 文件改为直连优先）。</summary>
     private static bool IsOfficialSource(string url) =>
         url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("forgecdn", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("overwolf.wtf", StringComparison.OrdinalIgnoreCase)
         || url.Contains("piston-data.mojang.com", StringComparison.OrdinalIgnoreCase)
         || url.Contains("launchermeta.mojang.com", StringComparison.OrdinalIgnoreCase)
         || url.Contains("resources.download.minecraft.net", StringComparison.OrdinalIgnoreCase);
@@ -38,6 +36,9 @@ public static class HttpUtil
         // 这两个官方接口都挂在 Cloudflare 上，国内直连通常一两秒；
         // 绕代理反而先失败两次 —— 实测一次搜索能从 2 秒拖到 23 秒
         || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase)
+        // CurseForge 的文件 CDN 直连够用：国内实测几百 KB/s，走代理反而更不稳定
+        || url.Contains("forgecdn", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("overwolf.wtf", StringComparison.OrdinalIgnoreCase)
         || url.Contains("api.modrinth.com", StringComparison.OrdinalIgnoreCase)
         // 注意：cdn.modrinth.com 不在这里 —— 官方文件 CDN 在国内几乎跑不动，
         // 走代理或自家 Worker 镜像才够快

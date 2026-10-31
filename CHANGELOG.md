@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.23] - 2026-10-31
+
+### 版本下拉框透底
+
+ComboBox 弹层背景用的是 `SurfaceFloat`（97% 白），会把下面的搜索按钮透出来。
+改成 `SurfaceSolid`（纯白）。
+
+### 代理只管 Modrinth
+
+- `cdn.modrinth.com` 仍然强制走代理（直连只有几十 KB/s）
+- CurseForge 的文件 CDN（`forgecdn` / `overwolf.wtf`）改为**直连优先**，失败再走代理
+
+### 下载限速 10 MB/s
+
+- 新增默认值 `MaxDownloadSpeedKbps = 10240`：跑满容易把节点挤爆、触发限流
+- 设置里仍然可以改成 0（不限速）
 ## [1.1.1-beta.22] - 2026-10-31
 
 ### 下载面板速度不再卡在旧数字
