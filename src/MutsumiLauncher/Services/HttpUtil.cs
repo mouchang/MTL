@@ -360,11 +360,12 @@ public static class HttpUtil
                 return routes;
             }
 
-            // 官方源（Modrinth / CurseForge / Mojang CDN）：国内直连只有几百 KB/s，
-            // 直接不给直连选项，失败了去试下一个源（Worker 镜像）
+            // 官方源（Modrinth / CurseForge / Mojang CDN）：优先代理；直连只作为
+            // 最后一根稻草——代理节点全挂时不至于整个下载直接失败（直连慢但能通）
             if (IsOfficialSource(url))
             {
                 routes.Add(proxy);
+                routes.Add(_direct);
                 return routes;
             }
 

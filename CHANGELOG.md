@@ -3,6 +3,19 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.19] - 2026-10-31
+
+### 代理节点全挂时不至于完全下不动
+
+日志显示节点本身在间歇性抽风：
+
+```
+dial tcp 172.64.229.88:443: i/o timeout
+cf-bgp.cn.kawaii520.icu:443 connect error: context deadline exceeded
+```
+
+- 官方源仍然优先走代理，但代理全部失败后会退到直连兜底（慢，但能下完）
+- 上一版的并发上限（每节点 3 条）保留，速度变慢是节点抽风导致，不是并发数的锅
 ## [1.1.1-beta.18] - 2026-10-31
 
 ### 每节点最多 3 条连接
