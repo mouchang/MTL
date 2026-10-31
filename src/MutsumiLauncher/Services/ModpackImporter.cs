@@ -525,6 +525,30 @@ public static class ModpackImporter
 
         progress?.Report(new InstallProgress(100, $"整合包导入完成：{installed}"));
         AppLog.Info($"modpack imported: {filePath} -> {installed}");
+
+        // 装完就把安装包删掉：几百 MB 的 .mrpack / .zip 留在那只是占地方。
+        // 只删压缩包本体，失败也只记日志，不影响已经装好的实例。
+        DeleteInstaller(filePath);
+    }
+
+    private static void DeleteInstaller(string path)
+    {
+        try
+        {
+            var extension = Path.GetExtension(path).ToLowerInvariant();
+
+            if (extension is not (".mrpack" or ".zip" or ".jar" or ".mcpack")) return;
+            if (!File.Exists(path)) return;
+
+            var size = new FileInfo(path).Length;
+            File.Delete(path);
+
+            AppLog.Info($"modpack: 已删除安装包 {Path.GetFileName(path)}（{PathMigrator.FormatSize(size)}）");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "delete modpack installer " + path);
+        }
     }
 
     private static IProgress<InstallProgress>? Map(IProgress<InstallProgress>? parent, double from, double to)
