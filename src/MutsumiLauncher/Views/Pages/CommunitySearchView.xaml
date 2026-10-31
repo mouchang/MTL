@@ -45,15 +45,12 @@
                     </ComboBox>
 
                     <TextBlock Text="版本" Style="{StaticResource FieldLabel}" Grid.Row="1" Margin="0,10,0,0" />
+                    <!-- 可编辑下拉：选项必须是纯字符串，用 ComboBoxItem 的话
+                         收起后输入框显示的是类型名（或者干脆空白） -->
                     <ComboBox x:Name="VersionCombo" Grid.Row="1" Grid.Column="1"
-                              Style="{StaticResource MtlComboBox}" Margin="0,10,0,0" SelectedIndex="0"
-                              IsEditable="True" PreviewKeyDown="Filter_KeyDown">
-                        <ComboBoxItem Content="全部（也可自行输入）" Tag="" />
-                        <ComboBoxItem Content="26.2" Tag="26.2" />
-                        <ComboBoxItem Content="1.21.1" Tag="1.21.1" />
-                        <ComboBoxItem Content="1.20.1" Tag="1.20.1" />
-                        <ComboBoxItem Content="1.16.5" Tag="1.16.5" />
-                    </ComboBox>
+                              Style="{StaticResource MtlComboBox}" Margin="0,10,0,0"
+                              IsEditable="True" IsTextSearchEnabled="False"
+                              PreviewKeyDown="Filter_KeyDown" />
                     <ComboBox x:Name="LoaderCombo" Grid.Row="1" Grid.Column="3"
                               Style="{StaticResource MtlComboBox}" Margin="0,10,0,0"
                               SelectedIndex="0" Visibility="Collapsed">

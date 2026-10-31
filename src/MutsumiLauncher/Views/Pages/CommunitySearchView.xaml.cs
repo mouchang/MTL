@@ -128,8 +128,8 @@ public partial class CommunitySearchView : UserControl
 
             for (var i = 1; i < VersionCombo.Items.Count; i++)
             {
-                if (VersionCombo.Items[i] is ComboBoxItem item
-                    && string.Equals(item.Tag as string, _presetGameVersion, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(VersionCombo.Items[i] as string, _presetGameVersion,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     index = i;
                     break;
@@ -138,11 +138,7 @@ public partial class CommunitySearchView : UserControl
 
             if (index < 0)
             {
-                VersionCombo.Items.Add(new ComboBoxItem
-                {
-                    Content = _presetGameVersion,
-                    Tag = _presetGameVersion,
-                });
+                VersionCombo.Items.Add(_presetGameVersion);
                 index = VersionCombo.Items.Count - 1;
             }
 
@@ -388,21 +384,17 @@ public partial class CommunitySearchView : UserControl
             var selected = GameVersion();
 
             VersionCombo.Items.Clear();
-            VersionCombo.Items.Add(new ComboBoxItem { Content = "全部（也可自行输入）", Tag = string.Empty });
+            VersionCombo.Items.Add(AllVersionsLabel);
             foreach (var version in versions)
-                VersionCombo.Items.Add(new ComboBoxItem { Content = version, Tag = version });
+                VersionCombo.Items.Add(version);
 
             VersionCombo.SelectedIndex = 0;
+
             if (selected is not null)
             {
-                for (var i = 1; i < VersionCombo.Items.Count; i++)
-                {
-                    if ((VersionCombo.Items[i] as ComboBoxItem)?.Tag as string == selected)
-                    {
-                        VersionCombo.SelectedIndex = i;
-                        break;
-                    }
-                }
+                var index = VersionCombo.Items.IndexOf(selected);
+
+                if (index > 0) VersionCombo.SelectedIndex = index;
             }
         }
         catch (Exception ex)
@@ -435,15 +427,17 @@ public partial class CommunitySearchView : UserControl
         await Task.WhenAll(tasks);
     }
 
+    private const string AllVersionsLabel = "全部（也可自行输入）";
+
     /// <summary>版本可以下拉选，也可以手输；输入框里写什么就用什么。</summary>
     private string? GameVersion()
     {
         var text = VersionCombo.Text?.Trim();
 
-        if (!string.IsNullOrEmpty(text) && !text.StartsWith("全部", StringComparison.Ordinal))
-            return text;
+        if (string.IsNullOrEmpty(text) || text.StartsWith("全部", StringComparison.Ordinal))
+            return null;
 
-        return (VersionCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+        return text;
     }
 
     private string? Loader() =>
