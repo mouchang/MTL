@@ -131,18 +131,20 @@ public static class ClashConfigBuilder
         // 节点域名用 DoH 解析。节点域名（bgp.cn.xxx）在国内 DNS 上经常被污染成
         // Cloudflare 的 IP，连过去拿到的是 cloudflare-ech.com 的证书，TLS 校验必挂。
         // 所以优先用 Cloudflare 自己的 DoH 解析节点域名。
+        // DNS 配置照抄实测能跑满速的那份（Clash Party 生成的）：
+        // fake-ip + 国内 DoH + fallback，缺一不可——之前的简化版会导致
+        // 节点域名解析被污染，拨号直接 i/o timeout。
         builder.AppendLine("dns:");
         builder.AppendLine("  enable: true");
         builder.AppendLine("  ipv6: false");
+        builder.AppendLine("  use-hosts: true");
         builder.AppendLine("  enhanced-mode: fake-ip");
         builder.AppendLine("  fake-ip-range: 198.18.0.1/16");
-        builder.AppendLine("  default-nameserver:");
-        builder.AppendLine("    - 223.5.5.5");
-        builder.AppendLine("    - 1.1.1.1");
-        builder.AppendLine("  nameserver:");
-        builder.AppendLine("    - https://cloudflare-dns.com/dns-query");
-        builder.AppendLine("    - https://dns.alidns.com/dns-query");
-        builder.AppendLine("    - https://doh.pub/dns-query");
+        builder.AppendLine("  default-nameserver: [119.29.29.29, 223.5.5.5, 180.76.76.76]");
+        builder.AppendLine("  nameserver: ['https://doh.pub/dns-query', 'https://dns.alidns.com/dns-query', 'tls://dns.alidns.com:853', 'tls://dot.pub:853']");
+        builder.AppendLine("  fallback: ['https://dns.alidns.com/dns-query', 'https://doh.pub/dns-query']");
+        builder.AppendLine("  fake-ip-filter: ['*.lan', '*.local', '*.localhost', '*.test', '+.stun.*.*']");
+        builder.AppendLine("  fallback-filter: { geoip: true, geoip-code: CN, ipcidr: [240.0.0.0/4, 0.0.0.0/32] }");
         builder.AppendLine("proxies:");
         builder.AppendLine(block);
         builder.AppendLine("proxy-groups:");

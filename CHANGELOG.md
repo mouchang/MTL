@@ -3,6 +3,17 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.20] - 2026-10-31
+
+### DNS 配置照抄实测满速的那份
+
+之前内置代理的 DNS 是简化版（假 IP 关了、没有 fallback），
+节点域名会被解析到被污染的地址，表现为 `dial ... i/o timeout`。
+
+- `enhanced-mode: fake-ip` + `fake-ip-range` + `fake-ip-filter`
+- `default-nameserver` 换成国内三件套（119.29.29.29 / 223.5.5.5 / 180.76.76.76）
+- `nameserver` / `fallback` 用阿里 + DNSPod 的 DoH 和 DoT
+- `fallback-filter` 按 GeoIP 国内段判定
 ## [1.1.1-beta.19] - 2026-10-31
 
 ### 代理节点全挂时不至于完全下不动
