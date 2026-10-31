@@ -564,99 +564,12 @@ public partial class ModManagePage : UserControl, IInstancePage
         await Task.WhenAll(tasks);
     }
 
+    /// <summary>
+    /// 只从 jar 里取自带图标（assets/*/icon.png、logo.png、mcmod.info 的 logoFile）。
+    /// 走 CurseForge / Modrinth 接口取图标太慢，这里不做任何网络兜底。
+    /// </summary>
     private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
     {
-        // 1. 先批量问 CurseForge（版本管理优先 CF 图标）
-        try
-        {
-            var missing = items.Where(item => item.IconPath is null).ToList();
-            if (missing.Count == 0) return;
-
-            var query = missing.Select(item =>
-            {
-                var size = 0L;
-                try
-                {
-                    size = new FileInfo(item.FullPath).Length;
-                }
-                catch
-                {
-                    // 读不到就当 0
-                }
-
-                return (ModIconLoader.CacheKeyFor(item.FullPath, size), item.FullPath, size);
-            }).ToList();
-
-            var curseForge = await ModIconLoader.LoadCurseForgeIconsAsync(query);
-
-            if (curseForge.Count > 0)
-            {
-                var apply = items.Select(item =>
-                {
-                    var size = 0L;
-                    try
-                    {
-                        size = new FileInfo(item.FullPath).Length;
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-
-                    return (Item: item, Key: ModIconLoader.CacheKeyFor(item.FullPath, size));
-                });
-
-                foreach (var (item, key) in apply)
-                {
-                    if (curseForge.TryGetValue(key, out var icon) && item.IconPath is null)
-                        await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "curseforge icon batch");
-        }
-
-        // 2. 还没图标的按 SHA-1 去 Modrinth 查
-        using (var hashGate = new SemaphoreSlim(4))
-        {
-            var modrinthTasks = items.Where(item => item.IconPath is null).Select(async item =>
-            {
-                await hashGate.WaitAsync();
-
-                try
-                {
-                    var size = 0L;
-
-                    try
-                    {
-                        size = new FileInfo(item.FullPath).Length;
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-
-                    var icon = await ModIconLoader.TryModrinthAsync(item.FullPath, size);
-
-                    if (icon is not null)
-                        await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
-                }
-                catch (Exception ex)
-                {
-                    AppLog.Error(ex, "modrinth icon list");
-                }
-                finally
-                {
-                    hashGate.Release();
-                }
-            });
-
-            await Task.WhenAll(modrinthTasks);
-        }
-
-        // 3. 最后才用 jar 自带的图标兜底
         await Task.Run(() =>
         {
             foreach (var item in items)
@@ -671,14 +584,14 @@ public partial class ModManagePage : UserControl, IInstancePage
                 }
                 catch
                 {
-                    // 忽略
+                    // 文件没了就跳过
                 }
 
-                var fromJar = ModIconLoader.TryIconFromJar(item.FullPath, size);
-                if (fromJar is null) continue;
+                var icon = ModIconLoader.TryIconFromJar(item.FullPath, size);
+                if (icon is null) continue;
 
-                var icon = fromJar;
-                Application.Current?.Dispatcher.Invoke(() => item.IconPath = icon);
+                var path = icon;
+                Application.Current?.Dispatcher.Invoke(() => item.IconPath = path);
             }
         });
     }

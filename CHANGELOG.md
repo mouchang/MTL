@@ -3,6 +3,15 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.45] - 2026-11-01
+
+### Mod 管理图标只读 jar 自带的一张图
+
+之前依次尝试 CurseForge 指纹反查、Modrinth SHA-1 查询，一百多个 Mod 要等很久。
+
+- 只读 jar 内图标：`assets/*/icon.png`、`assets/*/logo.png`、根目录 `icon.png` / `logo.png`
+- 新增 `mcmod.info` 的 `logoFile` 支持（1.12.2 的 Mod 常用这种方式放图标）
+- 不再发起任何网络请求，列表秒开
 ## [1.1.1-beta.44] - 2026-11-01
 
 ### 检查更新的进度条终于会动了

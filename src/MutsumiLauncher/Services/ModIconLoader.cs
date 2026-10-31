@@ -181,6 +181,41 @@ public static class ModIconLoader
         return result;
     }
 
+    /// <summary>mcmod.info 里的 logoFile（1.12.2 常见，例如 "logo.png"）。</summary>
+    private static string? ReadLogoFile(ZipArchive archive)
+    {
+        try
+        {
+            var entry = archive.GetEntry("mcmod.info");
+            if (entry is null) return null;
+
+            using var stream = entry.Open();
+            using var document = JsonDocument.Parse(stream);
+            var root = document.RootElement;
+
+            JsonElement? first = null;
+
+            if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+                first = root[0];
+            else if (root.ValueKind == JsonValueKind.Object
+                     && root.TryGetProperty("modList", out var list)
+                     && list.ValueKind == JsonValueKind.Array
+                     && list.GetArrayLength() > 0)
+                first = list[0];
+
+            if (first is null) return null;
+
+            return first.Value.TryGetProperty("logoFile", out var file)
+                   && file.ValueKind == JsonValueKind.String
+                ? file.GetString()
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string? TryFromJar(string jarPath, string target)
     {
         try
