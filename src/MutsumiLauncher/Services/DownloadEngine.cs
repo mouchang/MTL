@@ -345,7 +345,11 @@ public static class DownloadEngine
         string? sha1, IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
     {
         var temp = targetPath + ".part";
-        var pieceCount = Math.Clamp((int)(size / PreferredPiece), 2, MaxPieces);
+        // 每节点最多 3 条连接：节点多的订阅可以多开，节点少就少开，避免全部挤在少数节点上
+        var nodes = Math.Max(1, ProxyCore.NodeCount);
+        var maxPieces = Math.Clamp(nodes * 3, 2, MaxPieces);
+
+        var pieceCount = Math.Clamp((int)(size / PreferredPiece), 2, maxPieces);
         var pieceSize = (size + pieceCount - 1) / pieceCount;
 
         var received = 0L;

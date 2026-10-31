@@ -90,7 +90,8 @@ public static class ClashConfigBuilder
     }
 
     /// <summary>生成最小配置；失败返回 null（调用方回落直连）。</summary>
-    public static (string Yaml, string Node)? Build(string subscriptionYaml, string? preferredNode, int port)
+    public static (string Yaml, string Node, int NodeCount)? Build(string subscriptionYaml,
+        string? preferredNode, int port)
     {
         var (block, names) = ReadProxies(subscriptionYaml);
         if (block.Length == 0 || names.Count == 0) return null;
@@ -173,6 +174,6 @@ public static class ClashConfigBuilder
         builder.AppendLine("  - \"DOMAIN-SUFFIX,overwolf.wtf,mtl-balance\"");
         builder.AppendLine("  - \"MATCH,mtl-auto\"");
 
-        return (builder.ToString(), node);
+        return (builder.ToString(), node, real.Count);
     }
 }

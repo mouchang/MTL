@@ -21,6 +21,9 @@ public sealed class ProxyCore
     private const string CoreZipName = "mihomo-windows-amd64-compatible-v" + "1.19.33.zip";
     private const string CoreSha256 = "7aaf636a4f2172dcd8ec34ac4f52797b059195e5afd6409508c963e545f8864d";
 
+    /// <summary>订阅里的节点数（健康与否另说）。下载并发按它分摊：每个节点最多 3 条连接。</summary>
+    public static int NodeCount { get; private set; } = 3;
+
     /// <summary>下载源按顺序尝试：自建边缘缓存优先，GitHub 兜底。两者都要过 SHA-256 校验。</summary>
     private static readonly string[] CoreUrls =
     [
@@ -345,7 +348,8 @@ public sealed class ProxyCore
             Directory.CreateDirectory(CoreDir);
             await File.WriteAllTextAsync(ConfigPath, built.Value.Yaml, cancellationToken).ConfigureAwait(false);
 
-            AppLog.Info($"proxy core: 启动 mihomo，端口 {port}，节点 {built.Value.Node}");
+            NodeCount = Math.Max(1, built.Value.NodeCount);
+            AppLog.Info($"proxy core: 启动 mihomo，端口 {port}，节点 {built.Value.Node}（共 {NodeCount} 个）");
 
             var process = Start(core, ConfigPath);
 

@@ -3,9 +3,9 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.1-beta.17</Version>
-    <FileVersion>1.1.1.17</FileVersion>
-    <InformationalVersion>MTL beta v1.1.1 build 17</InformationalVersion>
+    <Version>1.1.1-beta.18</Version>
+    <FileVersion>1.1.1.18</FileVersion>
+    <InformationalVersion>MTL beta v1.1.1 build 18</InformationalVersion>
     <Company>Mutsumi</Company>
     <Product>Mutsumi Launcher</Product>
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
