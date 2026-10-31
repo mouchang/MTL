@@ -189,9 +189,11 @@ public static class DownloadSources
 
         // 文件不走 MCIM：它只是个 302 跳转器，还会给半截文件和错文件名。
         // 现在只走 官方 CDN + 自建 Worker 镜像（墙外回源 + 边缘缓存）。
-        // 顺序：官方（走代理）→ 自家 Worker 镜像兜底。官方源一律不走直连。
+        // 顺序：官方（走代理）→ MCIM 镜像 → 自家 Worker 镜像。
+        // 官方源一律不走直连；多一个源，下载引擎就能把分段摊到不同主机上并行。
         var urls = new List<string>();
         urls.AddRange(OfficialVariants(officialUrl));
+        urls.AddRange(McimVariants(officialUrl));
         urls.AddRange(WorkerVariants(officialUrl));
 
         return urls
@@ -226,6 +228,22 @@ public static class DownloadSources
     }
 
     /// <summary>把官方 CDN 地址换成自建 Worker 的镜像地址（mtl.dpdns.org/&lt;host&gt;/&lt;path&gt;）。</summary>
+    /// <summary>
+    /// MCIM 镜像（PCL2 的 DlSourceModGet 同款）：Modrinth / CurseForge 的文件地址都能镜像，
+    /// 国内直连，不经过代理。
+    /// </summary>
+    private static IEnumerable<string> McimVariants(string url)
+    {
+        var mapped = url
+            .Replace("cdn.modrinth.com", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("edge.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("mediafilez.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+            .Replace("media.forgecdn.net", "mod.mcimirror.top", StringComparison.OrdinalIgnoreCase);
+
+        if (!string.Equals(mapped, url, StringComparison.OrdinalIgnoreCase))
+            yield return mapped;
+    }
+
     private static IEnumerable<string> WorkerVariants(string url)
     {
         foreach (var host in WorkerMirroredHosts)

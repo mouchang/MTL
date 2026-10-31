@@ -3,6 +3,15 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.7] - 2026-10-31
+
+### 下载源（参考 PCL2）
+
+- 加入 MCIM 镜像作为文件下载源（PCL2 的 `DlSourceModGet` 同款）：
+  Modrinth CDN / CurseForge CDN 都映射到 `mod.mcimirror.top`，直连不走代理
+- 源顺序：官方（代理）→ MCIM 镜像 → 自家 Worker
+- 分段下载时各段会摊到不同源上并行，和 PCL2 的多源下载思路一致
+
 ## [1.1.1-beta.6] - 2026-10-31
 
 ### 图标顺序
