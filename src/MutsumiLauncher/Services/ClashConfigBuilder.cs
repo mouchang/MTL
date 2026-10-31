@@ -98,8 +98,7 @@ public static class ClashConfigBuilder
         var real = RealNodes(names);
         var group = new List<string> { node };
         group.AddRange(real
-            .Where(name => !name.Equals(node, StringComparison.Ordinal))
-            .Take(15));
+            .Where(name => !name.Equals(node, StringComparison.Ordinal)));
 
         string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
@@ -125,9 +124,12 @@ public static class ClashConfigBuilder
         builder.AppendLine(block);
         builder.AppendLine("proxy-groups:");
         builder.AppendLine("  - name: mtl-auto");
-        builder.AppendLine("    type: fallback");
+        // url-test：自动选延迟最低的节点（fallback 只会用第一个活着的，可能很慢）
+        builder.AppendLine("    type: url-test");
         builder.AppendLine("    url: https://www.gstatic.com/generate_204");
-        builder.AppendLine("    interval: 180");
+        builder.AppendLine("    interval: 300");
+        builder.AppendLine("    tolerance: 50");
+        builder.AppendLine("    lazy: false");
         builder.AppendLine("    proxies:");
         foreach (var name in group) builder.AppendLine($"      - {Quote(name)}");
         builder.AppendLine("rules:");

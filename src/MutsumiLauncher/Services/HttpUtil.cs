@@ -256,10 +256,9 @@ public static class HttpUtil
 
                 if (builtIn is not null)
                 {
-                    // 本机代理（Clash 等）优先：玩家自己选的节点通常比内置的更快。
-                    // 内置代理只排在它后面，作为本机代理不通时的兜底。
-                    var index = Math.Min(routes.Count, 1);
-                    routes.Insert(index, builtIn);
+                    // 内置代理是这个产品的默认上网通道，必须排在最前面；
+                    // 本机代理只在内置代理不可用时兜底。
+                    routes.Insert(0, builtIn);
                     ProxyCore.Shared.EnterRequest();
                 }
             }
