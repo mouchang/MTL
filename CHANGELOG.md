@@ -3,6 +3,18 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.37] - 2026-11-01
+
+### 修复：部分 CurseForge 文件永远下不下来
+
+日志里两个文件补下 3 轮仍然失败：`#237989/2782568`、`#348025/4436467`。
+查 API 发现它们的 `downloadUrl` 是 **null**——作者关闭了第三方分发，
+CurseForge 只在官方客户端里给地址。
+
+- `downloadUrl` 为空时，先请求 `/mods/{id}/files/{fileId}/download-url`
+- 还拿不到就按公开规律拼 CDN 地址：`/files/{fileId/1000}/{fileId%1000}/{文件名}`
+
+（实测这两个文件拼出来的地址都返回 200，大小与接口一致）
 ## [1.1.1-beta.36] - 2026-11-01
 
 ### 整合包失败文件自动补下

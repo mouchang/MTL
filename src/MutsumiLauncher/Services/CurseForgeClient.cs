@@ -328,9 +328,17 @@ public sealed class CurseForgeClient
                 $"{BaseUrl}/mods/{modId}/files/{fileId}", cancellationToken);
 
             if (document.RootElement.TryGetProperty("data", out var data)
-                && data.ValueKind == JsonValueKind.Object
-                && ParseFile(data) is { } parsed)
-                return parsed;
+                && data.ValueKind == JsonValueKind.Object)
+            {
+                if (ParseFile(data) is { } parsed) return parsed;
+
+                // downloadUrl 为 null：CurseForge 对「禁止第三方分发」的文件会这样。
+                // 官方给了一个专门取下载地址的接口。
+                var direct = await GetDownloadUrlAsync(modId, fileId, cancellationToken)
+                             ?? BuildCdnUrl(fileId, Text(data, "fileName"));
+
+                if (direct is not null && ParseFile(data, direct) is { } withUrl) return withUrl;
+            }
         }
         catch (HttpRequestException ex) when ((int?)ex.StatusCode is 429 or 503 or 502)
         {
@@ -338,6 +346,40 @@ public sealed class CurseForgeClient
         }
 
         return await GetFileFromListAsync(modId, fileId, cancellationToken);
+    }
+
+    /// <summary>
+    /// 按文件 id 拼 CDN 地址：CurseForge 的公开规律是
+    /// /files/{id / 1000}/{id % 1000}/{文件名}。downloadUrl 为 null 时只能这样拿。
+    /// </summary>
+    private static string? BuildCdnUrl(int fileId, string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return null;
+
+        var name = Uri.EscapeDataString(fileName);
+        return $"https://mediafilez.forgecdn.net/files/{fileId / 1000}/{fileId % 1000}/{name}";
+    }
+
+    /// <summary>取下载地址（downloadUrl 为 null 的文件只能这样拿）。</summary>
+    private async Task<string?> GetDownloadUrlAsync(int modId, int fileId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = await GetAsync(
+                $"{BaseUrl}/mods/{modId}/files/{fileId}/download-url", cancellationToken);
+
+            if (!document.RootElement.TryGetProperty("data", out var data)) return null;
+
+            var url = data.ValueKind == JsonValueKind.String ? data.GetString() : null;
+
+            return string.IsNullOrWhiteSpace(url) ? null : url;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, $"curseforge download-url {modId}/{fileId}");
+            return null;
+        }
     }
 
     /// <summary>备用路径：查该 Mod 的文件列表，按 fileId 匹配。</summary>
@@ -368,9 +410,9 @@ public sealed class CurseForgeClient
         return null;
     }
 
-    private static CurseForgeFile? ParseFile(JsonElement item)
+    private static CurseForgeFile? ParseFile(JsonElement item, string? overrideUrl = null)
     {
-        var downloadUrl = Text(item, "downloadUrl");
+        var downloadUrl = overrideUrl ?? Text(item, "downloadUrl");
         if (string.IsNullOrWhiteSpace(downloadUrl)) return null;
 
         var gameVersions = Strings(item, "gameVersions");
