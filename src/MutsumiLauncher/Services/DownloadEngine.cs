@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -26,7 +27,7 @@ public sealed class DownloadExhaustedException(string message, Exception? inner 
 /// </summary>
 public static class DownloadEngine
 {
-    public static int MaxThreads { get; set; } = 32;
+    public static int MaxThreads { get; set; } = 16;
 
     private static readonly SemaphoreSlim Slots = new(MaxThreads, MaxThreads);
     private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromMinutes(30));
@@ -61,31 +62,37 @@ public static class DownloadEngine
 
     // 单连接经常被 CDN / 代理限到几百 KB/s，所以 512KB 以上就允许分段
     /// <summary>
-    /// 换源速度下限。只用来判断「这条连接是不是卡死了」，不是「它比别人慢就杀掉」：
-    /// 上限 1MB/s，并且会随观察到的速度回落，避免快了一阵之后把所有正常连接都判死。
+    /// 各分段最近的速度样本。判定“太慢”要用**相对**标准：
+    /// 16 条连接平分带宽时每条只有总速度的 1/16，
+    /// 拿绝对速度比较会把所有连接都判死（之前越下越慢就是这个原因）。
     /// </summary>
-    private static long _speedFloor = 256 * 1024;
+    private static readonly ConcurrentQueue<long> SpeedSamples = new();
 
-    private static long SpeedFloor => Interlocked.Read(ref _speedFloor);
+    /// <summary>近一段时间各分段速度的中位数；样本不足时返回 0。</summary>
+    private static long MedianSpeed()
+    {
+        if (SpeedSamples.Count < 3) return 0;
 
-    /// <summary>观测到分段速度：低于下限时把下限往下调（衰减），只有连续偏慢才抬高一点点。</summary>
+        var values = SpeedSamples.ToArray();
+
+        if (values.Length > 48) values = values[^48..];
+
+        Array.Sort(values);
+        return values[values.Length / 2];
+    }
+
     private static void ObserveSpeed(long bytesPerSecond)
     {
-        var floor = SpeedFloor;
+        SpeedSamples.Enqueue(bytesPerSecond);
 
-        if (bytesPerSecond < floor)
-        {
-            // 整体都慢：下限跟着降，别让所有连接一直被判定为“太慢”
-            var relaxed = Math.Max(128 * 1024, (long)(floor * 0.7));
-            Interlocked.Exchange(ref _speedFloor, relaxed);
-            return;
-        }
+        while (SpeedSamples.Count > 64) SpeedSamples.TryDequeue(out _);
+    }
 
-        // 快的时候最多把下限提到它的一半，且封顶 1MB/s
-        var raised = Math.Min(bytesPerSecond / 2, 1024 * 1024);
-
-        if (raised > floor)
-            Interlocked.Exchange(ref _speedFloor, Math.Min(raised, (long)(floor * 1.5)));
+    /// <summary>低于中位数的 1/4、且不到 48KB/s，才算这条连接有问题。</summary>
+    private static long SlowThreshold()
+    {
+        var median = MedianSpeed();
+        return Math.Max(48 * 1024, median / 4);
     }
 
     /// <summary>分段下载时连接太慢：带着「已经写了多少」抛出去，让 failover 从断点换源续传。</summary>
@@ -95,9 +102,9 @@ public static class DownloadEngine
     }
 
     private const long MinSplitSize = 256 * 1024;
-    // 每段 1MB：实测 8 段并行能把 288 KB/s 的单连接叠到 ~670 KB/s
-    private const long PreferredPiece = 1024 * 1024;
-    private const int MaxPieces = 16;
+    // 每段 4MB：段太小会让连接数爆炸，反而把代理节点挤爆（越下越慢）
+    private const long PreferredPiece = 4 * 1024 * 1024;
+    private const int MaxPieces = 8;
     private const int ReadTimeoutSeconds = 10;
 
     public static Task<string> DownloadAsync(IReadOnlyList<string> urls, string targetPath,
@@ -353,6 +360,9 @@ public static class DownloadEngine
                 var start = i * pieceSize;
                 var end = Math.Min(size - 1, start + pieceSize - 1);
 
+                // 错峰启动：同时建一堆连接会把代理节点的队列塞满，前几秒快、后面全变慢
+                if (i > 0) await Task.Delay(120, cancellationToken);
+
                 tasks.Add(DownloadPieceWithFailoverAsync(pool, temp, start, end, size,
                     pieceCts.Token, delta =>
                     {
@@ -521,14 +531,15 @@ public static class DownloadEngine
 
                         ObserveSpeed((long)speed);
 
-                        // 只有「连续两个窗口都慢」且「剩余还有 512KB 以上」才换源。
-                        // 收尾的小分段一律不动：重连的固定开销比剩下的数据还大，
-                        // 越换越慢（之前 80% 之后掉到几 KB 就是这个原因）。
-                        if (speed < SpeedFloor && remaining > 512 * 1024)
+                        // 只在「明显低于其它分段」且「连续三个窗口都慢」且「还剩较多数据」时才换源。
+                        // 收尾阶段一律不动：重连开销比剩余数据还大。
+                        var threshold = SlowThreshold();
+
+                        if (speed < threshold && remaining > 1024 * 1024)
                         {
                             slowWindows++;
 
-                            if (slowWindows >= 2)
+                            if (slowWindows >= 3)
                                 throw new SlowSourceException(written);
                         }
                         else
