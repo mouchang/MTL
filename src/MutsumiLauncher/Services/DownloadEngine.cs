@@ -60,19 +60,32 @@ public static class DownloadEngine
     };
 
     // 单连接经常被 CDN / 代理限到几百 KB/s，所以 512KB 以上就允许分段
-    /// <summary>单条连接低于这个速度就换源（PCL2 的 NetTaskSpeedLimitLow）。</summary>
+    /// <summary>
+    /// 换源速度下限。只用来判断「这条连接是不是卡死了」，不是「它比别人慢就杀掉」：
+    /// 上限 1MB/s，并且会随观察到的速度回落，避免快了一阵之后把所有正常连接都判死。
+    /// </summary>
     private static long _speedFloor = 256 * 1024;
 
     private static long SpeedFloor => Interlocked.Read(ref _speedFloor);
 
-    /// <summary>观察到更快的分段时抬高下限（取近 1 秒均速的 85%），和 PCL2 一致。</summary>
-    private static void RaiseSpeedFloor(long observed)
+    /// <summary>观测到分段速度：低于下限时把下限往下调（衰减），只有连续偏慢才抬高一点点。</summary>
+    private static void ObserveSpeed(long bytesPerSecond)
     {
-        var candidate = (long)(observed * 0.85);
+        var floor = SpeedFloor;
 
-        if (candidate <= SpeedFloor) return;
+        if (bytesPerSecond < floor)
+        {
+            // 整体都慢：下限跟着降，别让所有连接一直被判定为“太慢”
+            var relaxed = Math.Max(128 * 1024, (long)(floor * 0.7));
+            Interlocked.Exchange(ref _speedFloor, relaxed);
+            return;
+        }
 
-        Interlocked.Exchange(ref _speedFloor, Math.Min(candidate, 8 * 1024 * 1024));
+        // 快的时候最多把下限提到它的一半，且封顶 1MB/s
+        var raised = Math.Min(bytesPerSecond / 2, 1024 * 1024);
+
+        if (raised > floor)
+            Interlocked.Exchange(ref _speedFloor, Math.Min(raised, (long)(floor * 1.5)));
     }
 
     /// <summary>分段下载时连接太慢：带着「已经写了多少」抛出去，让 failover 从断点换源续传。</summary>
@@ -484,6 +497,7 @@ public static class DownloadEngine
                 // 测速窗口：每 2 秒算一次这条连接的速度
                 var sample = Stopwatch.StartNew();
                 var sampleBytes = 0L;
+                var slowWindows = 0;
 
                 try
                 {
@@ -503,14 +517,23 @@ public static class DownloadEngine
                         if (sample.Elapsed.TotalSeconds < 2) continue;
 
                         var speed = sampleBytes / sample.Elapsed.TotalSeconds;
+                        var remaining = length - written;
 
-                        // 做得快就抬高全局下限；慢于下限就放弃这条连接
-                        if (written < length)
+                        ObserveSpeed((long)speed);
+
+                        // 只有「连续两个窗口都慢」且「剩余还有 512KB 以上」才换源。
+                        // 收尾的小分段一律不动：重连的固定开销比剩下的数据还大，
+                        // 越换越慢（之前 80% 之后掉到几 KB 就是这个原因）。
+                        if (speed < SpeedFloor && remaining > 512 * 1024)
                         {
-                            RaiseSpeedFloor((long)speed);
+                            slowWindows++;
 
-                            if (speed < SpeedFloor)
+                            if (slowWindows >= 2)
                                 throw new SlowSourceException(written);
+                        }
+                        else
+                        {
+                            slowWindows = 0;
                         }
 
                         sample.Restart();
@@ -655,7 +678,10 @@ public static class DownloadEngine
             return null;
         }
 
-        /// <summary>源能连上但太慢：冷却一小会儿，让后面的分段先换别的源。</summary>
+        /// <summary>
+        /// 源能连上但太慢：只把它的优先级往后挪一点。
+        /// 不能做域名级冷却——一次误判就会把最快的源排掉两分钟，后面全在下慢的。
+        /// </summary>
         public void MarkSlow(DownloadEndpoint endpoint)
         {
             lock (_lock)
@@ -663,8 +689,7 @@ public static class DownloadEngine
                 var source = _sources.FirstOrDefault(item => item.Endpoint == endpoint);
                 if (source is null) return;
 
-                source.FailCount++;
-                CoolDown(source.Host);
+                source.SlowCount++;
             }
         }
 
@@ -740,6 +765,8 @@ public static class DownloadEngine
 
         private sealed class Source
         {
+            public int SlowCount { get; set; }
+
             public Source(DownloadEndpoint endpoint)
             {
                 Endpoint = endpoint;

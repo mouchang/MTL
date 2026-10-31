@@ -127,8 +127,8 @@ public static class ClashConfigBuilder
         // url-test：自动选延迟最低的节点（fallback 只会用第一个活着的，可能很慢）
         builder.AppendLine("    type: url-test");
         builder.AppendLine("    url: https://www.gstatic.com/generate_204");
-        builder.AppendLine("    interval: 300");
-        builder.AppendLine("    tolerance: 50");
+        builder.AppendLine("    interval: 600");
+        builder.AppendLine("    tolerance: 100");
         builder.AppendLine("    lazy: false");
         builder.AppendLine("    proxies:");
         foreach (var name in group) builder.AppendLine($"      - {Quote(name)}");
