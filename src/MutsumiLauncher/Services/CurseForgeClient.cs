@@ -320,14 +320,52 @@ public sealed class CurseForgeClient
     public async Task<CurseForgeFile?> GetFileAsync(int modId, int fileId,
         CancellationToken cancellationToken = default)
     {
-        using var document = await GetAsync(
-            $"{BaseUrl}/mods/{modId}/files/{fileId}", cancellationToken);
+        // 单文件接口偶尔会被限流（返回非 200 或 data 缺失），
+        // 这时退一步查该 Mod 的文件列表再按 id 匹配，往往能拿到。
+        try
+        {
+            using var document = await GetAsync(
+                $"{BaseUrl}/mods/{modId}/files/{fileId}", cancellationToken);
 
-        if (!document.RootElement.TryGetProperty("data", out var data)
-            || data.ValueKind != JsonValueKind.Object)
-            return null;
+            if (document.RootElement.TryGetProperty("data", out var data)
+                && data.ValueKind == JsonValueKind.Object
+                && ParseFile(data) is { } parsed)
+                return parsed;
+        }
+        catch (HttpRequestException ex) when ((int?)ex.StatusCode is 429 or 503 or 502)
+        {
+            AppLog.Info($"curseforge: 单文件接口 {(int?)ex.StatusCode}，改用文件列表");
+        }
 
-        return ParseFile(data);
+        return await GetFileFromListAsync(modId, fileId, cancellationToken);
+    }
+
+    /// <summary>备用路径：查该 Mod 的文件列表，按 fileId 匹配。</summary>
+    private async Task<CurseForgeFile?> GetFileFromListAsync(int modId, int fileId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var document = await GetAsync(
+                $"{BaseUrl}/mods/{modId}/files?pageSize=50", cancellationToken);
+
+            if (!document.RootElement.TryGetProperty("data", out var data)
+                || data.ValueKind != JsonValueKind.Array)
+                return null;
+
+            foreach (var item in data.EnumerateArray())
+            {
+                if (!item.TryGetProperty("id", out var id) || id.GetInt32() != fileId) continue;
+
+                return ParseFile(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge file list");
+        }
+
+        return null;
     }
 
     private static CurseForgeFile? ParseFile(JsonElement item)

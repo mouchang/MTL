@@ -332,7 +332,7 @@ public static class ModpackImporter
             // 最后只要有一个文件没下到就整体报错——静默漏装会让整合包启动直接崩。
             var done = 0;
             var total = Math.Max(1, list.Count);
-            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+            var failures = new System.Collections.Concurrent.ConcurrentBag<(int ProjectId, int FileId, string Reason)>();
 
             using var apiGate = new SemaphoreSlim(2);
             using var fileGate = new SemaphoreSlim(6);
@@ -370,7 +370,7 @@ public static class ModpackImporter
 
                     if (file is null)
                     {
-                        failures.Add($"#{projectId}/{fileId}（查询失败）");
+                        failures.Add((projectId, fileId, "查询失败"));
                         return;
                     }
 
@@ -397,7 +397,7 @@ public static class ModpackImporter
                 catch (Exception ex)
                 {
                     AppLog.Error(ex, $"curseforge pack file {projectId}/{fileId}");
-                    failures.Add($"{projectId}/{fileId}（{ex.Message}）");
+                    failures.Add((projectId, fileId, ex.Message));
                 }
                 finally
                 {
@@ -409,11 +409,55 @@ public static class ModpackImporter
 
             await Task.WhenAll(tasks);
 
+            // 第一轮下完后，把失败的文件集中补下几轮：接口限流是暂时的，等一下往往就能过
+            for (var round = 0; round < 3 && !failures.IsEmpty; round++)
+            {
+                var retry = failures.ToList();
+                failures = new System.Collections.Concurrent.ConcurrentBag<(int, int, string)>();
+
+                progress?.Report(new InstallProgress(92,
+                    $"补下 {retry.Count} 个失败文件（第 {round + 1} 次）…"));
+
+                await Task.Delay(1200 * (round + 1), cancellationToken);
+
+                foreach (var (retryProject, retryFile, _) in retry)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        var file = await client.GetFileAsync(retryProject, retryFile, cancellationToken);
+
+                        if (file is null)
+                        {
+                            failures.Add((retryProject, retryFile, "查询失败"));
+                            continue;
+                        }
+
+                        var target = Path.Combine(modsDir, file.FileName);
+
+                        if (File.Exists(target) && new FileInfo(target).Length == file.Length) continue;
+
+                        await DownloadEngine.DownloadAsync(DownloadSources.ModFile(file.DownloadUrl),
+                            target, file.Sha1, file.Length, null, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Error(ex, $"modpack retry {retryProject}/{retryFile}");
+                        failures.Add((retryProject, retryFile, ex.Message));
+                    }
+                }
+            }
+
             if (!failures.IsEmpty)
             {
                 throw new InvalidOperationException(
-                    $"有 {failures.Count} 个文件没能下载，整合包不完整（启动会崩溃）：" +
-                    string.Join("、", failures.Take(3)));
+                    $"有 {failures.Count} 个文件补下后仍然失败，整合包不完整（启动会崩溃）：" +
+                    string.Join("、", failures.Take(3).Select(item => $"#{item.ProjectId}/{item.FileId}")));
             }
         }
 
@@ -539,6 +583,19 @@ public static class ModpackImporter
 
             if (extension is not (".mrpack" or ".zip" or ".jar" or ".mcpack")) return;
             if (!File.Exists(path)) return;
+
+            // 只删「我们自己下载到 modpacks\downloads 的」安装包。
+            // 用户手动选的文件可能只有一份，删了就没了。
+            var downloads = Path.GetFullPath(GamePaths.ModpacksDownloadsDir)
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            var full = Path.GetFullPath(path);
+
+            if (!full.StartsWith(downloads, StringComparison.OrdinalIgnoreCase))
+            {
+                AppLog.Info($"modpack: 安装包不在下载目录，保留 {full}");
+                return;
+            }
 
             var size = new FileInfo(path).Length;
             File.Delete(path);
