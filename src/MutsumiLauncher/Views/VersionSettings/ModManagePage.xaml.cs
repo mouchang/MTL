@@ -500,10 +500,39 @@ public partial class ModManagePage : UserControl, IInstancePage
 
     private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
     {
-        // 先批量问 CurseForge（版本管理优先显示 CF 图标）；没命中的再走 jar / Modrinth
+        // 1. jar 自带的图标优先（大多数 Mod 都有，不用联网）
+        await Task.Run(() =>
+        {
+            foreach (var item in items)
+            {
+                // 只给还没图标的算，别覆盖已有结果（列表刷新时 item 可能是复用的）
+                if (item.IconPath is not null) continue;
+
+                var size = 0L;
+                try
+                {
+                    size = new FileInfo(item.FullPath).Length;
+                }
+                catch
+                {
+                    // 读不到就当 0
+                }
+
+                var fromJar = ModIconLoader.TryIconFromJar(item.FullPath, size);
+                if (fromJar is null) continue;
+
+                var icon = fromJar;
+                Application.Current?.Dispatcher.Invoke(() => item.IconPath = icon);
+            }
+        });
+
+        // 2. 没有自带图标的，批量问 CurseForge
         try
         {
-            var query = items.Select(item =>
+            var missing = items.Where(item => item.IconPath is null).ToList();
+            if (missing.Count == 0) return;
+
+            var query = missing.Select(item =>
             {
                 var size = 0L;
                 try

@@ -62,6 +62,24 @@ public static class ModIconLoader
         }
     }
 
+    /// <summary>只取 jar 自带的图标（不走网络）。大多数 Mod 都有，优先用它。</summary>
+    public static string? TryIconFromJar(string jarPath, long size)
+    {
+        var key = CacheKeyFor(jarPath, size);
+        var cached = Path.Combine(IconCache.CacheDir, key + ".png");
+
+        try
+        {
+            if (File.Exists(cached)) return cached;
+            return TryFromJar(jarPath, cached);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "jar icon");
+            return null;
+        }
+    }
+
     /// <summary>
     /// 批量从 CurseForge 取图标（版本管理优先显示 CF 图标，没有才用 Modrinth）。
     /// 返回 缓存键 → 本地 png 路径。

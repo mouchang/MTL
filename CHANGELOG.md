@@ -3,6 +3,13 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.5] - 2026-10-31
+
+### 图标顺序
+
+- Mod 图标优先用 **jar 自带的** icon.png（大多数 Mod 都有，不联网、最快也最准）
+- 没有自带图标的才批量查 CurseForge，再退回 Modrinth
+
 ## [1.1.1-beta.4] - 2026-10-31
 
 ### 下载源
