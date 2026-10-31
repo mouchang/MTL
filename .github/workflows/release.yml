@@ -33,11 +33,8 @@ jobs:
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = $tag.TrimStart('v', 'V')
 
-          $title = ""
-          if (Test-Path ".github/release-title.txt") {
-            $title = (Get-Content ".github/release-title.txt" -Raw).Trim()
-          }
-          if (-not $title) { $title = "Mutsumi Launcher $version" }
+          # 标题自动生成，不再依赖仓库里的静态文件（那种文件每次发版都要改，容易忘记）
+          $title = "MTL Release v$version build 1"
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
@@ -48,11 +45,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: gh release delete "${{ steps.version.outputs.tag }}" --yes 2>$null; exit 0
-
-      # 内核 zip 一起打进安装包，首次启动不用再下 22 MB
-      - name: Fetch proxy core
-        shell: pwsh
-        run: ./tools/get-core.ps1 -FromGithub
 
       - name: Publish
         run: >
@@ -84,12 +76,43 @@ jobs:
             [IO.Compression.CompressionLevel]::Optimal, $false)
           if (-not (Test-Path $target)) { throw "没有产出便携包" }
 
+      - name: Extract release notes
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $lines = Get-Content CHANGELOG.md -Encoding UTF8
+          $start = -1
+
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match ("^## \[" + [regex]::Escape($version) + "\]")) { $start = $i; break }
+          }
+
+          if ($start -lt 0) {
+            # 没有对应段落就退回最近一次未发布的内容
+            $body = "本版本的详细改动见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。"
+          }
+          else {
+            $end = $lines.Count
+            for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match "^## \[") { $end = $i; break }
+            }
+
+            $body = ($lines[($start)..($end - 1)] -join "`n").Trim()
+
+            # 去掉开头的版本标题行，页面标题已经写了版本
+            $body = ($body -split "`n" | Select-Object -Skip 1) -join "`n"
+            $body = $body.Trim()
+          }
+
+          Set-Content -Path ".github/release-notes.generated.md" -Value $body -Encoding UTF8
+          Write-Host $body
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.title }}
-          body_path: .github/release-notes.md
+          body_path: .github/release-notes.generated.md
           files: |
             dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe
             dist/MutsumiLauncher-${{ steps.version.outputs.version }}-portable.zip
