@@ -60,8 +60,9 @@ public static class DownloadEngine
     };
 
     // 单连接经常被 CDN / 代理限到几百 KB/s，所以 512KB 以上就允许分段
-    private const long MinSplitSize = 512 * 1024;
-    private const long PreferredPiece = 4 * 1024 * 1024;
+    private const long MinSplitSize = 256 * 1024;
+    // 每段 1MB：实测 8 段并行能把 288 KB/s 的单连接叠到 ~670 KB/s
+    private const long PreferredPiece = 1024 * 1024;
     private const int MaxPieces = 16;
     private const int ReadTimeoutSeconds = 10;
 
