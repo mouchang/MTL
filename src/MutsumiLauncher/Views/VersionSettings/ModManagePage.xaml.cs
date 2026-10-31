@@ -565,28 +565,19 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>
-    /// 只从 jar 里取自带图标（assets/*/icon.png、logo.png、mcmod.info 的 logoFile）。
-    /// 走 CurseForge / Modrinth 接口取图标太慢，这里不做任何网络兜底。
+    /// 图标分两步：先读 jar 自带的（本地、秒出），剩下的再走网络兜底
+    /// （CurseForge 指纹 → Modrinth SHA-1）。网络那步不阻塞列表显示。
     /// </summary>
     private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
     {
+        // 1. 本地：jar 里的 logoFile / assets/*/icon.png / logo.png
         await Task.Run(() =>
         {
             foreach (var item in items)
             {
                 if (item.IconPath is not null) continue;
 
-                var size = 0L;
-
-                try
-                {
-                    size = new FileInfo(item.FullPath).Length;
-                }
-                catch
-                {
-                    // 文件没了就跳过
-                }
-
+                var size = TrySize(item.FullPath);
                 var icon = ModIconLoader.TryIconFromJar(item.FullPath, size);
                 if (icon is null) continue;
 
@@ -594,6 +585,71 @@ public partial class ModManagePage : UserControl, IInstancePage
                 Application.Current?.Dispatcher.Invoke(() => item.IconPath = path);
             }
         });
+
+        var missing = items.Where(item => item.IconPath is null).ToList();
+        if (missing.Count == 0) return;
+
+        // 2. CurseForge 批量反查（一次请求最多 1000 个指纹）
+        try
+        {
+            var query = missing
+                .Select(item => (ModIconLoader.CacheKeyFor(item.FullPath, TrySize(item.FullPath)),
+                    item.FullPath, TrySize(item.FullPath)))
+                .ToList();
+
+            var curseForge = await ModIconLoader.LoadCurseForgeIconsAsync(query);
+
+            foreach (var item in missing)
+            {
+                var key = ModIconLoader.CacheKeyFor(item.FullPath, TrySize(item.FullPath));
+
+                if (!curseForge.TryGetValue(key, out var icon)) continue;
+
+                await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge icon batch");
+        }
+
+        // 3. 还没图标的按 SHA-1 去 Modrinth 查
+        using var gate = new SemaphoreSlim(4);
+
+        var tasks = items.Where(item => item.IconPath is null).Select(async item =>
+        {
+            await gate.WaitAsync();
+
+            try
+            {
+                var icon = await ModIconLoader.TryModrinthAsync(item.FullPath, TrySize(item.FullPath));
+
+                if (icon is not null)
+                    await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "modrinth icon");
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
+    private static long TrySize(string path)
+    {
+        try
+        {
+            return new FileInfo(path).Length;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)

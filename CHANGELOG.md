@@ -3,6 +3,13 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.46] - 2026-11-01
+
+### Mod 图标：先本地，缺的再联网
+
+- 第一步只读 jar（`logoFile` / `assets/*/icon.png` / `logo.png`），列表立刻出现
+- 没图标的再走网络兜底：CurseForge 批量指纹反查 → Modrinth SHA-1（并发 4）
+- 网络兜底在后台补，不阻塞列表
 ## [1.1.1-beta.45] - 2026-11-01
 
 ### Mod 管理图标只读 jar 自带的一张图
