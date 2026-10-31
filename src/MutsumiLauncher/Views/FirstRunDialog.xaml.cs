@@ -18,6 +18,8 @@ public partial class FirstRunDialog : Window
 
     private int _remaining = WaitSeconds;
     private bool _unlocked;
+    private bool _coreReady;
+    private string? _coreError;
 
     public FirstRunDialog()
     {
@@ -31,6 +33,9 @@ public partial class FirstRunDialog : Window
         _timer.Tick += (_, _) => Tick();
         _timer.Start();
 
+        // 只释放内核文件，不启动 mihomo：启动留给真正下载 Mod 的时候
+        _ = PrepareCoreAsync();
+
         ContinueButton.Content = $"请稍候 {_remaining} 秒";
     }
 
@@ -39,6 +44,40 @@ public partial class FirstRunDialog : Window
     {
         if (!_unlocked) e.Cancel = true;
         base.OnClosing(e);
+    }
+
+    private async Task PrepareCoreAsync()
+    {
+        try
+        {
+            var result = await ProxyCore.Shared.PrepareCoreAsync();
+            _coreReady = result.Ok;
+            _coreError = result.Message;
+        }
+        catch (Exception ex)
+        {
+            _coreError = ex.Message;
+            AppLog.Error(ex, "first run proxy prepare");
+        }
+
+        await Dispatcher.InvokeAsync(UpdateCoreStatus);
+    }
+
+    private void UpdateCoreStatus()
+    {
+        CoreProgress.IsIndeterminate = false;
+
+        if (_coreReady)
+        {
+            CoreProgress.Value = 100;
+            CoreStatus.Text = "代理内核已就绪。下载 Mod 或整合包时会自动启用，平时不占资源。";
+            return;
+        }
+
+        CoreProgress.Value = 0;
+        CoreStatus.Text = _coreError is { Length: > 0 } error
+            ? $"代理内核没准备好：{error}。不影响使用，下载时会自动改用镜像。"
+            : "代理内核没准备好，下载时会自动改用镜像。";
     }
 
     private void Tick()

@@ -15,6 +15,21 @@
             <TextBlock x:Name="VersionText" FontSize="12" Foreground="{DynamicResource InkMute}"
                        Margin="0,4,0,0" />
 
+            <!-- 代理内核 -->
+            <Border Background="{DynamicResource AccentTintSoft}" CornerRadius="14" Padding="16,13"
+                    Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="正在准备内置代理（下载 Mod 时才会启用）" FontSize="14"
+                               FontWeight="SemiBold" Foreground="{DynamicResource AccentDeep}"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="CoreStatus" Text="正在释放随安装包自带的内核…" FontSize="12"
+                               Foreground="{DynamicResource InkSoft}" Margin="0,6,0,0"
+                               TextWrapping="Wrap" />
+                    <ProgressBar x:Name="CoreProgress" Height="4" IsIndeterminate="True"
+                                 Margin="0,10,0,0" BorderThickness="0" />
+                </StackPanel>
+            </Border>
+
             <!-- 免责申明 -->
             <TextBlock Text="免责申明" FontSize="14" FontWeight="SemiBold"
                        Foreground="{DynamicResource Ink}" Margin="0,18,0,6" />

@@ -310,6 +310,32 @@ public sealed class ProxyCore
     }
 
     /// <summary>按需启动内核。并发调用会串行化。</summary>
+    /// <summary>
+    /// 只准备内核文件（释放安装包自带的 zip / 校验），**不启动** mihomo。
+    /// 首次启动公告页用它告诉用户「装好了」，真正启动要等下载 Mod 时。
+    /// </summary>
+    public async Task<(bool Ok, string? Message)> PrepareCoreAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var core = await EnsureCoreAsync(cancellationToken).ConfigureAwait(false);
+
+            if (core is not null) return (true, null);
+
+            var message = LastError is { Length: > 0 } ? LastError : "内核文件不完整";
+            return (false, message);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "prepare proxy core");
+            return (false, ex.Message);
+        }
+    }
+
     public async Task<bool> EnsureRunningAsync(CancellationToken cancellationToken = default)
     {
         if (IsRunning)
