@@ -60,6 +60,27 @@ public static class DownloadEngine
     };
 
     // 单连接经常被 CDN / 代理限到几百 KB/s，所以 512KB 以上就允许分段
+    /// <summary>单条连接低于这个速度就换源（PCL2 的 NetTaskSpeedLimitLow）。</summary>
+    private static long _speedFloor = 256 * 1024;
+
+    private static long SpeedFloor => Interlocked.Read(ref _speedFloor);
+
+    /// <summary>观察到更快的分段时抬高下限（取近 1 秒均速的 85%），和 PCL2 一致。</summary>
+    private static void RaiseSpeedFloor(long observed)
+    {
+        var candidate = (long)(observed * 0.85);
+
+        if (candidate <= SpeedFloor) return;
+
+        Interlocked.Exchange(ref _speedFloor, Math.Min(candidate, 8 * 1024 * 1024));
+    }
+
+    /// <summary>分段下载时连接太慢：带着「已经写了多少」抛出去，让 failover 从断点换源续传。</summary>
+    private sealed class SlowSourceException(long written) : Exception("下载源太慢")
+    {
+        public long Written { get; } = written;
+    }
+
     private const long MinSplitSize = 256 * 1024;
     // 每段 1MB：实测 8 段并行能把 288 KB/s 的单连接叠到 ~670 KB/s
     private const long PreferredPiece = 1024 * 1024;
@@ -372,6 +393,9 @@ public static class DownloadEngine
     {
         Exception? lastError = null;
 
+        // 慢源换源的上限，避免无限重试
+        var slowSwitches = 0;
+
         while (true)
         {
             var endpoint = pool.Next(needSplit: true);
@@ -389,6 +413,23 @@ public static class DownloadEngine
             {
                 await DownloadPieceAsync(endpoint, path, start, end, cancellationToken, onBytes);
                 return;
+            }
+            catch (SlowSourceException slow)
+            {
+                // 这条连接太慢：从它已经写到的位置接着换下一个源（PCL2 的做法）
+                slowSwitches++;
+                start += slow.Written;
+
+                AppLog.Info($"piece slow: {endpoint.Url} 已写 {slow.Written} 字节，换源续传");
+
+                if (start > end) return;
+
+                pool.MarkSlow(endpoint);
+
+                if (slowSwitches >= 6)
+                    throw new IOException($"分段下载太慢（{start}-{end}），已尝试 {slowSwitches} 个源");
+
+                continue;
             }
             catch (RangeNotSupportedException)
             {
@@ -440,6 +481,10 @@ public static class DownloadEngine
                 var buffer = ArrayPool<byte>.Shared.Rent(81920);
                 var written = 0L;
 
+                // 测速窗口：每 2 秒算一次这条连接的速度
+                var sample = Stopwatch.StartNew();
+                var sampleBytes = 0L;
+
                 try
                 {
                     int read;
@@ -447,12 +492,29 @@ public static class DownloadEngine
                     {
                         await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                         written += read;
+                        sampleBytes += read;
                         onBytes(read);
 
                         await Limiter.AcquireAsync(read, cancellationToken);
 
                         if (written > length)
                             throw new InvalidDataException("分段数据超出范围");
+
+                        if (sample.Elapsed.TotalSeconds < 2) continue;
+
+                        var speed = sampleBytes / sample.Elapsed.TotalSeconds;
+
+                        // 做得快就抬高全局下限；慢于下限就放弃这条连接
+                        if (written < length)
+                        {
+                            RaiseSpeedFloor((long)speed);
+
+                            if (speed < SpeedFloor)
+                                throw new SlowSourceException(written);
+                        }
+
+                        sample.Restart();
+                        sampleBytes = 0;
                     }
                 }
                 finally
@@ -591,6 +653,19 @@ public static class DownloadEngine
             }
 
             return null;
+        }
+
+        /// <summary>源能连上但太慢：冷却一小会儿，让后面的分段先换别的源。</summary>
+        public void MarkSlow(DownloadEndpoint endpoint)
+        {
+            lock (_lock)
+            {
+                var source = _sources.FirstOrDefault(item => item.Endpoint == endpoint);
+                if (source is null) return;
+
+                source.FailCount++;
+                CoolDown(source.Host);
+            }
         }
 
         public void Fail(DownloadEndpoint endpoint, Exception? exception = null)
