@@ -3,6 +3,18 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.27] - 2026-11-01
+
+### 版本下拉框显示空白（真正的原因）
+
+`MtlComboBox` 的模板里没有 `PART_EditableTextBox`。
+`IsEditable="True"` 时 WPF 会隐藏 ContentPresenter 改用可编辑输入框，
+模板里没有这个部件，选中值就无处显示——框里永远是空的。
+
+- 模板补上 `PART_EditableTextBox`
+- 用触发器处理两种模式：不可编辑显示 ContentPresenter，可编辑显示输入框
+
+### 下载限速改回 10 MB/s
 ## [1.1.1-beta.26] - 2026-10-31
 
 ### 首次启动重新显示代理安装状态

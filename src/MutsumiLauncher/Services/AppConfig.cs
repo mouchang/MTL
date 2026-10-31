@@ -74,8 +74,8 @@ public sealed class AppConfig
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "auto";
 
-    /// <summary>下载限速（KB/s），0 表示不限速。默认 5 MB/s：跑满容易把代理节点挤爆、触发限流。</summary>
-    public int MaxDownloadSpeedKbps { get; set; } = 5 * 1024;
+    /// <summary>下载限速（KB/s），0 表示不限速。默认 10 MB/s。</summary>
+    public int MaxDownloadSpeedKbps { get; set; } = 10 * 1024;
 
     /// <summary>主题：light（默认）/ dark / custom。</summary>
     public string ThemeMode { get; set; } = "light";

@@ -507,10 +507,17 @@
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
-                        <ContentPresenter Margin="12,0,30,0" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                          IsHitTestVisible="False"
+                        <ContentPresenter x:Name="Content" Margin="12,0,30,0" VerticalAlignment="Center"
+                                          HorizontalAlignment="Left" IsHitTestVisible="False"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+
+                        <!-- 可编辑模式必须提供这个部件，否则选中值根本没地方显示 -->
+                        <TextBox x:Name="PART_EditableTextBox" Margin="12,0,30,0" VerticalAlignment="Center"
+                                 Background="Transparent" BorderThickness="0" Padding="0"
+                                 Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}"
+                                 CaretBrush="{DynamicResource Ink}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}" />
                         <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="10"
                                    Foreground="{DynamicResource InkSoft}" HorizontalAlignment="Right"
                                    VerticalAlignment="Center" Margin="0,0,12,0" IsHitTestVisible="False" />
@@ -529,6 +536,14 @@
                             </Border>
                         </Popup>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="False">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="Content" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
