@@ -189,10 +189,10 @@ public static class DownloadSources
 
         // 文件不走 MCIM：它只是个 302 跳转器，还会给半截文件和错文件名。
         // 现在只走 官方 CDN + 自建 Worker 镜像（墙外回源 + 边缘缓存）。
-        // 顺序：自家 Worker 镜像 → 官方（会走代理）。国内直连官方 CDN 基本只有几百 KB/s。
+        // 顺序：官方（走代理）→ 自家 Worker 镜像兜底。官方源一律不走直连。
         var urls = new List<string>();
-        urls.AddRange(WorkerVariants(officialUrl));
         urls.AddRange(OfficialVariants(officialUrl));
+        urls.AddRange(WorkerVariants(officialUrl));
 
         return urls
             .Where(url => !string.IsNullOrWhiteSpace(url))

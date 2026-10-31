@@ -3,6 +3,19 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.4] - 2026-10-31
+
+### 下载源
+
+- 顺序改为「官方（经代理）→ 自家 Worker 镜像」
+- 官方文件源（Modrinth / CurseForge / Mojang CDN）不再尝试直连，代理失败才换源
+
+### 图标
+
+- 图标解码分辨率 96px → 192px，高分屏不再发糊
+- 版本管理的 Mod 图标优先用 CurseForge 的（按文件指纹批量反查），
+  没有 CF 图标才退回 jar 内图标 / Modrinth
+
 ## [1.1.1-beta.3] - 2026-10-31
 
 ### 下载

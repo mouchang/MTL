@@ -62,6 +62,78 @@ public static class ModIconLoader
         }
     }
 
+    /// <summary>
+    /// 批量从 CurseForge 取图标（版本管理优先显示 CF 图标，没有才用 Modrinth）。
+    /// 返回 缓存键 → 本地 png 路径。
+    /// </summary>
+    public static async Task<Dictionary<string, string>> LoadCurseForgeIconsAsync(
+        IReadOnlyList<(string Key, string JarPath, long Size)> items,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, string>();
+        if (items.Count == 0) return result;
+
+        var pending = new List<(string Key, string JarPath, long Size)>();
+
+        foreach (var item in items)
+        {
+            var cached = Path.Combine(IconCache.CacheDir, item.Key + ".png");
+
+            if (File.Exists(cached)) result[item.Key] = cached;
+            else pending.Add(item);
+        }
+
+        if (pending.Count == 0) return result;
+
+        // 1. 算指纹（读整个文件，限并发）
+        var fingerprints = new Dictionary<uint, string>();
+        using var gate = new SemaphoreSlim(4);
+
+        var tasks = pending.Select(async item =>
+        {
+            await gate.WaitAsync(cancellationToken);
+
+            try
+            {
+                var fingerprint = await Task.Run(() => CurseForgeFingerprint.OfFile(item.JarPath),
+                    cancellationToken);
+
+                if (fingerprint == 0) return;
+
+                lock (fingerprints) fingerprints[fingerprint] = item.Key;
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+
+        if (fingerprints.Count == 0) return result;
+
+        // 2. 反查项目 + logo
+        var icons = await CurseForgeClient.LookupIconsByFingerprintAsync(
+            fingerprints.Keys.ToList(), cancellationToken);
+
+        foreach (var (fingerprint, url) in icons)
+        {
+            if (!fingerprints.TryGetValue(fingerprint, out var key)) continue;
+
+            try
+            {
+                var local = await IconCache.EnsureAsync(url, key, cancellationToken);
+                if (local is not null) result[key] = local;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "cache curseforge icon");
+            }
+        }
+
+        return result;
+    }
+
     private static string? TryFromJar(string jarPath, string target)
     {
         try

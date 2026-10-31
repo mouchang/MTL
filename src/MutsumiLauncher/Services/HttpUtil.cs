@@ -21,6 +21,15 @@ public static class HttpUtil
     /// （CurseForge / Modrinth 都挂在 Cloudflare 上）。
     /// 绕代理反而会先失败两次，实测能把一次搜索从 2 秒拖到 23 秒。
     /// </summary>
+    /// <summary>官方文件源：一律走代理，不做直连尝试。</summary>
+    private static bool IsOfficialSource(string url) =>
+        url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("forgecdn", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("overwolf.wtf", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("piston-data.mojang.com", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("launchermeta.mojang.com", StringComparison.OrdinalIgnoreCase)
+        || url.Contains("resources.download.minecraft.net", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsDomestic(string url) =>
         url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
         || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
@@ -344,6 +353,14 @@ public static class HttpUtil
             {
                 // 国内镜像：先直连，真不行再考虑代理
                 routes.Add(_direct);
+                routes.Add(proxy);
+                return routes;
+            }
+
+            // 官方源（Modrinth / CurseForge / Mojang CDN）：国内直连只有几百 KB/s，
+            // 直接不给直连选项，失败了去试下一个源（Worker 镜像）
+            if (IsOfficialSource(url))
+            {
                 routes.Add(proxy);
                 return routes;
             }

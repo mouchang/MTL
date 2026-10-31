@@ -500,6 +500,55 @@ public partial class ModManagePage : UserControl, IInstancePage
 
     private static async Task LoadIconsAsync(IReadOnlyList<ModFileItem> items)
     {
+        // 先批量问 CurseForge（版本管理优先显示 CF 图标）；没命中的再走 jar / Modrinth
+        try
+        {
+            var query = items.Select(item =>
+            {
+                var size = 0L;
+                try
+                {
+                    size = new FileInfo(item.FullPath).Length;
+                }
+                catch
+                {
+                    // 读不到就当 0
+                }
+
+                return (ModIconLoader.CacheKeyFor(item.FullPath, size), item.FullPath, size);
+            }).ToList();
+
+            var curseForge = await ModIconLoader.LoadCurseForgeIconsAsync(query);
+
+            if (curseForge.Count > 0)
+            {
+                var apply = items.Select(item =>
+                {
+                    var size = 0L;
+                    try
+                    {
+                        size = new FileInfo(item.FullPath).Length;
+                    }
+                    catch
+                    {
+                        // 忽略
+                    }
+
+                    return (Item: item, Key: ModIconLoader.CacheKeyFor(item.FullPath, size));
+                });
+
+                foreach (var (item, key) in apply)
+                {
+                    if (curseForge.TryGetValue(key, out var icon) && item.IconPath is null)
+                        await Application.Current.Dispatcher.InvokeAsync(() => item.IconPath = icon);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge icon batch");
+        }
+
         using var gate = new SemaphoreSlim(4);
 
         var tasks = items.Select(async item =>

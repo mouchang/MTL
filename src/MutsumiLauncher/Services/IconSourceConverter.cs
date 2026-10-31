@@ -10,11 +10,11 @@ namespace MutsumiLauncher.Services;
 /// 把图标路径转成按显示尺寸解码的图片。
 ///
 /// 直接绑路径的话，WPF 会把原图（常是 512×512 甚至更大）整张解出来再缩到 40×40，
-/// 列表里几十个图标就白吃几十 MB 内存、解码也慢。这里统一按 96px 解码并缓存。
+/// 列表里几十个图标就白吃几十 MB 内存、解码也慢。这里统一按 192px 解码并缓存（高分屏不糊）。
 /// </summary>
 public sealed class IconSourceConverter : IValueConverter
 {
-    private const int DecodeWidth = 96;
+    private const int DecodeWidth = 192;
 
     private static readonly ConcurrentDictionary<string, BitmapImage> Cache = new(StringComparer.OrdinalIgnoreCase);
 

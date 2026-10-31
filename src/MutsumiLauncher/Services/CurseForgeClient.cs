@@ -496,6 +496,93 @@ public sealed class CurseForgeClient
         || value.Equals("NeoForge", StringComparison.OrdinalIgnoreCase)
         || value.Equals("Quilt", StringComparison.OrdinalIgnoreCase);
 
+
+    /// <summary>
+    /// 按文件指纹反查项目，返回 指纹 → 图标地址。
+    /// 一次最多 1000 个指纹，项目信息再按 50 个一批查 logo。
+    /// </summary>
+    public static async Task<Dictionary<uint, string>> LookupIconsByFingerprintAsync(
+        IReadOnlyList<uint> fingerprints, CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<uint, string>();
+        if (fingerprints.Count == 0) return result;
+
+        var matches = new Dictionary<uint, int>();   // 指纹 → 项目 id
+
+        foreach (var batch in Chunk(fingerprints.Distinct().ToList(), 1000))
+        {
+            try
+            {
+                var payload = JsonSerializer.Serialize(new { fingerprints = batch });
+                using var document = await PostAsync($"{BaseUrl}/fingerprints", payload, cancellationToken);
+
+                if (!document.RootElement.TryGetProperty("data", out var data)) continue;
+                if (!data.TryGetProperty("exactMatches", out var matchesArray)) continue;
+                if (matchesArray.ValueKind != JsonValueKind.Array) continue;
+
+                foreach (var match in matchesArray.EnumerateArray())
+                {
+                    if (!match.TryGetProperty("id", out var idElement)) continue;
+                    if (!match.TryGetProperty("file", out var file)) continue;
+                    if (!file.TryGetProperty("fingerprint", out var fingerprint)) continue;
+
+                    var modId = idElement.GetInt32();
+                    var value = fingerprint.TryGetUInt32(out var parsed)
+                        ? parsed
+                        : (uint)fingerprint.GetInt64();
+
+                    matches[value] = modId;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "curseforge fingerprints");
+            }
+        }
+
+        if (matches.Count == 0) return result;
+
+        foreach (var batch in Chunk(matches.Values.Distinct().ToList(), 50))
+        {
+            try
+            {
+                var ids = string.Join(',', batch);
+                using var document = await GetAsync($"{BaseUrl}/mods?modIds={ids}", cancellationToken);
+
+                if (!document.RootElement.TryGetProperty("data", out var data)) continue;
+                if (data.ValueKind != JsonValueKind.Array) continue;
+
+                foreach (var mod in data.EnumerateArray())
+                {
+                    if (!mod.TryGetProperty("id", out var idElement)) continue;
+                    if (!mod.TryGetProperty("logo", out var logo)) continue;
+
+                    var modId = idElement.GetInt32();
+                    var url = logo.ValueKind == JsonValueKind.Object
+                        ? (Text(logo, "thumbnailUrl") ?? Text(logo, "url"))
+                        : null;
+
+                    if (string.IsNullOrWhiteSpace(url)) continue;
+
+                    foreach (var (fingerprint, owner) in matches.Where(pair => pair.Value == modId))
+                        result[fingerprint] = url!;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "curseforge mod ascii");
+            }
+        }
+
+        return result;
+    }
+
+    private static IEnumerable<List<T>> Chunk<T>(List<T> source, int size)
+    {
+        for (var i = 0; i < source.Count; i += size)
+            yield return source.GetRange(i, Math.Min(size, source.Count - i));
+    }
+
     private static async Task<JsonDocument> GetAsync(string url, CancellationToken cancellationToken)
     {
         try
