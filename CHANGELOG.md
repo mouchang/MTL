@@ -3,6 +3,18 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.3] - 2026-11-01
+
+### 修复：NeoForge 1.20.1 整合包装不上
+
+日志里安装器退出码 1，`installer.log` 显示它去连 `maven.neoforged.net` 失败。
+NeoForge 安装器除了自己的 maven，还会去 `maven.minecraftforge.net` 拉 Forge 的库，
+而之前只改写 neoforged 的地址，剩下的照样连不上。
+
+- NeoForge 安装器同时改写两处：neoforged → 自建镜像，minecraftforge → BMCLAPI
+- 安装器失败时把 `installer.log` 的尾部带进错误信息，不用再翻临时目录
+
+实测：改写后的安装器能正常装出 `1.20.1-forge-47.1.106`，依赖全部「Checksum validated」。
 ## [1.1.1-beta.2] - 2026-11-01
 
 ### 去掉「下载限速」设置

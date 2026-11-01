@@ -165,8 +165,14 @@ public sealed class ForgeLoader
 
                 // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
                 progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
+                // NeoForge 1.20.1 的安装器仍会去 maven.minecraftforge.net 拉 Forge 的库，
+                // 只改 neoforged 不够，一样会卡在下载失败上。
+                // 两个来源用各自能对应上的镜像，别混用（Worker 只代理 neoforged 的路径）。
                 await PatchInstallerHostsAsync(installer, NeoForgeCdnBase, ["maven.neoforged.net"],
                     cancellationToken);
+
+                await PatchInstallerHostsAsync(installer, "https://bmclapi2.bangbang93.com/maven",
+                    ["maven.minecraftforge.net", "files.minecraftforge.net/maven"], cancellationToken);
             }
 
             // 3. 选 Java
@@ -281,10 +287,34 @@ public sealed class ForgeLoader
         await process.WaitForExitAsync(cancellationToken);
 
         if (process.ExitCode != 0)
+        {
+            // 安装器把真正的下载错误写进同目录的 installer.log，stdout 里只有崩溃摘要
+            var logTail = await TryReadInstallerLogAsync(workingDir, cancellationToken);
+
             throw new InvalidOperationException(
-                $"安装器退出码 {process.ExitCode}：\n{Tail(output.ToString())}");
+                $"安装器退出码 {process.ExitCode}：\n{Tail(output.ToString())}{logTail}");
+        }
 
         return output.ToString();
+    }
+
+    /// <summary>安装器崩溃时把 installer.log 的尾部带上，省得再去翻临时目录。</summary>
+    private static async Task<string> TryReadInstallerLogAsync(string workingDir,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var path = Path.Combine(workingDir, "installer.log");
+            if (!File.Exists(path)) return string.Empty;
+
+            var text = await File.ReadAllTextAsync(path, cancellationToken);
+
+            return "\n---- installer.log ----\n" + Tail(text);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     private static Task<JavaRuntime?> PickJavaAsync(string gameVersion)
