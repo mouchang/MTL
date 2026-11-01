@@ -110,6 +110,12 @@ public partial class ModrinthDetailView : UserControl
     private string? _targetInstance;
     private bool _installing;
     private string _loaderFilter = string.Empty;
+
+    /// <summary>这个项目实际出现过的加载器（按固定顺序，已去掉 Quilt）。</summary>
+    private readonly List<string> _projectLoaders = [];
+
+    /// <summary>版本里没写加载器时的兜底：整包项目取任意一个版本声明过的加载器。</summary>
+    private string? _inferredLoader;
     private readonly Stack<(ModrinthItem Item, string? GameVersion)> _history = new();
     private Action? _onBack;
     private Action<string>? _toast;
@@ -117,9 +123,6 @@ public partial class ModrinthDetailView : UserControl
     public ModrinthDetailView()
     {
         InitializeComponent();
-
-        // 构造完成后再选中，避免 XAML 解析阶段触发 Checked 事件时控件还没赋值
-        LoaderAllRadio.IsChecked = true;
     }
 
     public async Task LoadAsync(ModrinthItem item, string? initialGameVersion, Action onBack,
@@ -160,6 +163,8 @@ public partial class ModrinthDetailView : UserControl
                 item.Hit.ProjectType);
             _versions = await ResourceService.GetVersionsAsync(item.Platform, item.ProjectId);
 
+            CollectLoaders();
+
             if (_project is not null)
             {
                 if (!string.IsNullOrWhiteSpace(_project.Description))
@@ -187,7 +192,7 @@ public partial class ModrinthDetailView : UserControl
             {
                 _selectedGameVersion = initialGameVersion;
                 HighlightTabs();
-                LoaderRow.Visibility = item.Hit.ProjectType == "mod" ? Visibility.Visible : Visibility.Collapsed;
+                LoaderRow.Visibility = _projectLoaders.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
                 ApplyFilter(initialGameVersion ?? null);
                 SelectLoaderForInstance(targetInstance);
@@ -311,7 +316,7 @@ public partial class ModrinthDetailView : UserControl
         var versions = _versions
             .Where(v => gameVersion is null || v.GameVersions.Contains(gameVersion))
             .Where(v => _loaderFilter.Length == 0
-                        || v.Loaders.Contains(_loaderFilter, StringComparer.OrdinalIgnoreCase))
+                        || VersionLoaders(v).Contains(_loaderFilter, StringComparer.OrdinalIgnoreCase))
             .OrderByDescending(v => v.DatePublished)
             .ToList();
 
@@ -321,7 +326,7 @@ public partial class ModrinthDetailView : UserControl
             .Select(v => new ModrinthFileRow
             {
                 Version = v,
-                ProjectLoaders = string.IsNullOrEmpty(_loaderFilter) ? [] : [_loaderFilter],
+                ProjectLoaders = VersionLoaders(v),
                 ProjectType = _item?.Hit.ProjectType ?? "mod",
                 File = v.Files.FirstOrDefault(f => f.Primary) ?? v.Files.FirstOrDefault()!,
             })
@@ -542,6 +547,111 @@ public partial class ModrinthDetailView : UserControl
         }
     }
 
+    /// <summary>统计项目里出现过的加载器；没写加载器的版本按整包推断值处理。</summary>
+    private void CollectLoaders()
+    {
+        _projectLoaders.Clear();
+        _inferredLoader = null;
+
+        foreach (var version in _versions)
+        {
+            foreach (var loader in version.Loaders)
+            {
+                var normalized = loader.Trim().ToLowerInvariant();
+
+                if (normalized.Length == 0 || normalized is "quilt") continue;
+                if (_projectLoaders.Contains(normalized)) continue;
+
+                _projectLoaders.Add(normalized);
+            }
+        }
+
+        // 整合包的版本经常不写 loaders：只要有一个版本写过，就把它当成整包的加载器
+        _inferredLoader = _projectLoaders.FirstOrDefault();
+
+        // 固定顺序，免得不同版本顺序不同导致按钮乱跳
+        string[] order = ["fabric", "forge", "neoforge"];
+        _projectLoaders.Sort((left, right) =>
+        {
+            var a = Array.IndexOf(order, left);
+            var b = Array.IndexOf(order, right);
+            if (a < 0) a = int.MaxValue;
+            if (b < 0) b = int.MaxValue;
+            return a.CompareTo(b);
+        });
+
+        BuildLoaderButtons();
+    }
+
+    /// <summary>某个版本实际算哪个加载器：自己写了就用自己的，没写就跟着整包。</summary>
+    private List<string> VersionLoaders(ModrinthVersion version)
+    {
+        var loaders = version.Loaders
+            .Select(loader => loader.Trim().ToLowerInvariant())
+            .Where(loader => loader.Length > 0 && loader != "quilt")
+            .Distinct()
+            .ToList();
+
+        if (loaders.Count > 0) return loaders;
+
+        return _inferredLoader is null ? [] : [_inferredLoader];
+    }
+
+    /// <summary>按实际存在的加载器生成筛选按钮（没有就不显示这一行）。</summary>
+    private void BuildLoaderButtons()
+    {
+        LoaderPanel.Children.Clear();
+
+        if (_projectLoaders.Count == 0)
+        {
+            LoaderRow.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        LoaderRow.Visibility = Visibility.Visible;
+
+        AddLoaderButton("全部", string.Empty);
+
+        foreach (var loader in _projectLoaders)
+            AddLoaderButton(LoaderDisplayName(loader), loader);
+
+        // 之前选中的加载器还在就保留，否则回到「全部」
+        if (_loaderFilter.Length > 0 && !_projectLoaders.Contains(_loaderFilter))
+            _loaderFilter = string.Empty;
+
+        foreach (var child in LoaderPanel.Children)
+        {
+            if (child is RadioButton { Tag: string tag } radio && tag == _loaderFilter)
+            {
+                radio.IsChecked = true;
+                return;
+            }
+        }
+    }
+
+    private void AddLoaderButton(string text, string tag)
+    {
+        var button = new RadioButton
+        {
+            Style = (Style)FindResource("SegmentItem"),
+            GroupName = "LoaderFilter",
+            Content = text,
+            Tag = tag,
+            Margin = new Thickness(0, 0, 4, 0),
+        };
+
+        button.Checked += LoaderFilter_Checked;
+        LoaderPanel.Children.Add(button);
+    }
+
+    private static string LoaderDisplayName(string loader) => loader switch
+    {
+        "fabric" => "Fabric",
+        "forge" => "Forge",
+        "neoforge" => "NeoForge",
+        _ => loader,
+    };
+
     private void LoaderFilter_Checked(object sender, RoutedEventArgs e)
     {
         if (sender is not RadioButton { Tag: string tag }) return;
@@ -569,7 +679,7 @@ public partial class ModrinthDetailView : UserControl
 
             RadioButton? target = null;
 
-            foreach (var child in LoaderRow.Children)
+            foreach (var child in LoaderPanel.Children)
             {
                 if (child is RadioButton { Tag: string tag } radio && tag == loader)
                 {
