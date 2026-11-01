@@ -413,6 +413,12 @@ public sealed class CurseForgeClient
     private static CurseForgeFile? ParseFile(JsonElement item, string? overrideUrl = null)
     {
         var downloadUrl = overrideUrl ?? Text(item, "downloadUrl");
+
+        // 作者关闭了第三方分发时 downloadUrl 是 null，但文件本身在 CDN 上。
+        // 以前这里直接 return null，导致这类 Mod 的版本列表整个是空的。
+        if (string.IsNullOrWhiteSpace(downloadUrl))
+            downloadUrl = BuildCdnUrl(Int(item, "id"), Text(item, "fileName"));
+
         if (string.IsNullOrWhiteSpace(downloadUrl)) return null;
 
         var gameVersions = Strings(item, "gameVersions");

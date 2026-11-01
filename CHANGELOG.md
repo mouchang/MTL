@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.8] - 2026-11-01
+
+### 修复：部分 CurseForge 项目的版本列表为空
+
+日志给出了确切原因：
+
+```
+curseforge files: mod 521480 取到 0 个（共 956 个，已截断）
+```
+
+接口其实返回了 956 个文件，但**解析阶段把它们全丢了**——
+作者关闭了第三方分发，这批文件的 `downloadUrl` 是 `null`，
+而解析函数遇到空地址就直接丢弃该条目。
+
+现在空地址会按文件 id 拼 CDN 路径（`mediafilez.forgecdn.net/files/{id/1000}/{id%1000}/{名字}`），
+实测这些文件在 CDN 上确实存在（HTTP 200）。
 ## [1.1.1-beta.7] - 2026-11-01
 
 ### 修复：同一个 Mod 在搜索结果里出现两次
