@@ -3,6 +3,19 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.4] - 2026-11-01
+
+### 修复：改写安装器时把 jar 写坏了
+
+上一版让安装器「秒退」（启动两秒就报退出码 1，installer.log 里全是
+`java.net.UnknownHostException: https`）。原因有两个：
+
+1. 用 `ZipArchiveMode.Update` 原地删改条目会打乱其余条目的偏移，产出的 jar 内部结构损坏
+2. 替换时把「带协议头的地址」写进「主机名」位置，URL 变成 `https://https://…`
+
+现在：全部条目读进内存 → 写全新 jar → 原子替换；替换只针对主机名，协议头保持原样。
+
+实测改写后的安装器能正常拉取依赖（`Download completed: Checksum validated.`）。
 ## [1.1.1-beta.3] - 2026-11-01
 
 ### 修复：NeoForge 1.20.1 整合包装不上

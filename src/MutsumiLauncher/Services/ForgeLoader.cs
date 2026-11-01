@@ -290,9 +290,13 @@ public sealed class ForgeLoader
         {
             // 安装器把真正的下载错误写进同目录的 installer.log，stdout 里只有崩溃摘要
             var logTail = await TryReadInstallerLogAsync(workingDir, cancellationToken);
+            var full = output.ToString();
+
+            // 完整输出进日志：崩溃报告常常把真正的异常夹在中间
+            AppLog.Info("forge installer output:\n" + full + logTail);
 
             throw new InvalidOperationException(
-                $"安装器退出码 {process.ExitCode}：\n{Tail(output.ToString())}{logTail}");
+                $"安装器退出码 {process.ExitCode}：\n{Head(full)}{Tail(full)}{logTail}");
         }
 
         return output.ToString();
@@ -327,43 +331,63 @@ public sealed class ForgeLoader
     private static async Task PatchInstallerHostsAsync(string jarPath, string cdnBaseUrl,
         string[] hosts, CancellationToken cancellationToken)
     {
-        using var archive = ZipFile.Open(jarPath, ZipArchiveMode.Update);
-
-        var targets = archive.Entries
-            .Where(entry => entry.FullName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
+        // 不能在 Update 模式下原地删改条目：删一个会打乱其它条目的偏移，
+        // 之前生成的 jar 虽然能启动，但安装器读内部配置时直接失败（表现为秒退）。
+        // 改成：全部读进内存 → 写一个新 jar → 原子替换。
+        var entries = new List<(string Name, byte[] Data)>();
         var patchedCount = 0;
 
-        foreach (var entry in targets)
+        using (var source = ZipFile.OpenRead(jarPath))
         {
-            string text;
-            using (var stream = entry.Open())
-            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            foreach (var entry in source.Entries)
             {
-                text = await reader.ReadToEndAsync(cancellationToken);
+                using var stream = entry.Open();
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer, cancellationToken);
+
+                var data = buffer.ToArray();
+
+                if (entry.FullName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    var text = Encoding.UTF8.GetString(data);
+                    var patched = text;
+
+                    // 只替换「主机名」部分：JSON 里的 URL 形态各不相同
+                    //（https://host、https:\/\/host 都出现过），
+                    // 但替换目标不能再带协议头，否则会变成 https://https://…
+                    var mirror = cdnBaseUrl
+                        .Replace("https://", "", StringComparison.OrdinalIgnoreCase)
+                        .Replace("http://", "", StringComparison.OrdinalIgnoreCase)
+                        .TrimEnd('/');
+
+                    foreach (var host in hosts)
+                        patched = patched.Replace(host, mirror, StringComparison.OrdinalIgnoreCase);
+
+                    if (patched != text)
+                    {
+                        data = Encoding.UTF8.GetBytes(patched);
+                        patchedCount++;
+                    }
+                }
+
+                entries.Add((entry.FullName, data));
             }
-
-            if (!hosts.Any(host => text.Contains(host, StringComparison.OrdinalIgnoreCase))) continue;
-
-            var patched = text;
-
-            foreach (var host in hosts)
-            {
-                patched = patched
-                    .Replace("https://" + host, cdnBaseUrl, StringComparison.OrdinalIgnoreCase)
-                    .Replace("http://" + host, cdnBaseUrl, StringComparison.OrdinalIgnoreCase);
-            }
-
-            var name = entry.FullName;
-            entry.Delete();
-
-            var created = archive.CreateEntry(name);
-            await using var output = created.Open();
-            await using var writer = new StreamWriter(output, new UTF8Encoding(false));
-            await writer.WriteAsync(patched);
-            patchedCount++;
         }
+
+        var temp = jarPath + ".patched";
+
+        using (var target = ZipFile.Open(temp, ZipArchiveMode.Create))
+        {
+            foreach (var (name, data) in entries)
+            {
+                var entry = target.CreateEntry(name, CompressionLevel.Optimal);
+
+                await using var stream = entry.Open();
+                await stream.WriteAsync(data, cancellationToken);
+            }
+        }
+
+        File.Move(temp, jarPath, overwrite: true);
 
         AppLog.Info($"neoforge installer patched: {patchedCount} entries");
     }
@@ -409,6 +433,11 @@ public sealed class ForgeLoader
             File.Copy(file, destination, overwrite: true);
         }
     }
+
+    /// <summary>输出开头若干行——真正的异常往往在最前面。</summary>
+    private static string Head(string text, int lines = 25)
+        => string.Join(Environment.NewLine,
+            text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(lines)) + "\n…\n";
 
     private static string Tail(string text, int lines = 12)
         => string.Join(Environment.NewLine,
