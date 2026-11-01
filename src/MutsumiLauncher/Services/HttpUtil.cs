@@ -21,14 +21,17 @@ public static class HttpUtil
     /// （CurseForge / Modrinth 都挂在 Cloudflare 上）。
     /// 绕代理反而会先失败两次，实测能把一次搜索从 2 秒拖到 23 秒。
     /// </summary>
-    /// <summary>需要强制走代理的社区源：Modrinth 和 CurseForge 的文件 CDN。</summary>
-    private static bool IsOfficialSource(string url) =>
-        url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("forgecdn", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("overwolf.wtf", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("piston-data.mojang.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("launchermeta.mojang.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("resources.download.minecraft.net", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// 走代理的资源。现在只代理 Modrinth 的文件 CDN：
+    /// 其余（ForgeCDN、Mojang、自家 Worker、BMCLAPI 镜像）都直连，
+    /// 直连失败时才退到代理，避免把代理带宽花在本来就能直连的源上。
+    /// 图标请求通过 <see cref="Create"/> 的 preferProxy 参数单独强制走代理。
+    /// </summary>
+    public static bool IsModrinthResource(string url) =>
+        url.Contains("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>当前配置下是否可能启用代理（auto / system / custom）。</summary>
+    public static bool ProxyConfigured => Mode is "auto" or "system" or "custom";
 
     private static bool IsDomestic(string url) =>
         url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
@@ -53,9 +56,10 @@ public static class HttpUtil
     private static readonly ConcurrentDictionary<string, HttpClient> ProxyClients =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null)
+    public static HttpClient Create(TimeSpan? timeout = null, string? userAgent = null,
+        bool preferProxy = false)
     {
-        var client = new HttpClient(new RouteHandler(Mode))
+        var client = new HttpClient(new RouteHandler(Mode, preferProxy))
         {
             Timeout = timeout ?? TimeSpan.FromMinutes(2),
         };
@@ -70,7 +74,13 @@ public static class HttpUtil
     private static SocketsHttpHandler NewHandler() => new()
     {
         ConnectTimeout = TimeSpan.FromSeconds(15),
-        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+
+        // 连接复用：下载是一批一批来的，任务间隙别把连接回收掉，
+        // 否则每个文件都要重新握手（走代理时代价尤其大）
+        PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+        MaxConnectionsPerServer = 8,
+
         AutomaticDecompression = DecompressionMethods.All,
     };
 
@@ -179,9 +189,12 @@ public static class HttpUtil
         /// <summary>本机代理（7890 之类）失败后的冷却时间，所有请求共享，别每次都白等一遍。</summary>
         private static long _proxyDownUntilTicks;
 
-        public RouteHandler(string mode)
+        private readonly bool _preferProxy;
+
+        public RouteHandler(string mode, bool preferProxy = false)
         {
             _mode = mode;
+            _preferProxy = preferProxy;
             _direct = new HttpClient(NewHandler(), disposeHandler: false)
             {
                 Timeout = Timeout.InfiniteTimeSpan,
@@ -315,26 +328,17 @@ public static class HttpUtil
                 return routes;
             }
 
-            if (IsDomestic(url))
-            {
-                // 国内镜像：先直连，真不行再考虑代理
-                routes.Add(_direct);
-                routes.Add(proxy);
-                return routes;
-            }
-
-            // 官方源（Modrinth / CurseForge / Mojang CDN）：优先代理；直连只作为
-            // 最后一根稻草——代理节点全挂时不至于整个下载直接失败（直连慢但能通）
-            if (IsOfficialSource(url))
+            // 只有 Modrinth 的文件 CDN、以及需要联网取图标的请求（_preferProxy）才优先代理；
+            // 其余一律直连优先 —— 代理带宽只花在真正需要的资源上
+            if (_preferProxy || IsModrinthResource(url))
             {
                 routes.Add(proxy);
                 routes.Add(_direct);
                 return routes;
             }
 
-            // 其余情况先走代理（这类域名在国内基本直连不通）
-            routes.Add(proxy);
             routes.Add(_direct);
+            routes.Add(proxy);
             return routes;
         }
 

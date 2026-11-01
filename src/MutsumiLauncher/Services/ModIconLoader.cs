@@ -15,7 +15,9 @@ public static class ModIconLoader
     private static readonly Regex AssetIcon = new(@"^assets/[^/]+/icon\.png$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static readonly HttpClient Http = HttpUtil.Create(TimeSpan.FromSeconds(30));
+    // 图标一律走代理：这些 CDN 在国内直连基本拉不动，而且图标体积小，值得花代理带宽
+    private static readonly HttpClient Http =
+        HttpUtil.Create(TimeSpan.FromSeconds(30), preferProxy: true);
 
     public static string CacheKeyFor(string filePath, long size)
     {

@@ -118,10 +118,19 @@ public static class DownloadEngine
     }
 
     private const long MinSplitSize = 256 * 1024;
-    // 每段 4MB：段太小会让连接数爆炸，反而把代理节点挤爆（越下越慢）
-    private const long PreferredPiece = 4 * 1024 * 1024;
-    private const int MaxPieces = 8;
-    private const int ReadTimeoutSeconds = 10;
+
+    /// <summary>
+    /// 一次下载的调度参数。直连沿用 PCL2 那套激进换源（国内源质量差异大，换源确实有用）；
+    /// 走代理时改成保守模式：并发更少、分片更大、不掐断在途连接、只等「真的没数据」。
+    /// 代理链路上所有分段共享一条隧道，激进换源等于自己把节点打爆。
+    /// </summary>
+    private readonly record struct Tuning(int MaxPieces, long PieceSize, int StallSeconds,
+        bool AggressiveSwitch)
+    {
+        public static Tuning For(bool proxied) => proxied
+            ? new Tuning(4, 8 * 1024 * 1024, 30, false)
+            : new Tuning(8, 4 * 1024 * 1024, 10, true);
+    }
 
     public static Task<string> DownloadAsync(IReadOnlyList<string> urls, string targetPath,
         string? sha1 = null, long? expectedSize = null,
@@ -149,6 +158,12 @@ public static class DownloadEngine
         var pool = new SourcePool(endpoints);
         var size = expectedSize ?? await ProbeSizeAsync(pool, cancellationToken);
 
+        // 这条下载会不会走代理：只有 Modrinth 的资源会被优先代理
+        var proxied = HttpUtil.ProxyConfigured
+                      && endpoints.Any(endpoint => HttpUtil.IsModrinthResource(endpoint.Url));
+
+        var tuning = Tuning.For(proxied);
+
         while (true)
         {
             try
@@ -158,7 +173,7 @@ public static class DownloadEngine
                     try
                     {
                         await DownloadRangedAsync(pool, targetPath, size.Value, sha1, progress,
-                            cancellationToken);
+                            tuning, cancellationToken);
 
                         return targetPath;
                     }
@@ -169,7 +184,7 @@ public static class DownloadEngine
                 }
 
                 await DownloadSingleAsync(pool, targetPath, sha1, expectedSize, progress,
-                    cancellationToken);
+                    tuning, cancellationToken);
 
                 return targetPath;
             }
@@ -234,10 +249,10 @@ public static class DownloadEngine
     }
 
     private static async Task<int> ReadWithTimeoutAsync(Stream stream, byte[] buffer,
-        CancellationToken cancellationToken)
+        int stallSeconds, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(ReadTimeoutSeconds));
+        timeout.CancelAfter(TimeSpan.FromSeconds(stallSeconds));
 
         try
         {
@@ -250,7 +265,8 @@ public static class DownloadEngine
     }
 
     private static async Task DownloadSingleAsync(SourcePool pool, string targetPath, string? sha1,
-        long? expectedSize, IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
+        long? expectedSize, IProgress<DownloadProgress>? progress, Tuning tuning,
+        CancellationToken cancellationToken)
     {
         var temp = targetPath + ".part";
         Exception? lastError = null;
@@ -294,7 +310,8 @@ public static class DownloadEngine
                     try
                     {
                         int read;
-                        while ((read = await ReadWithTimeoutAsync(source, buffer, cancellationToken)) > 0)
+                        while ((read = await ReadWithTimeoutAsync(source, buffer, tuning.StallSeconds,
+                                   cancellationToken)) > 0)
                         {
                             await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                             hash.AppendData(buffer, 0, read);
@@ -348,10 +365,11 @@ public static class DownloadEngine
     }
 
     private static async Task DownloadRangedAsync(SourcePool pool, string targetPath, long size,
-        string? sha1, IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
+        string? sha1, IProgress<DownloadProgress>? progress, Tuning tuning,
+        CancellationToken cancellationToken)
     {
         var temp = targetPath + ".part";
-        var pieceCount = Math.Clamp((int)(size / PreferredPiece), 2, MaxPieces);
+        var pieceCount = Math.Clamp((int)(size / tuning.PieceSize), 2, tuning.MaxPieces);
         var pieceSize = (size + pieceCount - 1) / pieceCount;
 
         var received = 0L;
@@ -377,7 +395,7 @@ public static class DownloadEngine
                 // 错峰启动：同时建一堆连接会把代理节点的队列塞满，前几秒快、后面全变慢
                 if (i > 0) await Task.Delay(120, cancellationToken);
 
-                tasks.Add(DownloadPieceWithFailoverAsync(pool, temp, start, end, size,
+                tasks.Add(DownloadPieceWithFailoverAsync(pool, temp, start, end, size, tuning,
                     pieceCts.Token, delta =>
                     {
                         var total = Math.Min(Interlocked.Add(ref received, delta), size);
@@ -426,11 +444,12 @@ public static class DownloadEngine
     }
 
     private static async Task DownloadPieceWithFailoverAsync(SourcePool pool, string path, long start,
-        long end, long totalSize, CancellationToken cancellationToken, Action<long> onBytes)
+        long end, long totalSize, Tuning tuning, CancellationToken cancellationToken, Action<long> onBytes)
     {
         Exception? lastError = null;
         var cursor = new PieceCursor(start);
         var slowSwitches = 0;
+        var failures = 0;
 
         while (cursor.Start <= end)
         {
@@ -447,7 +466,7 @@ public static class DownloadEngine
 
             try
             {
-                await DownloadPieceAsync(endpoint, path, cursor, end, cancellationToken, onBytes);
+                await DownloadPieceAsync(endpoint, path, cursor, end, tuning, cancellationToken, onBytes);
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -482,12 +501,24 @@ public static class DownloadEngine
 
                 pool.Fail(endpoint, ex);
                 AppLog.Error(ex, $"piece {start}-{end} failed: {endpoint.Url}");
+
+                // 立刻重拨只会把抖动放大成风暴：退避 0.5s → 1s → 2s …（带抖动）
+                await BackoffAsync(++failures, cancellationToken);
             }
         }
     }
 
+    /// <summary>失败退避：0.5s / 1s / 2s / 4s（上限 8s），带 ±30% 抖动避免多分段同步重拨。</summary>
+    private static async Task BackoffAsync(int attempt, CancellationToken cancellationToken)
+    {
+        var baseMs = Math.Min(8000, 500 * Math.Pow(2, Math.Min(attempt - 1, 4)));
+        var jitter = 1 + Random.Shared.NextDouble() * 0.3;
+
+        await Task.Delay(TimeSpan.FromMilliseconds(baseMs * jitter), cancellationToken);
+    }
+
     private static async Task DownloadPieceAsync(DownloadEndpoint endpoint, string path, PieceCursor cursor,
-        long end, CancellationToken cancellationToken, Action<long> onBytes)
+        long end, Tuning tuning, CancellationToken cancellationToken, Action<long> onBytes)
     {
         var attempt = 0;
 
@@ -527,7 +558,8 @@ public static class DownloadEngine
                 try
                 {
                     int read;
-                    while ((read = await ReadWithTimeoutAsync(stream, buffer, cancellationToken)) > 0)
+                    while ((read = await ReadWithTimeoutAsync(stream, buffer, tuning.StallSeconds,
+                               cancellationToken)) > 0)
                     {
                         await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                         written += read;
@@ -552,7 +584,9 @@ public static class DownloadEngine
                         // 收尾阶段一律不动：重连开销比剩余数据还大。
                         var threshold = SlowThreshold();
 
-                        if (speed < threshold && remaining > 1024 * 1024)
+                        // 走代理时不按"比中位数慢"换源：所有分段共享一条隧道，
+                        // 互相比较只会把还在正常传的连接也判成慢源。只靠停滞超时兜底。
+                        if (tuning.AggressiveSwitch && speed < threshold && remaining > 1024 * 1024)
                         {
                             slowWindows++;
 
