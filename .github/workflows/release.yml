@@ -33,8 +33,9 @@ jobs:
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = $tag.TrimStart('v', 'V')
 
-          # 标题自动生成，不再依赖仓库里的静态文件（那种文件每次发版都要改，容易忘记）
-          $title = "MTL Release v$version build 1"
+          # 标题自动生成；正式版不带 build 后缀，预发布才带
+          if ($tag -match "-") { $title = "MTL Beta v$version" }
+          else { $title = "MTL Release v$version" }
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
@@ -101,6 +102,13 @@ jobs:
 
             # 去掉开头的版本标题行，页面标题已经写了版本
             $body = ($body -split "`n" | Select-Object -Skip 1) -join "`n"
+
+            # 公告只保留「更新内容」部分；「技术实现」属于 CHANGELOG，不往发布页贴
+            $cut = $body.IndexOf("### 技术实现")
+            if ($cut -lt 0) { $cut = $body.IndexOf("### 技术细节") }
+            if ($cut -lt 0) { $cut = $body.IndexOf("### 技术") }
+            if ($cut -ge 0) { $body = $body.Substring(0, $cut) }
+
             $body = $body.Trim()
           }
 

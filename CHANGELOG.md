@@ -3,145 +3,122 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.1.1-beta.9] - 2026-11-01
+## [1.1.1] - 2026-11-01
 
-### 详情页的加载器筛选按实际数据生成
+### 更新内容
 
-- 去掉固定的 Fabric / Forge / NeoForge / **Quilt** 四个按钮
-- 改成：版本里实际出现过哪些加载器，就只显示哪些按钮（没有就整行隐藏）
-- 整合包的版本经常不写 `loaders`：只要任意一个版本写过，就把它当作整个包的加载器，
-  其余版本、版本图标也跟着用这个值
-## [1.1.1-beta.8] - 2026-11-01
+- 下载调度按链路分档：直连保持激进换源，走代理时换成保守参数
+- 失败重试改为指数退避，连接池改为长生命周期，任务间隙不再重连
+- 去掉「下载限速」设置（原先默认 10 MB/s，会把直连也一起拖慢）
+- 修复：Forge 1.17+ 整合包装不上（安装器被改写后校验失败）
+- 修复：部分 CurseForge 项目版本列表为空、详情页显示 0 个版本
+- 修复：同一个 Mod 在搜索结果里出现两次（跨平台 slug 不一致）
+- 修复：版本列表接口失败后把空结果写进缓存，导致永远空
+- 详情页加载器筛选按实际数据生成，移除 Quilt 按钮
+- 整合包的加载器信息缺失时沿用推断值，版本图标同步修正
 
-### 修复：部分 CurseForge 项目的版本列表为空
+### 技术实现
 
-日志给出了确切原因：
+#### 1. 下载调度分成两套参数
 
-```
-curseforge files: mod 521480 取到 0 个（共 956 个，已截断）
-```
+旧逻辑对所有链路都用同一套「按相对速度判定慢源 → 中止 → 换源」策略。这套在直连时代
+有效，但走代理时所有分段共享一条隧道：8 条连接互相抢带宽，每条都低于中位数的 1/6，
+于是集体判定为慢源、集体中止重连，形成「越换越慢」的正反馈。
 
-接口其实返回了 956 个文件，但**解析阶段把它们全丢了**——
-作者关闭了第三方分发，这批文件的 `downloadUrl` 是 `null`，
-而解析函数遇到空地址就直接丢弃该条目。
-
-现在空地址会按文件 id 拼 CDN 路径（`mediafilez.forgecdn.net/files/{id/1000}/{id%1000}/{名字}`），
-实测这些文件在 CDN 上确实存在（HTTP 200）。
-## [1.1.1-beta.7] - 2026-11-01
-
-### 修复：同一个 Mod 在搜索结果里出现两次
-
-图里「3D 皮肤层」同时挂着 Modrinth 和 CurseForge 两张卡片，本该合成一张。
-
-原因：归并键只取 slug，而两个平台的 slug 并不一致：
-
-```
-Modrinth : 3dskinlayers
-CurseForge: skin-layers-3d
+```csharp
+private readonly record struct Tuning(int MaxPieces, long PieceSize, int StallSeconds,
+    bool AggressiveSwitch)
+{
+    public static Tuning For(bool proxied) => proxied
+        ? new Tuning(4, 8 * 1024 * 1024, 20, false)   // 代理：保守
+        : new Tuning(8, 4 * 1024 * 1024, 10, true);   // 直连：PCL2 式
+}
 ```
 
-现在按三档依次匹配，命中任意一档就归为一组：
+读超时也从「固定 10 秒」改成「无进展超时」：只要窗口内收到过字节就继续等，
+慢但持续有数据不再算故障。
 
-1. MC百科条目 id（两边对上同一条 → 基本可确定是同一个 Mod）
+```csharp
+timeout.CancelAfter(TimeSpan.FromSeconds(tuning.StallSeconds));
+```
+
+#### 2. 失败退避与连接复用
+
+重试原本是立刻重拨，多个分段会同步冲击代理节点。改为 0.5s → 8s 的指数退避，带 ±30% 抖动：
+
+```csharp
+var baseMs = Math.Min(8000, 500 * Math.Pow(2, Math.Min(attempt - 1, 4)));
+var jitter = 1 + Random.Shared.NextDouble() * 0.3;
+```
+
+连接池同步调整，避免任务间隙（下一个 Mod 开始前）重新握手：
+
+```csharp
+PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+MaxConnectionsPerServer = 8,
+```
+
+#### 3. 限速设置移除
+
+`AppConfig.MaxDownloadSpeedKbps` 删除，`DownloadEngine.ApplySpeedLimit()` 移除。
+令牌桶不再是全局闸门——它原本只该约束加速线路，但实现成了对直连也生效。
+
+#### 4. Forge 1.17+ 安装失败
+
+诊断为两层原因：
+
+1. Forge 47.x 的安装器会校验自身内容；用 `ZipArchiveMode.Update` 原地改条目、
+   或在 JSON 里替换下载地址，都会让安装器启动两秒内报「A problem installing was detected」，
+   且崩溃报告不带异常信息。
+2. 安装器是独立 JVM，自己的 `HttpURLConnection` 不走启动器的路由。
+
+最终改法：**不改写 jar**，只把探测到的代理以 JVM 参数传给安装器：
+
+```csharp
+if (await HttpUtil.DetectProxyAsync(ct) is { } proxy)
+{
+    startInfo.ArgumentList.Add($"-Dhttps.proxyHost={proxy.Host}");
+    startInfo.ArgumentList.Add($"-Dhttps.proxyPort={proxy.Port}");
+}
+```
+
+没有代理时安装器仍可完成（会自动回落到 `maven.creeperhost.net` 镜像），只是更慢。
+
+#### 5. CurseForge 版本列表为空
+
+两个独立缺陷：
+
+- **缓存毒化**：请求失败返回空列表后，`[]` 被写进 `data\cache\api\versions-CurseForge-<id>.json`，
+  之后每次都读缓存，永不重试。现在空列表不写缓存、读到空缓存也重新拉取。
+- **条目被整批丢弃**：作者关闭第三方分发时接口返回 `downloadUrl: null`，
+  解析函数遇到空地址直接 `return null`，956 个文件全被丢掉。
+  现在按文件 id 拼 CDN 路径：`mediafilez.forgecdn.net/files/{id/1000}/{id%1000}/{文件名}`。
+
+#### 6. 跨平台归并
+
+搜索结果里同一个 Mod 会同时来自两个平台，归并键原本只取 slug，但两边写法不同：
+
+```
+Modrinth   : 3dskinlayers
+CurseForge : skin-layers-3d
+```
+
+改为三档匹配，命中任意一档即归为一组：
+
+1. MC百科条目 id
 2. 标题分词排序（`3D Skin Layers` 与 `Skin Layers 3D` 词集相同）
-3. slug（最严格，放最后兜底）
-## [1.1.1-beta.6] - 2026-11-01
+3. slug
 
-### 修复：CurseForge 项目的版本页永远显示「0 个版本」
+#### 7. 加载器筛选动态化
 
-详情页空白、`版本来源：CurseForge（0 个版本）`，换游戏版本也没用。
+固定四按钮改为按版本实际出现的加载器生成，`quilt` 直接排除；
+整合包版本未声明 `loaders` 时沿用「任意版本声明过的值」，版本图标同步：
 
-原因：某次请求失败返回了空列表，这个 `[]` 被写进了磁盘缓存
-（`data\cache\api\versions-CurseForge-<id>.json`），之后每次都直接读缓存，
-再也不会重新请求。
-
-- 空列表不再写缓存，读到空缓存也会重新拉取
-- CurseForge 返回 0 个文件时记一条日志，便于定位
-## [1.1.1-beta.5] - 2026-11-01
-
-### 换掉「改写安装器」方案：改成给安装器传代理
-
-实测发现 Forge 47.x 的安装器会校验自身内容，jar 一旦被改写就秒退：
-
+```csharp
+private List<string> VersionLoaders(ModrinthVersion version)
+    => version.Loaders.Count > 0 ? normalized : _inferredLoader is null ? [] : [_inferredLoader];
 ```
-A problem installing was detected, install cannot continue
-```
-
-而且崩溃报告不带任何异常信息，很难查。所以放弃改写 jar：
-
-- 安装器按原样运行，不再改动其内容
-- 启动安装器时探测系统代理 / 本机常见端口，把 `-Dhttp(s).proxyHost/Port` 传给它
-- 探测不到代理时保持原样（直接连官方）
-
-实测（同一份 Forge 1.20.1-47.4.0 安装器，走本机 7890 代理）：
-
-```
-Injecting profile
-Successfully installed client into launcher.
-→ versions/1.20.1-forge-47.4.0
-```
-## [1.1.1-beta.4] - 2026-11-01
-
-### 修复：改写安装器时把 jar 写坏了
-
-上一版让安装器「秒退」（启动两秒就报退出码 1，installer.log 里全是
-`java.net.UnknownHostException: https`）。原因有两个：
-
-1. 用 `ZipArchiveMode.Update` 原地删改条目会打乱其余条目的偏移，产出的 jar 内部结构损坏
-2. 替换时把「带协议头的地址」写进「主机名」位置，URL 变成 `https://https://…`
-
-现在：全部条目读进内存 → 写全新 jar → 原子替换；替换只针对主机名，协议头保持原样。
-
-实测改写后的安装器能正常拉取依赖（`Download completed: Checksum validated.`）。
-## [1.1.1-beta.3] - 2026-11-01
-
-### 修复：NeoForge 1.20.1 整合包装不上
-
-日志里安装器退出码 1，`installer.log` 显示它去连 `maven.neoforged.net` 失败。
-NeoForge 安装器除了自己的 maven，还会去 `maven.minecraftforge.net` 拉 Forge 的库，
-而之前只改写 neoforged 的地址，剩下的照样连不上。
-
-- NeoForge 安装器同时改写两处：neoforged → 自建镜像，minecraftforge → BMCLAPI
-- 安装器失败时把 `installer.log` 的尾部带进错误信息，不用再翻临时目录
-
-实测：改写后的安装器能正常装出 `1.20.1-forge-47.1.106`，依赖全部「Checksum validated」。
-## [1.1.1-beta.2] - 2026-11-01
-
-### 去掉「下载限速」设置
-
-回退内置代理后，这个设置又冒了出来，而且默认就把速度压在 10 MB/s。
-现在没有需要限制的加速线路，全局限速只会拖慢所有人：
-
-- 设置页「下载限速」卡片删除
-- `AppConfig.MaxDownloadSpeedKbps` 删除
-- 下载引擎不再配置令牌桶（`SpeedLimiter` 保持不限速）
-## [1.1.1-beta.1] - 2026-11-01
-
-### 代理链路适配：下载调度分两套
-
-之前所有下载都用「PCL2 式激进换源」——按相对速度判定慢源、掐断重连、8 段并发。
-这套在国内劣质直连下有效，但走代理时所有分段共享一条隧道，会互相判定为慢源并集体掐断，
-形成「越换越慢」的正循环（实测第一轮 5MB/s，第二轮必断）。
-
-现在按链路类型自动切换：
-
-| 参数 | 直连 | 走代理 |
-| --- | --- | --- |
-| 并发分段 | 8 | 4 |
-| 分片大小 | 4 MB | 8 MB |
-| 停滞超时 | 10 s | 30 s |
-| 按速度换源 | 开启 | **关闭**（只等真停滞） |
-
-另外：失败重试加了指数退避（0.5s → 8s，带抖动），连接池改为 10 分钟生命周期、
-5 分钟空闲回收、单站 8 连接，任务间隙不再重新握手。
-
-### 代理只用在 Modrinth 资源和图标
-
-- **走代理**：`cdn.modrinth.com` 的文件、所有联网获取的图标（CurseForge / Modrinth）
-- **直连优先**：BMCLAPI、MCIM、自家 Worker、ForgeCDN、Mojang 官方接口
-- 直连真失败时仍会退到代理，不会因为没代理直接下不了
-
-下载限速保持 10 MB/s（`MaxDownloadSpeedKbps = 10240`）。
 ## [1.1.0] - 2026-11-01
 
 正式版。相比 1.0.0 的主要变化：
