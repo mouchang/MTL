@@ -635,12 +635,16 @@ public static class ResourceService
         string projectId, CancellationToken cancellationToken = default)
     {
         var key = $"{platform}:{projectId}";
-        if (VersionCache.TryGetValue(key, out var cached)) return cached;
 
-        if (TryLoadDisk($"versions-{platform}-{projectId}", out List<ModrinthVersion>? diskVersions))
+        // 空列表不进缓存：之前一次请求失败把 [] 写进了磁盘缓存，
+        // 结果这个项目的版本页永远是「0 个版本」，只能手动删缓存才能恢复。
+        if (VersionCache.TryGetValue(key, out var cached) && cached.Count > 0) return cached;
+
+        if (TryLoadDisk($"versions-{platform}-{projectId}", out List<ModrinthVersion>? diskVersions)
+            && diskVersions is { Count: > 0 })
         {
-            VersionCache[key] = diskVersions!;
-            return diskVersions!;
+            VersionCache[key] = diskVersions;
+            return diskVersions;
         }
 
         IReadOnlyList<ModrinthVersion> versions;
@@ -650,6 +654,9 @@ public static class ResourceService
             if (!int.TryParse(projectId, out var modId)) return [];
 
             var files = await CurseForge.GetFilesAsync(modId, null, null, cancellationToken);
+
+            if (files.Count == 0)
+                AppLog.Info($"curseforge versions: mod {modId} 没有取到文件列表");
             versions = files.Select(file => new ModrinthVersion
             {
                 Id = file.Id.ToString(),
@@ -684,6 +691,12 @@ public static class ResourceService
         else
         {
             versions = await Modrinth.GetVersionsAsync(projectId, cancellationToken);
+        }
+
+        if (versions.Count == 0)
+        {
+            AppLog.Info($"resource versions: {platform} {projectId} 返回空列表（不缓存）");
+            return versions;
         }
 
         VersionCache[key] = versions;

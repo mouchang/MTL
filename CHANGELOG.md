@@ -3,6 +3,18 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.6] - 2026-11-01
+
+### 修复：CurseForge 项目的版本页永远显示「0 个版本」
+
+详情页空白、`版本来源：CurseForge（0 个版本）`，换游戏版本也没用。
+
+原因：某次请求失败返回了空列表，这个 `[]` 被写进了磁盘缓存
+（`data\cache\api\versions-CurseForge-<id>.json`），之后每次都直接读缓存，
+再也不会重新请求。
+
+- 空列表不再写缓存，读到空缓存也会重新拉取
+- CurseForge 返回 0 个文件时记一条日志，便于定位
 ## [1.1.1-beta.5] - 2026-11-01
 
 ### 换掉「改写安装器」方案：改成给安装器传代理
