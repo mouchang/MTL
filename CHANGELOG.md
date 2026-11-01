@@ -3,6 +3,29 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.5] - 2026-11-01
+
+### 换掉「改写安装器」方案：改成给安装器传代理
+
+实测发现 Forge 47.x 的安装器会校验自身内容，jar 一旦被改写就秒退：
+
+```
+A problem installing was detected, install cannot continue
+```
+
+而且崩溃报告不带任何异常信息，很难查。所以放弃改写 jar：
+
+- 安装器按原样运行，不再改动其内容
+- 启动安装器时探测系统代理 / 本机常见端口，把 `-Dhttp(s).proxyHost/Port` 传给它
+- 探测不到代理时保持原样（直接连官方）
+
+实测（同一份 Forge 1.20.1-47.4.0 安装器，走本机 7890 代理）：
+
+```
+Injecting profile
+Successfully installed client into launcher.
+→ versions/1.20.1-forge-47.4.0
+```
 ## [1.1.1-beta.4] - 2026-11-01
 
 ### 修复：改写安装器时把 jar 写坏了

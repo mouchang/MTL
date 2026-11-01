@@ -71,6 +71,26 @@ public static class HttpUtil
     };
 
     /// <summary>从系统代理设置里读一个 endpoint；没配置时返回 null。</summary>
+    /// <summary>
+    /// 给子进程（Forge 安装器这类 Java 程序）找一个可用的代理端点。
+    /// 先看系统代理，再看本机常见端口；都连不上返回 null。
+    /// </summary>
+    public static async Task<(string Host, int Port)?> DetectProxyAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (SystemProxyEndpoint() is { } system
+            && await CanConnectAsync(system.Host, system.Port, 400, cancellationToken))
+            return system;
+
+        foreach (var port in CommonProxyPorts)
+        {
+            if (await CanConnectAsync("127.0.0.1", port, 250, cancellationToken))
+                return ("127.0.0.1", port);
+        }
+
+        return null;
+    }
+
     private static (string Host, int Port)? SystemProxyEndpoint()
     {
         try

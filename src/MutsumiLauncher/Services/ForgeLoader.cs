@@ -143,11 +143,8 @@ public sealed class ForgeLoader
                 await DownloadAsync(DownloadSources.ForgeInstaller(gameVersion, loaderVersion), installer,
                     cancellationToken);
 
-                // 安装器内部会直接连 maven.minecraftforge.net 拉几百个库，国内很慢。
-                // 改写到 BMCLAPI 的 maven 镜像，装 Forge 能从几分钟降到十几秒。
-                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
-                await PatchInstallerHostsAsync(installer, "https://bmclapi2.bangbang93.com/maven",
-                    ["maven.minecraftforge.net", "files.minecraftforge.net/maven"], cancellationToken);
+                // 不再改写安装器 jar：Forge 47.x 会校验自身内容，改过就直接
+                // 「A problem installing was detected」。改成给安装器传代理参数。
             }
             else
             {
@@ -163,16 +160,7 @@ public sealed class ForgeLoader
                         cancellationToken);
                 }
 
-                // 安装器内部还会直接访问 maven.neoforged.net，改写 jar 内的地址到 CDN
-                progress?.Report(new InstallProgress(14, "改写安装器下载源…"));
-                // NeoForge 1.20.1 的安装器仍会去 maven.minecraftforge.net 拉 Forge 的库，
-                // 只改 neoforged 不够，一样会卡在下载失败上。
-                // 两个来源用各自能对应上的镜像，别混用（Worker 只代理 neoforged 的路径）。
-                await PatchInstallerHostsAsync(installer, NeoForgeCdnBase, ["maven.neoforged.net"],
-                    cancellationToken);
-
-                await PatchInstallerHostsAsync(installer, "https://bmclapi2.bangbang93.com/maven",
-                    ["maven.minecraftforge.net", "files.minecraftforge.net/maven"], cancellationToken);
+                // 同样不改写 jar（会破坏安装器自身的校验），只传代理参数
             }
 
             // 3. 选 Java
@@ -247,6 +235,19 @@ public sealed class ForgeLoader
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+
+        // 安装器是独立 JVM，自己的 HttpClient/HttpURLConnection 不会用启动器的路由。
+        // 给它塞代理参数，凡是开了 Clash 之类本机代理的用户都能正常装。
+        if (await HttpUtil.DetectProxyAsync(cancellationToken) is { } proxy)
+        {
+            startInfo.ArgumentList.Add($"-Dhttp.proxyHost={proxy.Host}");
+            startInfo.ArgumentList.Add($"-Dhttp.proxyPort={proxy.Port}");
+            startInfo.ArgumentList.Add($"-Dhttps.proxyHost={proxy.Host}");
+            startInfo.ArgumentList.Add($"-Dhttps.proxyPort={proxy.Port}");
+            startInfo.ArgumentList.Add("-Djava.net.useSystemProxies=true");
+
+            AppLog.Info($"forge installer: 使用代理 {proxy.Host}:{proxy.Port}");
+        }
 
         startInfo.ArgumentList.Add("-jar");
         startInfo.ArgumentList.Add(installer);
