@@ -3,6 +3,24 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.7] - 2026-11-01
+
+### 修复：同一个 Mod 在搜索结果里出现两次
+
+图里「3D 皮肤层」同时挂着 Modrinth 和 CurseForge 两张卡片，本该合成一张。
+
+原因：归并键只取 slug，而两个平台的 slug 并不一致：
+
+```
+Modrinth : 3dskinlayers
+CurseForge: skin-layers-3d
+```
+
+现在按三档依次匹配，命中任意一档就归为一组：
+
+1. MC百科条目 id（两边对上同一条 → 基本可确定是同一个 Mod）
+2. 标题分词排序（`3D Skin Layers` 与 `Skin Layers 3D` 词集相同）
+3. slug（最严格，放最后兜底）
 ## [1.1.1-beta.6] - 2026-11-01
 
 ### 修复：CurseForge 项目的版本页永远显示「0 个版本」

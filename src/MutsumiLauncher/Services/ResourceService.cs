@@ -748,13 +748,23 @@ public static class ResourceService
     private static List<List<ResourceHit>> GroupHits(IEnumerable<ResourceHit> hits)
     {
         var groups = new List<List<ResourceHit>>();
-        var index = new Dictionary<string, List<ResourceHit>>(StringComparer.OrdinalIgnoreCase);
+        var byKey = new Dictionary<string, List<ResourceHit>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var hit in hits)
         {
-            var key = AggregateKey(hit);
+            // 同一个 Mod 在两个平台上往往 slug 完全不同：
+            // Modrinth 是 3dskinlayers，CurseForge 是 skin-layers-3d，
+            // 光比 slug 会把它拆成两张卡。所以再按「标题分词排序」和「MC百科条目」各记一份索引。
+            var keys = AggregateKeys(hit);
 
-            if (index.TryGetValue(key, out var existing))
+            List<ResourceHit>? existing = null;
+
+            foreach (var key in keys)
+            {
+                if (byKey.TryGetValue(key, out existing)) break;
+            }
+
+            if (existing is not null)
             {
                 // 同一平台重复出现（接口偶发）就不再重复展示
                 if (existing.Any(other => other.Platform == hit.Platform
@@ -762,17 +772,75 @@ public static class ResourceService
                     continue;
 
                 existing.Add(hit);
-                continue;
+            }
+            else
+            {
+                existing = [hit];
+                groups.Add(existing);
             }
 
-            var group = new List<ResourceHit> { hit };
-            index[key] = group;
-            groups.Add(group);
+            foreach (var key in keys) byKey[key] = existing;
         }
 
         foreach (var group in groups) group.Sort((left, right) => left.Platform.CompareTo(right.Platform));
 
         return groups;
+    }
+
+    /// <summary>一个条目可以命中的多个归并键，按可靠性从高到低。</summary>
+    private static List<string> AggregateKeys(ResourceHit hit)
+    {
+        var keys = new List<string>(3);
+
+        // 1) MC百科条目 id：两边都对上同一条，基本可以确定是同一个 Mod
+        try
+        {
+            if (McmodIndex.Find(hit.Hit.Slug, hit.Hit.Title) is { } match)
+                keys.Add("mcmod:" + match.Id);
+        }
+        catch
+        {
+            // 索引没加载好就跳过这一档
+        }
+
+        // 2) 标题分词后排序：3D Skin Layers / Skin Layers 3D → 同一组词
+        var tokens = Words(hit.Hit.Title);
+
+        if (tokens.Count > 0)
+            keys.Add("words:" + string.Join('-', tokens.OrderBy(token => token, StringComparer.Ordinal)));
+
+        // 3) slug（最严格，但两个平台常常不一致，所以放最后）
+        var slug = NormalizeKey(hit.Hit.Slug);
+        if (slug.Length > 0) keys.Add("slug:" + slug);
+
+        return keys;
+    }
+
+    private static List<string> Words(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return [];
+
+        var words = new List<string>();
+        var current = new System.Text.StringBuilder();
+
+        foreach (var ch in title)
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                current.Append(char.ToLowerInvariant(ch));
+                continue;
+            }
+
+            if (current.Length > 0)
+            {
+                words.Add(current.ToString());
+                current.Clear();
+            }
+        }
+
+        if (current.Length > 0) words.Add(current.ToString());
+
+        return words;
     }
 
     private static string AggregateKey(ResourceHit hit)
