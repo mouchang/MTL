@@ -33,20 +33,6 @@ public static class HttpUtil
     /// <summary>当前配置下是否可能启用代理（auto / system / custom）。</summary>
     public static bool ProxyConfigured => Mode is "auto" or "system" or "custom";
 
-    private static bool IsDomestic(string url) =>
-        url.Contains("bmclapi", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("bangbang93", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("mcimirror", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
-        // 这两个官方接口都挂在 Cloudflare 上，国内直连通常一两秒；
-        // 绕代理反而先失败两次 —— 实测一次搜索能从 2 秒拖到 23 秒
-        || url.Contains("api.curseforge.com", StringComparison.OrdinalIgnoreCase)
-        || url.Contains("api.modrinth.com", StringComparison.OrdinalIgnoreCase)
-        // 注意：cdn.modrinth.com 不在这里 —— 官方文件 CDN 在国内几乎跑不动，
-        // 走代理或自家 Worker 镜像才够快
-        // 自家的 Cloudflare Worker：国内直连边缘节点比绕代理快，也省代理带宽
-        || url.Contains("mtl.dpdns.org", StringComparison.OrdinalIgnoreCase);
-
     /// <summary>常见本地代理端口（Clash / v2ray / Shadowsocks 客户端）。</summary>
     private static readonly int[] CommonProxyPorts = [7890, 7897, 10808, 1080];
 
