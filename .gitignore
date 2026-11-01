@@ -87,3 +87,4 @@ worker/.dev.vars
 /_tools/
 # ---- 构建时下载的内核（22 MB，不进仓库）----
 tools/core/
+.commit-tmp/
