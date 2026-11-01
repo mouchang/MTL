@@ -51,19 +51,8 @@ public partial class DownloadSourceView : UserControl
         CurseForgeStatus.Text = CurseForgeClient.IsProxied
             ? $"CurseForge：官方接口（经 {config.CurseForgeProxy}）"
             : "CurseForge：社区镜像（官方反代不可用时的兜底，一次搜索要十几秒）";
-
-        RefreshSpeed();
     }
 
-    private void RefreshSpeed()
-    {
-        var current = AppConfig.Current.MaxDownloadSpeedKbps;
-
-        HighlightChip(SpeedUnlimited, SpeedUnlimitedText, current <= 0);
-        HighlightChip(Speed1M, Speed1MText, current == 1024);
-        HighlightChip(Speed4M, Speed4MText, current == 4096);
-        HighlightChip(Speed10M, Speed10MText, current == 10240);
-    }
 
     private static void HighlightChip(Button button, TextBlock text, bool selected)
     {
@@ -76,16 +65,6 @@ public partial class DownloadSourceView : UserControl
             : (Brush)Application.Current.Resources["InkSoft"];
 
         text.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
-    }
-
-    private void Speed_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: string raw } || !int.TryParse(raw, out var kbps)) return;
-
-        AppConfig.Current.MaxDownloadSpeedKbps = Math.Max(0, kbps);
-        AppConfig.Current.Save();
-        Refresh();
-        _onChanged?.Invoke();
     }
 
     private static void Highlight(Button button, TextBlock check, bool selected)

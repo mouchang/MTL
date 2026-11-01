@@ -3,6 +3,16 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1-beta.2] - 2026-11-01
+
+### 去掉「下载限速」设置
+
+回退内置代理后，这个设置又冒了出来，而且默认就把速度压在 10 MB/s。
+现在没有需要限制的加速线路，全局限速只会拖慢所有人：
+
+- 设置页「下载限速」卡片删除
+- `AppConfig.MaxDownloadSpeedKbps` 删除
+- 下载引擎不再配置令牌桶（`SpeedLimiter` 保持不限速）
 ## [1.1.1-beta.1] - 2026-11-01
 
 ### 代理链路适配：下载调度分两套

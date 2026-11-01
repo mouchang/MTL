@@ -44,9 +44,6 @@ public static class DownloadEngine
     public static SpeedLimiter Limiter { get; } = new();
 
     /// <summary>按配置同步限速值（0 = 不限速）。</summary>
-    private static void ApplySpeedLimit()
-        => Limiter.Configure(Math.Max(0, AppConfig.Current.MaxDownloadSpeedKbps) * 1024L);
-
     /// <summary>连接级失败（超时 / DNS / 拒绝）过的域名，短时间内排到最后，避免每个文件都白等一遍。</summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> HostCooldown =
         new(StringComparer.OrdinalIgnoreCase);
@@ -150,7 +147,6 @@ public static class DownloadEngine
             throw new InvalidOperationException("没有可用的下载地址。");
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-        ApplySpeedLimit();
 
         // 本地已经有完全一致的文件（SHA-1 校验通过）就直接复制，不占带宽
         if (LocalFileIndex.TryCopy(targetPath, sha1, expectedSize)) return targetPath;
