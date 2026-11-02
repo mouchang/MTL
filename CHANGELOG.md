@@ -3,156 +3,77 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.1.2-beta.4] - 2026-11-02
-
-### 更新内容
-
-- 安装继续用系统保存对话框（不再自己造确认框）
-- 从实例进入安装时，对话框直接定位到该实例的 mods 目录
-- 修复对话框可能被主窗口压在下面、看起来「点了没反应」
-
-### 技术实现
-
-行业惯例就是系统 `SaveFileDialog`，自绘确认框不划算：
-系统框自带路径输入、历史目录、驱动器切换、网络位置，这些都要自己实现。
-
-真正的问题在于**没有指定 owner**：主窗口是 `AllowsTransparency` 的分层窗口，
-不传 owner 时系统对话框可能出现在窗口后面，用户看到的就是「点了没动」。
-
-```csharp
-var owner = Window.GetWindow(this);
-var confirmed = owner is not null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
-```
-
-顺带把初始目录改成实例目录，这样对话框打开时就停在该实例的 `mods`：
-
-```csharp
-var directory = _item.Hit.ProjectType == "modpack"
-    ? GamePaths.ModpacksDownloadsDir
-    : _targetInstance is { Length: > 0 } targetInstance
-        ? InstanceService.ModsDirFor(targetInstance)
-        : Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
-```
-## [1.1.2-beta.3] - 2026-11-02
-
-### 更新内容
-
-- 安装前弹出确认框，明确显示「装到哪个文件夹、文件名是什么」
-- 确认框里可以「换个位置…」，取消也不会建空目录
-- 点「安装」时记一条日志，方便定位「点了没反应」
-
-### 技术实现
-
-系统保存对话框（`SaveFileDialog`）有两个问题：不显示资源会进哪个实例，
-而且它是同步阻塞的 Win32 对话框，被浮层挡住时表现为整个界面卡住。
-
-新增 `InstallTargetDialog`：
-
-```csharp
-public partial class InstallTargetDialog : Window
-{
-    public string TargetDirectory { get; private set; }
-    public string FileName { get; private set; }
-}
-```
-
-它显示目标文件夹、文件名和提示文案，「换个位置…」时才调用系统对话框。
-默认目录按来源决定：从实例进入时是 `InstanceService.ModsDirFor(实例)`，
-否则是全局资源目录。
-
-另外在 `InstallFile_Click` 入口加了日志：
-
-```csharp
-AppLog.Info($"install click: row=... item=... installing=...");
-```
-
-下次「点了没反应」时，看这行是否出现即可区分是入口拦截还是后续失败。
-## [1.1.2-beta.2] - 2026-11-02
-
-### 更新内容
-
-- 从「安装新 Mod」进入时不再弹保存对话框，直接装进当前实例
-- 搜索结果滚动到接近底部时自动预取下一页
-- 创建下载任务时写一条日志（便于排查「点了没反应」）
-
-### 技术实现
-
-#### 1. 保存对话框挡住操作
-
-`InstallFile_Click` 原来无论从哪进来都弹 `SaveFileDialog`。从「安装新 Mod」进入时
-其实已经知道目标实例，对话框只是多余；而它偶尔被浮动面板挡在下面，
-表现就是「点了安装没反应」。现在按来源分流：
-
-```csharp
-if (!string.IsNullOrWhiteSpace(_targetInstance) && _item.Hit.ProjectType is not "modpack")
-{
-    targetDirectory = InstanceService.ModsDirFor(_targetInstance!);
-    chosenName = DownloadFileName(row);
-}
-else { /* 仍然让用户选位置 */ }
-```
-
-#### 2. 滚动预取
-
-取到 `ItemsControl` 模板里的 `ScrollViewer`，监听 `ScrollChanged`：
-
-```csharp
-var remaining = viewer.ExtentHeight - viewer.VerticalOffset - viewer.ViewportHeight;
-if (remaining <= viewer.ViewportHeight) PrefetchNextPage(_page);
-```
-
-预取只是把下一页的数据抓进聚合缓存（`ResourceService.SearchAsync(nextPage)`），
-不碰界面；点「下一页」时命中缓存，切换接近瞬时。同一页只预取一次，
-失败也不影响正常翻页。
-## [1.1.2-beta.1] - 2026-11-02
+## [1.1.2] - 2026-11-02
 
 ### 更新内容
 
 - 聚合搜索翻页后 CurseForge 结果不再消失
-- 详情页再次打开不再转圈（有缓存就立刻渲染）
+- 搜索结果滚动到接近底部时自动预取下一页
+- 详情页再次打开不再转圈（命中缓存直接渲染）
 - 翻页与进入详情页加淡入上浮动画
+- 安装继续用系统保存对话框，并定位到目标实例的 mods 目录
+- 修复对话框可能被主窗口压住、看起来「点了没反应」
+- 点「安装」时记录日志，便于定位无响应
 
 ### 技术实现
 
-#### 1. CurseForge 在第 N 页消失
+#### 1. CurseForge 在后几页消失
 
-`CommunitySearchView` 里的补刷预算是个**全局计数器**：
+`CommunitySearchView` 的补刷预算写成了全局计数：
 
 ```csharp
 if (_curseForgeRefreshLeft <= 0) _curseForgeRefreshLeft = 3;
 _curseForgeRefreshLeft--;
 ```
 
-三次补刷之后就不再调度，之后翻到的页永远只有 Modrinth 的结果。
-改成按页计数 + 指数退避（1.2s → 2.4s → 4.8s，上限 8s，最多 6 次），
-换页时重置；补齐后清零。
+三次之后永久为 0，后面翻到的页再也不会调度补刷。改为按页计数 + 指数退避：
 
-同时把聚合层等待 CurseForge 的时间从「无限等」改成首屏 2.5s、后续页 1.2s：
+```csharp
+if (_cfRefreshPage != page) { _cfRefreshPage = page; _cfRefreshAttempt = 0; }
+var delayMs = Math.Min(8000, 1200 * Math.Pow(2, _cfRefreshAttempt));
+```
+
+同时聚合层的等待从「无限等」改成首屏 2.5s、后续页 1.2s：
 
 ```csharp
 await task.WaitAsync(TimeSpan.FromMilliseconds(waitMs), cancellationToken);
 ```
 
-超时直接返回已有结果并标记 `CurseForgePending`，由界面延时补刷，不再阻塞翻页。
+超时先返回已有结果并标记 `CurseForgePending`，由界面延时补刷。
 
-#### 2. 详情页秒开
+#### 2. 滚动预取
 
-新增内存缓存探测：
+取到 `ItemsControl` 模板里的 `ScrollViewer`，监听 `ScrollChanged`，
+剩余不足一屏时后台抓下一页进聚合缓存（不更新界面）：
 
 ```csharp
-public static ModrinthProject? PeekProject(...)
-public static IReadOnlyList<ModrinthVersion>? PeekVersions(...)
+var remaining = viewer.ExtentHeight - viewer.VerticalOffset - viewer.ViewportHeight;
+if (remaining <= viewer.ViewportHeight) PrefetchNextPage(_page);
 ```
 
-`LoadAsync` 先看缓存：命中就用缓存渲染标题、描述、版本列表并跳过加载遮罩，
-网络请求继续在后台跑，回来后覆盖显示。
+点「下一页」时命中缓存，切换接近瞬时；同一页只预取一次。
 
-#### 3. 过渡动画
+#### 3. 详情页秒开与动画
 
-- 详情页：`Opacity 0→1`（180ms）+ `TranslateY 12→0`（220ms）
-- 搜索结果：`Opacity 0.2→1`（200ms）+ `TranslateY 10→0`（240ms）
+新增内存缓存探测 `PeekProject` / `PeekVersions`，命中后先渲染再后台刷新，
+跳过加载遮罩。动画用 WPF 合成层完成：
 
-都用 `CubicEase(EaseOut)`，并且在 WPF 动画层完成，不额外占用 UI 线程。
+```csharp
+BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, 180ms));
+slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(12, 0, 220ms));
+```
+
+#### 4. 系统保存对话框的 owner
+
+主窗口是 `AllowsTransparency` 的分层窗口，系统对话框不指定 owner 时可能被压在下面，
+表现为「点了没反应」：
+
+```csharp
+var owner = Window.GetWindow(this);
+var confirmed = owner is not null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
+```
+
+初始目录按来源决定，从实例进入时直接定位到该实例的 `mods`。
 ## [1.1.1] - 2026-11-01
 
 ### 更新内容
