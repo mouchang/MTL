@@ -104,6 +104,8 @@ public static class DownloadCenter
     {
         var task = new DownloadTask { Title = title, Indeterminate = indeterminate };
         Tasks.Insert(0, task);
+
+        AppLog.Info($"download task begin: {title}（活动 {ActiveCount}）");
         SpeedSamples[task.Id] = (DateTime.UtcNow, 0);
         Changed?.Invoke();
         return task;

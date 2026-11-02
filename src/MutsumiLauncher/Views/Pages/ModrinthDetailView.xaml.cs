@@ -743,23 +743,39 @@ public partial class ModrinthDetailView : UserControl
 
             Directory.CreateDirectory(directory);
 
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "确认安装位置",
-                InitialDirectory = directory,
-                FileName = DownloadFileName(row),
-                Filter = "文件 (*.*)|*.*",
-                OverwritePrompt = false,
-                CheckPathExists = true,
-            };
+            // 从「安装新 Mod」进来时已经知道目标实例：直接装进实例目录，
+            // 不再弹保存对话框（对话框偶尔被浮动面板挡住，看起来像是点不动）。
+            string targetDirectory;
+            string chosenName;
 
-            if (dialog.ShowDialog() != true)
+            if (!string.IsNullOrWhiteSpace(_targetInstance)
+                && _item.Hit.ProjectType is not "modpack")
             {
-                DownloadCenter.Complete(task, "已取消安装");
-                return;
+                targetDirectory = InstanceService.ModsDirFor(_targetInstance!);
+                Directory.CreateDirectory(targetDirectory);
+                chosenName = DownloadFileName(row);
             }
+            else
+            {
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "确认安装位置",
+                    InitialDirectory = directory,
+                    FileName = DownloadFileName(row),
+                    Filter = "文件 (*.*)|*.*",
+                    OverwritePrompt = false,
+                    CheckPathExists = true,
+                };
 
-            var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
+                if (dialog.ShowDialog() != true)
+                {
+                    DownloadCenter.Complete(task, "已取消安装");
+                    return;
+                }
+
+                targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
+                chosenName = Path.GetFileName(dialog.FileName);
+            }
 
             // 进度：按已收字节 / 总大小换算百分比
             var total = row.File.Size > 0 ? row.File.Size : 0;
@@ -771,9 +787,6 @@ public partial class ModrinthDetailView : UserControl
                 // 带上已收字节，面板才能算出总下载速度
                 DownloadCenter.Report(task, $"正在下载… {percent:0}%{speed}", percent, p.Received);
             });
-
-            // 对话框里可能改过文件名（默认带了 [中文名] 前缀），按选中的名字落地
-            var chosenName = Path.GetFileName(dialog.FileName);
 
             var downloaded = await ResourceService.DownloadAsync(row.File, targetDirectory, chosenName,
                 progress, task.Token);

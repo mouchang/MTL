@@ -25,7 +25,6 @@ public partial class CommunitySearchView : UserControl
     private string? _presetLoader;
 
     /// <summary>CurseForge 慢的时候会在后台补抓，用剩下的补刷次数控制自动刷新。</summary>
-    private int _curseForgeRefreshLeft;
 
     private CancellationTokenSource? _curseForgeRefresh;
 
@@ -181,8 +180,80 @@ public partial class CommunitySearchView : UserControl
         }
     }
 
+    /// <summary>取出列表内部的 ScrollViewer 并挂上滚动监听（模板只生成一次）。</summary>
+    private void EnsureScrollHooked()
+    {
+        if (_resultsScroller is not null) return;
+
+        ResultsList.ApplyTemplate();
+        ResultsList.UpdateLayout();
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(ResultsList); i++)
+        {
+            if (VisualTreeHelper.GetChild(ResultsList, i) is not ScrollViewer viewer) continue;
+
+            _resultsScroller = viewer;
+            viewer.ScrollChanged += OnResultsScrolled;
+            return;
+        }
+    }
+
+    private void OnResultsScrolled(object sender, ScrollChangedEventArgs e)
+    {
+        if (_resultsScroller is not { } viewer) return;
+        if (e.ExtentHeight <= 0) return;
+
+        // 差一屏就预取下一页：点「下一页」时数据已经在内存里，切换是瞬时的
+        var remaining = viewer.ExtentHeight - viewer.VerticalOffset - viewer.ViewportHeight;
+
+        if (remaining > viewer.ViewportHeight) return;
+
+        PrefetchNextPage(_page);
+    }
+
+    /// <summary>后台把下一页的数据抓进聚合缓存（不更新界面）。</summary>
+    private void PrefetchNextPage(int currentPage)
+    {
+        var nextPage = currentPage + 1;
+
+        if (nextPage >= _pageCount) return;
+        if (_prefetching || _prefetchedPage == nextPage) return;
+
+        _prefetching = true;
+        _prefetchedPage = nextPage;
+
+        var platform = SourcePlatform();
+        var query = SearchNameBox.Text.Trim();
+        var projectType = _projectType;
+        var gameVersion = GameVersion();
+        var loader = Loader();
+        var category = Category();
+        var sort = SortOption();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ResourceService.SearchAsync(platform, query, projectType, gameVersion, loader,
+                    category, nextPage, PageSize, sort);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, "prefetch next page");
+            }
+            finally
+            {
+                _prefetching = false;
+            }
+        });
+    }
+
     /// <summary>搜索代次：慢请求回来时如果已经有更新的请求，就丢掉这批结果。</summary>
     private int _searchGeneration;
+
+    private ScrollViewer? _resultsScroller;
+    private int _prefetchedPage = -1;
+    private bool _prefetching;
 
     /// <summary>输入框里按回车直接搜索，不用移动到按钮上。</summary>
     private void Filter_KeyDown(object sender, KeyEventArgs e)
@@ -195,8 +266,6 @@ public partial class CommunitySearchView : UserControl
 
     private async Task RunSearchAsync(int page = 0)
     {
-        if (page != _page) _curseForgeRefreshLeft = 0;
-
         var generation = ++_searchGeneration;
         _page = Math.Max(0, page);
         Loading.IsActive = true;
@@ -235,6 +304,8 @@ public partial class CommunitySearchView : UserControl
 
             // 翻页后回到顶部，不然还停在上一页的底部
             ScrollResultsToTop();
+            EnsureScrollHooked();
+            PrefetchNextPage(page);
 
             // 翻页动画：淡入 + 轻微上浮，让「换了一页」这件事看得见
             var slide = new TranslateTransform(0, 10);

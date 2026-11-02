@@ -3,6 +3,43 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.2-beta.2] - 2026-11-02
+
+### 更新内容
+
+- 从「安装新 Mod」进入时不再弹保存对话框，直接装进当前实例
+- 搜索结果滚动到接近底部时自动预取下一页
+- 创建下载任务时写一条日志（便于排查「点了没反应」）
+
+### 技术实现
+
+#### 1. 保存对话框挡住操作
+
+`InstallFile_Click` 原来无论从哪进来都弹 `SaveFileDialog`。从「安装新 Mod」进入时
+其实已经知道目标实例，对话框只是多余；而它偶尔被浮动面板挡在下面，
+表现就是「点了安装没反应」。现在按来源分流：
+
+```csharp
+if (!string.IsNullOrWhiteSpace(_targetInstance) && _item.Hit.ProjectType is not "modpack")
+{
+    targetDirectory = InstanceService.ModsDirFor(_targetInstance!);
+    chosenName = DownloadFileName(row);
+}
+else { /* 仍然让用户选位置 */ }
+```
+
+#### 2. 滚动预取
+
+取到 `ItemsControl` 模板里的 `ScrollViewer`，监听 `ScrollChanged`：
+
+```csharp
+var remaining = viewer.ExtentHeight - viewer.VerticalOffset - viewer.ViewportHeight;
+if (remaining <= viewer.ViewportHeight) PrefetchNextPage(_page);
+```
+
+预取只是把下一页的数据抓进聚合缓存（`ResourceService.SearchAsync(nextPage)`），
+不碰界面；点「下一页」时命中缓存，切换接近瞬时。同一页只预取一次，
+失败也不影响正常翻页。
 ## [1.1.2-beta.1] - 2026-11-02
 
 ### 更新内容
