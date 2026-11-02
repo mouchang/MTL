@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using MutsumiLauncher.Services;
 using MutsumiLauncher.ViewModels;
@@ -137,6 +138,8 @@ public partial class ModrinthDetailView : UserControl
         BreadcrumbText.Text = $"社区资源 / {item.Title}";
         TitleText.Text = item.Title;
 
+        PlayEnterAnimation();
+
         if (IsMod(item.Hit.ProjectType))
         {
             ShowChineseTitle(item.Title);
@@ -156,7 +159,30 @@ public partial class ModrinthDetailView : UserControl
             }
         }
 
-        Loading.IsActive = true;
+        // 这次打开之前已经拿过数据：先把缓存渲染出来，用户看不到转圈，
+        // 网络请求在后台继续跑，回来后再纠偏。
+        var cachedProject = ResourceService.PeekProject(item.Platform, item.ProjectId);
+        var cachedVersions = ResourceService.PeekVersions(item.Platform, item.ProjectId);
+        var instant = cachedVersions is { Count: > 0 };
+
+        if (cachedProject is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(cachedProject.Description))
+                DescriptionText.Text = cachedProject.Description;
+
+            MetaText.Text = BuildMeta(cachedProject, item.Platform);
+        }
+
+        if (instant)
+        {
+            _versions = cachedVersions!;
+            CollectLoaders();
+            BuildTabs();
+            ApplyFilter(initialGameVersion);
+        }
+
+        Loading.IsActive = !instant;
+
         try
         {
             _project = await ResourceService.GetProjectAsync(item.Platform, item.ProjectId,
@@ -939,5 +965,23 @@ public partial class ModrinthDetailView : UserControl
         {
             AppLog.Error(ex, "clipboard");
         }
+    }
+
+    /// <summary>进入详情页：淡入 + 轻微上浮，翻页/进详情不再是硬切。</summary>
+    private void PlayEnterAnimation()
+    {
+        var slide = new TranslateTransform(0, 12);
+        RenderTransform = slide;
+
+        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
+
+        slide.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
     }
 }

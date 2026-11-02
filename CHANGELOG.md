@@ -3,6 +3,55 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.2-beta.1] - 2026-11-02
+
+### 更新内容
+
+- 聚合搜索翻页后 CurseForge 结果不再消失
+- 详情页再次打开不再转圈（有缓存就立刻渲染）
+- 翻页与进入详情页加淡入上浮动画
+
+### 技术实现
+
+#### 1. CurseForge 在第 N 页消失
+
+`CommunitySearchView` 里的补刷预算是个**全局计数器**：
+
+```csharp
+if (_curseForgeRefreshLeft <= 0) _curseForgeRefreshLeft = 3;
+_curseForgeRefreshLeft--;
+```
+
+三次补刷之后就不再调度，之后翻到的页永远只有 Modrinth 的结果。
+改成按页计数 + 指数退避（1.2s → 2.4s → 4.8s，上限 8s，最多 6 次），
+换页时重置；补齐后清零。
+
+同时把聚合层等待 CurseForge 的时间从「无限等」改成首屏 2.5s、后续页 1.2s：
+
+```csharp
+await task.WaitAsync(TimeSpan.FromMilliseconds(waitMs), cancellationToken);
+```
+
+超时直接返回已有结果并标记 `CurseForgePending`，由界面延时补刷，不再阻塞翻页。
+
+#### 2. 详情页秒开
+
+新增内存缓存探测：
+
+```csharp
+public static ModrinthProject? PeekProject(...)
+public static IReadOnlyList<ModrinthVersion>? PeekVersions(...)
+```
+
+`LoadAsync` 先看缓存：命中就用缓存渲染标题、描述、版本列表并跳过加载遮罩，
+网络请求继续在后台跑，回来后覆盖显示。
+
+#### 3. 过渡动画
+
+- 详情页：`Opacity 0→1`（180ms）+ `TranslateY 12→0`（220ms）
+- 搜索结果：`Opacity 0.2→1`（200ms）+ `TranslateY 10→0`（240ms）
+
+都用 `CubicEase(EaseOut)`，并且在 WPF 动画层完成，不额外占用 UI 线程。
 ## [1.1.1] - 2026-11-01
 
 ### 更新内容

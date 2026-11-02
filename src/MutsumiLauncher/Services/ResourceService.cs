@@ -178,8 +178,12 @@ public static class ResourceService
             await EnsureModrinthAsync(bucket, query, projectType, gameVersion, loader, category,
                 sort, modrinthTarget, cancellationToken).ConfigureAwait(false);
 
+            // CurseForge 走镜像，单次要好几秒：只等一小会儿，剩下的交给界面延时补刷，
+            // 否则用户每翻一页都要盯着转圈。
+            var waitMs = page == 0 ? 2500 : 1200;
+
             await EnsureCurseForgeAsync(bucket, query, projectType, gameVersion, loader,
-                curseForgeTarget, cancellationToken).ConfigureAwait(false);
+                curseForgeTarget, waitMs, cancellationToken).ConfigureAwait(false);
 
             // 两边各自按选定的排序排好，再交替合并（MD、CF、MD、CF…）。
             // 直接按下载量混排的话，CurseForge 的下载数普遍比 Modrinth 大一个量级
@@ -274,7 +278,7 @@ public static class ResourceService
     /// 之前那样做的结果是首屏永远只有 Modrinth。
     /// </summary>
     private static async Task EnsureCurseForgeAsync(AggregateBucket bucket, string query,
-        string projectType, string? gameVersion, string? loader, int target,
+        string projectType, string? gameVersion, string? loader, int target, int waitMs,
         CancellationToken cancellationToken)
     {
         var guard = 0;
@@ -301,7 +305,13 @@ public static class ResourceService
 
             try
             {
-                await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                // 等太久没意义：界面会延时补刷，先把已有的渲染出来
+                await task.WaitAsync(TimeSpan.FromMilliseconds(waitMs), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -582,6 +592,14 @@ public static class ResourceService
 
         return result;
     }
+
+    /// <summary>内存里已经有的项目详情（详情页据此秒开，不显示加载遮罩）。</summary>
+    public static ModrinthProject? PeekProject(ResourcePlatform platform, string projectId)
+        => ProjectCache.TryGetValue($"{platform}:{projectId}", out var cached) ? cached : null;
+
+    /// <summary>内存里已经有的版本列表。</summary>
+    public static IReadOnlyList<ModrinthVersion>? PeekVersions(ResourcePlatform platform, string projectId)
+        => VersionCache.TryGetValue($"{platform}:{projectId}", out var cached) ? cached : null;
 
     public static async Task<ModrinthProject?> GetProjectAsync(ResourcePlatform platform, string projectId,
         string projectType = "mod", CancellationToken cancellationToken = default)

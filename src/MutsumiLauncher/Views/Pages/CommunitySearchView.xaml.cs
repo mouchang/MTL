@@ -29,6 +29,10 @@ public partial class CommunitySearchView : UserControl
 
     private CancellationTokenSource? _curseForgeRefresh;
 
+    /// <summary>CurseForge 补刷的重试状态（按页重置）。</summary>
+    private int _cfRefreshPage = -1;
+    private int _cfRefreshAttempt;
+
     /// <summary>点击结果行时请求上层打开详情页。</summary>
     public event Action<ModrinthItem, string?>? DetailRequested;
 
@@ -232,8 +236,18 @@ public partial class CommunitySearchView : UserControl
             // 翻页后回到顶部，不然还停在上一页的底部
             ScrollResultsToTop();
 
+            // 翻页动画：淡入 + 轻微上浮，让「换了一页」这件事看得见
+            var slide = new TranslateTransform(0, 10);
+            ResultsList.RenderTransform = slide;
+
             ResultsList.BeginAnimation(OpacityProperty,
-                new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(220))
+                new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(200))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                });
+
+            slide.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(240))
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
                 });
@@ -246,6 +260,7 @@ public partial class CommunitySearchView : UserControl
 
             // CurseForge 还在后台抓：过一会儿自己再刷一次，抓到了就会补进来
             if (result.CurseForgePending) ScheduleCurseForgeRefresh(page);
+            else if (_cfRefreshPage == page) _cfRefreshAttempt = 0;
         }
         catch (Exception ex)
         {
@@ -264,22 +279,33 @@ public partial class CommunitySearchView : UserControl
     }
 
     /// <summary>
-    /// CurseForge 走第三方镜像，实测一次要 20 秒左右，所以第一次只等 8 秒。
-    /// 没等到就在这里挂一个延时刷新：后台抓完后再拉一次同一页，把 CF 的结果补上。
+    /// CurseForge 走镜像，单次要好几秒。界面上先渲染 Modrinth 的结果，
+    /// 这里定时回来补刷，直到这一页的 CurseForge 结果到齐为止。
+    /// 之前用一个全局的 3 次预算，翻几页就用光了——那之后的页永远只有 Modrinth。
     /// </summary>
     private void ScheduleCurseForgeRefresh(int page)
     {
-        if (_curseForgeRefreshLeft <= 0) _curseForgeRefreshLeft = 3;
+        // 换页或换搜索条件时重新计数
+        if (_cfRefreshPage != page)
+        {
+            _cfRefreshPage = page;
+            _cfRefreshAttempt = 0;
+        }
+
+        if (_cfRefreshAttempt >= 6) return;
 
         _curseForgeRefresh?.Cancel();
         _curseForgeRefresh = new CancellationTokenSource();
         var token = _curseForgeRefresh.Token;
 
+        // 1.2s → 2.4s → 4.8s …（上限 8s），越往后越不急
+        var delayMs = Math.Min(8000, 1200 * Math.Pow(2, _cfRefreshAttempt));
+
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(22), token);
+                await Task.Delay(TimeSpan.FromMilliseconds(delayMs), token);
             }
             catch (OperationCanceledException)
             {
@@ -289,9 +315,9 @@ public partial class CommunitySearchView : UserControl
             await Dispatcher.InvokeAsync(async () =>
             {
                 if (token.IsCancellationRequested || _page != page) return;
-                if (_curseForgeRefreshLeft <= 0) return;
+                if (_cfRefreshAttempt >= 6) return;
 
-                _curseForgeRefreshLeft--;
+                _cfRefreshAttempt++;
                 await RunSearchAsync(page);
             });
         }, token);
