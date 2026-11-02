@@ -3,6 +3,40 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.2-beta.3] - 2026-11-02
+
+### 更新内容
+
+- 安装前弹出确认框，明确显示「装到哪个文件夹、文件名是什么」
+- 确认框里可以「换个位置…」，取消也不会建空目录
+- 点「安装」时记一条日志，方便定位「点了没反应」
+
+### 技术实现
+
+系统保存对话框（`SaveFileDialog`）有两个问题：不显示资源会进哪个实例，
+而且它是同步阻塞的 Win32 对话框，被浮层挡住时表现为整个界面卡住。
+
+新增 `InstallTargetDialog`：
+
+```csharp
+public partial class InstallTargetDialog : Window
+{
+    public string TargetDirectory { get; private set; }
+    public string FileName { get; private set; }
+}
+```
+
+它显示目标文件夹、文件名和提示文案，「换个位置…」时才调用系统对话框。
+默认目录按来源决定：从实例进入时是 `InstanceService.ModsDirFor(实例)`，
+否则是全局资源目录。
+
+另外在 `InstallFile_Click` 入口加了日志：
+
+```csharp
+AppLog.Info($"install click: row=... item=... installing=...");
+```
+
+下次「点了没反应」时，看这行是否出现即可区分是入口拦截还是后续失败。
 ## [1.1.2-beta.2] - 2026-11-02
 
 ### 更新内容

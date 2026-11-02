@@ -724,6 +724,10 @@ public partial class ModrinthDetailView : UserControl
 
     private async void InstallFile_Click(object sender, RoutedEventArgs e)
     {
+        // 排查用：点「安装」没反应时，先看这行有没有打出来
+        AppLog.Info($"install click: row={sender is Button { Tag: ModrinthFileRow }} " +
+                    $"item={_item is not null} installing={_installing}");
+
         if (sender is not Button { Tag: ModrinthFileRow row } || _item is null) return;
         if (_installing) return;
 
@@ -743,39 +747,32 @@ public partial class ModrinthDetailView : UserControl
 
             Directory.CreateDirectory(directory);
 
-            // 从「安装新 Mod」进来时已经知道目标实例：直接装进实例目录，
-            // 不再弹保存对话框（对话框偶尔被浮动面板挡住，看起来像是点不动）。
-            string targetDirectory;
-            string chosenName;
+            // 自定义确认框：明确告诉用户「装到哪个文件夹、叫什么名字」，
+            // 也允许换位置。系统保存框不会显示这些信息，还容易被浮层挡住。
+            var instanceName = string.IsNullOrWhiteSpace(_targetInstance) ? null : _targetInstance;
+            var defaultDirectory = instanceName is not null
+                ? InstanceService.ModsDirFor(instanceName)
+                : directory;
 
-            if (!string.IsNullOrWhiteSpace(_targetInstance)
-                && _item.Hit.ProjectType is not "modpack")
+            Directory.CreateDirectory(defaultDirectory);
+
+            var hint = instanceName is not null
+                ? $"将安装到实例「{instanceName}」的 mods 文件夹"
+                : "选择安装位置";
+
+            var dialog = new InstallTargetDialog("安装到", hint, defaultDirectory,
+                DownloadFileName(row), "装好之后可以在「版本设置 → Mod 管理」里看到它。");
+
+            InstallTargetDialog.CenterOn(this, dialog);
+
+            if (dialog.ShowDialog() != true)
             {
-                targetDirectory = InstanceService.ModsDirFor(_targetInstance!);
-                Directory.CreateDirectory(targetDirectory);
-                chosenName = DownloadFileName(row);
+                DownloadCenter.Complete(task, "已取消安装");
+                return;
             }
-            else
-            {
-                var dialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Title = "确认安装位置",
-                    InitialDirectory = directory,
-                    FileName = DownloadFileName(row),
-                    Filter = "文件 (*.*)|*.*",
-                    OverwritePrompt = false,
-                    CheckPathExists = true,
-                };
 
-                if (dialog.ShowDialog() != true)
-                {
-                    DownloadCenter.Complete(task, "已取消安装");
-                    return;
-                }
-
-                targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
-                chosenName = Path.GetFileName(dialog.FileName);
-            }
+            var targetDirectory = dialog.TargetDirectory;
+            var chosenName = dialog.FileName;
 
             // 进度：按已收字节 / 总大小换算百分比
             var total = row.File.Size > 0 ? row.File.Size : 0;
