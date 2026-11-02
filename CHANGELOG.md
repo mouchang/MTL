@@ -3,6 +3,36 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.2-beta.4] - 2026-11-02
+
+### 更新内容
+
+- 安装继续用系统保存对话框（不再自己造确认框）
+- 从实例进入安装时，对话框直接定位到该实例的 mods 目录
+- 修复对话框可能被主窗口压在下面、看起来「点了没反应」
+
+### 技术实现
+
+行业惯例就是系统 `SaveFileDialog`，自绘确认框不划算：
+系统框自带路径输入、历史目录、驱动器切换、网络位置，这些都要自己实现。
+
+真正的问题在于**没有指定 owner**：主窗口是 `AllowsTransparency` 的分层窗口，
+不传 owner 时系统对话框可能出现在窗口后面，用户看到的就是「点了没动」。
+
+```csharp
+var owner = Window.GetWindow(this);
+var confirmed = owner is not null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
+```
+
+顺带把初始目录改成实例目录，这样对话框打开时就停在该实例的 `mods`：
+
+```csharp
+var directory = _item.Hit.ProjectType == "modpack"
+    ? GamePaths.ModpacksDownloadsDir
+    : _targetInstance is { Length: > 0 } targetInstance
+        ? InstanceService.ModsDirFor(targetInstance)
+        : Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
+```
 ## [1.1.2-beta.3] - 2026-11-02
 
 ### 更新内容

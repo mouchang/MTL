@@ -740,39 +740,40 @@ public partial class ModrinthDetailView : UserControl
         {
             DownloadCenter.Report(task, "正在下载文件…", 20);
 
-            // 整合包统一放到 <GameRoot>\modpacks\downloads，不再塞进实例目录
+            // 从实例进来时直接定位到该实例的目录：系统对话框里一眼就能看到装到哪
             var directory = _item.Hit.ProjectType == "modpack"
                 ? GamePaths.ModpacksDownloadsDir
-                : Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
+                : _targetInstance is { Length: > 0 } targetInstance
+                    ? InstanceService.ModsDirFor(targetInstance)
+                    : Path.Combine(GameDir(), FolderFor(_item.Hit.ProjectType));
 
             Directory.CreateDirectory(directory);
 
-            // 自定义确认框：明确告诉用户「装到哪个文件夹、叫什么名字」，
-            // 也允许换位置。系统保存框不会显示这些信息，还容易被浮层挡住。
-            var instanceName = string.IsNullOrWhiteSpace(_targetInstance) ? null : _targetInstance;
-            var defaultDirectory = instanceName is not null
-                ? InstanceService.ModsDirFor(instanceName)
-                : directory;
+            // 行业惯例就是系统保存对话框，不自己造轮子。
+            // 关键是必须传 owner：主窗口是 AllowsTransparency 的分层窗口，
+            // 不指定 owner 时系统对话框可能被压在下面，看起来像「点了没反应」。
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "确认安装位置",
+                InitialDirectory = directory,
+                FileName = DownloadFileName(row),
+                Filter = "文件 (*.*)|*.*",
+                OverwritePrompt = false,
+                CheckPathExists = true,
+                AddExtension = false,
+            };
 
-            Directory.CreateDirectory(defaultDirectory);
+            var owner = Window.GetWindow(this);
+            var confirmed = owner is not null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
 
-            var hint = instanceName is not null
-                ? $"将安装到实例「{instanceName}」的 mods 文件夹"
-                : "选择安装位置";
-
-            var dialog = new InstallTargetDialog("安装到", hint, defaultDirectory,
-                DownloadFileName(row), "装好之后可以在「版本设置 → Mod 管理」里看到它。");
-
-            InstallTargetDialog.CenterOn(this, dialog);
-
-            if (dialog.ShowDialog() != true)
+            if (confirmed != true)
             {
                 DownloadCenter.Complete(task, "已取消安装");
                 return;
             }
 
-            var targetDirectory = dialog.TargetDirectory;
-            var chosenName = dialog.FileName;
+            var targetDirectory = Path.GetDirectoryName(dialog.FileName) ?? directory;
+            var chosenName = Path.GetFileName(dialog.FileName);
 
             // 进度：按已收字节 / 总大小换算百分比
             var total = row.File.Size > 0 ? row.File.Size : 0;
