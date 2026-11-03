@@ -939,7 +939,7 @@ public partial class ModrinthDetailView : UserControl
         var match = McmodIndex.FindExact(slug, title);
 
         _mcmodUrl = match is not null
-            ? $"https://www.mcmod.cn/class/{match.Id}.html"
+            ? McmodService.ClassUrl(match.Id)
             : McmodService.SearchUrl(title);
 
         McmodButton.Content = "MC百科";

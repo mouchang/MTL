@@ -967,7 +967,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         // 索引里能精确命中就直接进详情页（和资源模块一致，也是 PCL2 的做法），
         // 命中不了才退回搜索——宁可多点一次，也别链到错误的条目上。
         var url = McmodIndex.FindExact(null, item.DisplayName) is { } match
-            ? $"https://www.mcmod.cn/class/{match.Id}.html"
+            ? McmodService.ClassUrl(match.Id)
             : "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(item.DisplayName);
 
         var error = UrlLauncher.Open(url);

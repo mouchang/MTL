@@ -3,6 +3,30 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.21] - 2026-11-03
+
+### 更新内容
+
+- 删除百科跳转的旧实现（`McmodEntry` / `McmodService.Lookup`）
+
+### 技术实现
+
+旧实现基于译名表，会和新的 `McmodIndex` 打架——上一版就出现过
+「MC百科 · 模组名」这种旧文案。现在整块删掉：
+
+```csharp
+public static class McmodService
+{
+    public static string ClassUrl(int id) => "https://www.mcmod.cn/class/" + id + ".html";
+    public static string SearchUrl(string? keyword) => …;
+}
+
+```
+
+只保留两个拼地址的方法，条目匹配统一走 `McmodIndex.FindExact`；
+详情页与 Mod 管理页都用 `McmodService.ClassUrl(match.Id)`，不再手写 URL。
+
+`TranslationTable` 保留——它还在给搜索做中英互译和标题翻译。
 ## [1.1.3-beta.20] - 2026-11-03
 
 ### 更新内容
