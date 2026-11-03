@@ -18,7 +18,7 @@ public partial class DownloadPanelView : UserControl
         DownloadCenter.Tasks.CollectionChanged += OnCollectionChanged;
         var timer = new System.Windows.Threading.DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(1),
+            Interval = TimeSpan.FromMilliseconds(250),
         };
 
         timer.Tick += OnTick;
@@ -54,7 +54,11 @@ public partial class DownloadPanelView : UserControl
     private void OnChanged() => Dispatcher.Invoke(UpdateSummary);
 
     /// <summary>没有新事件时也要刷新：速度超过 3 秒没更新就会失效。</summary>
-    private void OnTick(object? sender, EventArgs e) => UpdateSummary();
+    private void OnTick(object? sender, EventArgs e)
+    {
+        DownloadCenter.SampleGlobalSpeed();
+        UpdateSummary();
+    }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => Dispatcher.Invoke(UpdateSummary);
@@ -71,7 +75,10 @@ public partial class DownloadPanelView : UserControl
         foreach (var task in active.Where(task => !task.SpeedFresh && task.SpeedText.Length > 0))
             task.SpeedText = string.Empty;
 
-        var speed = active.Where(task => task.SpeedFresh).Sum(task => task.SpeedMb);
+        // 表头优先用全局采样速度（3 秒窗口，稳定）；没有采样时退回任务求和
+        var speed = DownloadCenter.GlobalSpeedMb > 0.001
+            ? DownloadCenter.GlobalSpeedMb
+            : active.Where(task => task.SpeedFresh).Sum(task => task.SpeedMb);
 
         TotalPercentText.Text = $"{percent:0}%";
         SpeedText.Text = speed <= 0.001

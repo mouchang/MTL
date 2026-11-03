@@ -3,6 +3,48 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.12] - 2026-11-03
+
+### 更新内容
+
+- 更新 Mod 时在下载面板显示进度（第几个 / 百分比 / 速度）
+- 更新完成后自动回到「全部」，更新按钮与徽标立即消失
+- 下载速度改用 3 秒窗口采样，不再跳来跳去
+
+### 技术实现
+
+#### 1. 更新进度
+
+`ApplyUpdateAsync` 新增 `IProgress<DownloadProgress>` 参数，直接透传给 `DownloadEngine`；
+批量和单条都包一层 `DownloadCenter` 任务：
+
+```csharp
+var sub = p.Total > 0 ? p.Received * 100.0 / p.Total : 0;
+var overall = (index + sub / 100.0) * 100 / targets.Count;
+DownloadCenter.Report(task, $"正在更新 {item.DisplayName}（{captured}/{targets.Count}）", overall, p.Received);
+```
+
+#### 2. 更新后筛选与按钮
+
+原来更新成功只删缓存，`item.Update` 还在，按钮不消失、计数也不变。现在：
+
+```csharp
+item.ExtraDownloadUrls.Clear();
+item.SetUpdate(null);        // 通知 UpdateVisibility / CanUpdate
+RemoveCachedUpdate(item);
+```
+
+新增 `SyncUpdateFilter()`：按列表实时重算「可更新 (N)」，为 0 时隐藏标签并切回「全部」。
+
+#### 3. 速度显示
+
+对照 PCL2 的 `RefreshStat`（保留 30 个样本加权平均），改成 3 秒窗口采样：
+
+```csharp
+GlobalSpeedMb = span >= 0.5 ? Math.Max(0, total - first.Bytes) / 1048576.0 / span : 0;
+```
+
+面板定时器从 1 秒改成 250ms，表头优先用全局速度；任务行速度做指数平滑（0.6 旧 + 0.4 新）。
 ## [1.1.3-beta.11] - 2026-11-03
 
 ### 更新内容

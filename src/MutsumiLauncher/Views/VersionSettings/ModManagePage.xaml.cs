@@ -100,6 +100,8 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         foreach (var item in _items) item.SelectionChanged += OnSelectionChanged;
 
+        SyncUpdateFilter();
+
         var enabledCount = _items.Count(item => item.Enabled);
         RefreshSelectionBar();
 
@@ -205,16 +207,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         SaveUpdateCache();
 
         // 有更新才显示筛选标签
-        UpdatesFilter.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
-        UpdatesFilterText.Text = $"可更新 ({found})";
-
-        if (found == 0 && UpdatesFilter.IsChecked == true)
-        {
-            UpdatesFilter.IsChecked = false;
-            AllFilter.IsChecked = true;
-        }
-
-        ApplyFilter();
+        SyncUpdateFilter();
 
         MergeDownloadSources();
 
@@ -412,6 +405,25 @@ public partial class ModManagePage : UserControl, IInstancePage
         return (found, matched.Count);
     }
 
+    /// <summary>按当前列表重算「可更新」计数与显隐；没有可更新项时自动回到「全部」。</summary>
+    private void SyncUpdateFilter()
+    {
+        var count = _items.Count(item => item.Update is not null);
+
+        UpdatesFilterText.Text = "可更新 (" + count + ")";
+        UpdatesFilter.Visibility = count > 0 || _filter == "updates"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (count == 0 && _filter == "updates")
+        {
+            AllFilter.IsChecked = true;
+            return;
+        }
+
+        ApplyFilter();
+    }
+
     private void SaveUpdateCache()
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
@@ -532,10 +544,33 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         var owner = Window.GetWindow(this) as MainWindow;
 
-        if (await ApplyUpdateAsync(item, owner))
+        // 单条更新也走下载面板，用户能看到百分比
+        var task = DownloadCenter.Begin($"更新 {item.DisplayName}");
+        var versionNumber = item.Update!.VersionNumber;
+
+        var progress = new Progress<DownloadProgress>(p =>
         {
-            owner?.ShowToast($"已更新 {item.DisplayName} → {item.Update!.VersionNumber}");
-            Refresh();
+            var percent = p.Total > 0 ? Math.Clamp(p.Received * 100.0 / p.Total, 0, 100) : 0;
+            DownloadCenter.Report(task, $"正在下载 {item.DisplayName}", percent, p.Received);
+        });
+
+        try
+        {
+            if (await ApplyUpdateAsync(item, owner, progress))
+            {
+                DownloadCenter.Complete(task, "已更新");
+                owner?.ShowToast($"已更新 {item.DisplayName} → {versionNumber}");
+                Refresh();
+            }
+            else
+            {
+                DownloadCenter.Complete(task, "更新失败（详见日志）");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "update mod");
+            DownloadCenter.Complete(task, "更新失败：" + ex.Message);
         }
     }
 
@@ -553,15 +588,11 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         if (sender is Button button) button.IsEnabled = false;
 
-        var done = 0;
+        int done;
+
         try
         {
-            foreach (var item in targets)
-            {
-                owner?.ShowToast($"正在更新 {item.DisplayName}（{done + 1}/{targets.Count}）…");
-
-                if (await ApplyUpdateAsync(item, owner)) done++;
-            }
+            done = await UpdateManyAsync(targets, owner, "更新 " + targets.Count + " 个 Mod");
         }
         finally
         {
@@ -575,11 +606,51 @@ public partial class ModManagePage : UserControl, IInstancePage
         Refresh();
     }
 
+    /// <summary>批量更新：在下载面板里显示总体进度（第几个 / 百分比）。</summary>
+    private async Task<int> UpdateManyAsync(List<ModFileItem> targets, MainWindow? owner, string title)
+    {
+        if (targets.Count == 0) return 0;
+
+        var task = DownloadCenter.Begin(title);
+        var done = 0;
+
+        try
+        {
+            foreach (var item in targets)
+            {
+                var index = done;
+                var current = item;
+                var captured = done + 1;
+
+                var progress = new Progress<DownloadProgress>(p =>
+                {
+                    var sub = p.Total > 0 ? Math.Clamp(p.Received * 100.0 / p.Total, 0, 100) : 0;
+                    var overall = (index + sub / 100.0) * 100 / targets.Count;
+
+                    DownloadCenter.Report(task,
+                        "正在更新 " + current.DisplayName + "（" + captured + "/" + targets.Count + "）",
+                        overall, p.Received);
+                });
+
+                owner?.ShowToast("正在更新 " + item.DisplayName + "（" + captured + "/" + targets.Count + "）…");
+
+                if (await ApplyUpdateAsync(item, owner, progress)) done++;
+            }
+        }
+        finally
+        {
+            DownloadCenter.Complete(task, "更新完成 " + done + "/" + targets.Count);
+        }
+
+        return done;
+    }
+
     /// <summary>
     /// 下载并替换一个 Mod：保留原来的启用/禁用状态，装好之后删掉旧文件。
     /// 返回是否成功。
     /// </summary>
-    private async Task<bool> ApplyUpdateAsync(ModFileItem item, MainWindow? owner)
+    private async Task<bool> ApplyUpdateAsync(ModFileItem item, MainWindow? owner,
+        IProgress<DownloadProgress>? progress = null)
     {
         if (item.Update is not { } version) return false;
 
@@ -606,7 +677,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             var target = Path.Combine(directory, downloadName);
 
             await DownloadEngine.DownloadAsync(urls.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                target, file.Hashes?.Sha1, file.Size > 0 ? file.Size : null);
+                target, file.Hashes?.Sha1, file.Size > 0 ? file.Size : null, progress);
 
             var downloaded = target;
 
@@ -632,6 +703,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Info($"mod updated: {item.FileName} -> {finalName}");
 
             // 更新成功：把这条从持久化缓存里删掉，免得刷新后又冒出旧的「可更新」
+            item.ExtraDownloadUrls.Clear();
+            item.SetUpdate(null);
             RemoveCachedUpdate(item);
 
             return true;
@@ -784,25 +857,18 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (targets.Count == 0) return;
 
         var owner = Window.GetWindow(this) as MainWindow;
-        var done = 0;
 
         SelectUpdateButton.IsEnabled = false;
 
         try
         {
-            foreach (var item in targets)
-            {
-                owner?.ShowToast($"正在更新 {item.DisplayName}（{done + 1}/{targets.Count}）…");
-
-                if (await ApplyUpdateAsync(item, owner)) done++;
-            }
+            await UpdateManyAsync(targets, owner, "更新 " + targets.Count + " 个 Mod");
         }
         finally
         {
             SelectUpdateButton.IsEnabled = true;
         }
 
-        owner?.ShowToast($"批量更新完成 {done}/{targets.Count}");
         Refresh();
     }
 

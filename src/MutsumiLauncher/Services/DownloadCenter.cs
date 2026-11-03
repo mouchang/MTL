@@ -140,6 +140,39 @@ public static class DownloadCenter
         }
     }
 
+    /// <summary>
+    /// 全局速度采样：保留最近 3 秒的 (时间, 累计字节)，
+    /// 用窗口两端的差值算速度——比「每次 Report 各算一段再相加」稳得多。
+    /// 这个做法和 PCL2 的 RefreshStat 一致（它保留 30 个样本做加权平均）。
+    /// </summary>
+    private static readonly List<(DateTime At, long Bytes)> GlobalSamples = [];
+
+    private static readonly object GlobalLock = new();
+
+    /// <summary>全局下载速度（MB/s），由 <see cref="SampleGlobalSpeed"/> 刷新。</summary>
+    public static double GlobalSpeedMb { get; private set; }
+
+    /// <summary>面板定时调用：采样并重算全局速度。</summary>
+    public static void SampleGlobalSpeed()
+    {
+        var now = DateTime.UtcNow;
+        var total = DownloadEngine.TotalReceived;
+
+        lock (GlobalLock)
+        {
+            GlobalSamples.Add((now, total));
+
+            // 只留 4 秒，跨过 3 秒窗口再算
+            while (GlobalSamples.Count > 2 && (now - GlobalSamples[0].At).TotalSeconds > 4)
+                GlobalSamples.RemoveAt(0);
+
+            var first = GlobalSamples[0];
+            var span = (now - first.At).TotalSeconds;
+
+            GlobalSpeedMb = span >= 0.5 ? Math.Max(0, total - first.Bytes) / 1048576.0 / span : 0;
+        }
+    }
+
     /// <summary>上次采样时全局累计的字节数，用来给「只报百分比」的任务算速度。</summary>
     private static long _lastGlobalBytes;
     private static DateTime _lastGlobalAt = DateTime.UtcNow;
@@ -183,7 +216,11 @@ public static class DownloadCenter
             if (seconds >= 0.5 && bytes > last.Bytes)
             {
                 var mbPerSecond = (bytes - last.Bytes) / 1048576.0 / seconds;
-                task.SpeedMb = mbPerSecond;
+
+                // 指数平滑：瞬时窗口容易被分段抖动带偏
+                task.SpeedMb = task.SpeedMb > 0
+                    ? task.SpeedMb * 0.6 + mbPerSecond * 0.4
+                    : mbPerSecond;
                 task.SpeedStamp = now;
                 task.SpeedText = mbPerSecond >= 1
                     ? $"{mbPerSecond:0.0} MB/s"
