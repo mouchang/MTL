@@ -410,15 +410,14 @@ public partial class ModManagePage : UserControl, IInstancePage
         var count = _items.Count(item => item.Update is not null);
 
         UpdatesFilterText.Text = "可更新 (" + count + ")";
-        UpdatesFilter.Visibility = count > 0 || _filter == "updates"
-            ? Visibility.Visible
-            : Visibility.Collapsed;
 
+        // 计数归零就藏起来；当前正好停在「可更新」时先切回「全部」
         if (count == 0 && _filter == "updates")
         {
             AllFilter.IsChecked = true;
-            return;
         }
+
+        UpdatesFilter.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         ApplyFilter();
     }

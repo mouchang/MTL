@@ -3,6 +3,31 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.23] - 2026-11-03
+
+### 更新内容
+
+- 修复更新完成后「可更新 (0)」还留在筛选行上
+
+### 技术实现
+
+`SyncUpdateFilter` 里有一句提前返回：
+
+```csharp
+if (count == 0 && _filter == "updates")
+{
+    AllFilter.IsChecked = true;
+    return;   // ← 走这条分支时，下面设置 Visible 的代码从来没执行
+}
+```
+
+于是标签停在 `count > 0 || _filter == "updates"` 的旧判断上——切到「全部」之后
+`_filter` 变了但可见性没重算。改成先切筛选、再按计数统一设置可见性：
+
+```csharp
+if (count == 0 && _filter == "updates") AllFilter.IsChecked = true;
+UpdatesFilter.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+```
 ## [1.1.3-beta.22] - 2026-11-03
 
 ### 更新内容
