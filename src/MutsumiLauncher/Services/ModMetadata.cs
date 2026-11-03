@@ -13,6 +13,44 @@ public static class ModMetadata
 {
     public sealed record Info(string Name, string? Version, string? ModId);
 
+    /// <summary>
+    /// 从 jar 判断这个 Mod 属于哪些加载器（用于逐文件检查更新）。
+    /// 判断依据是元数据文件本身：fabric.mod.json → fabric、quilt.mod.json → quilt、
+    /// META-INF/neoforge.mods.toml → neoforge、META-INF/mods.toml → forge。
+    /// </summary>
+    public static IReadOnlyList<string> LoadersOf(string jarPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(jarPath);
+
+            if (archive.GetEntry("fabric.mod.json") is not null) return ["fabric"];
+            if (archive.GetEntry("quilt.mod.json") is not null) return ["quilt"];
+            if (archive.GetEntry("META-INF/neoforge.mods.toml") is not null) return ["neoforge"];
+
+            if (archive.GetEntry("META-INF/mods.toml") is not null)
+            {
+                // 1.20.1 的 NeoForge 也用 mods.toml，靠 loaderVersion 里的版本号区分
+                using var stream = archive.GetEntry("META-INF/mods.toml")!.Open();
+                using var reader = new StreamReader(stream);
+
+                var text = reader.ReadToEnd();
+
+                if (text.Contains("javafml", StringComparison.OrdinalIgnoreCase)
+                    && text.Contains("loaderVersion=\"[", StringComparison.Ordinal))
+                    return ["forge"];
+
+                return ["forge"];
+            }
+        }
+        catch
+        {
+            // 读不了就当未知
+        }
+
+        return [];
+    }
+
     private static readonly Regex TomlDisplayName =
         new("^\\s*displayName\\s*=\\s*[\"'](.+?)[\"']", RegexOptions.Multiline | RegexOptions.Compiled);
 

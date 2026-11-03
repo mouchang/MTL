@@ -79,6 +79,27 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public bool CanUpdate => _update is not null;
 
+    private string? _changelogUrl;
+
+    /// <summary>这个更新对应的更新日志地址（Modrinth 或 CurseForge 的项目页）。</summary>
+    public string? ChangelogUrl
+    {
+        get => _changelogUrl;
+        set
+        {
+            if (_changelogUrl == value) return;
+
+            _changelogUrl = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChangelogUrl)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChangelogVisibility)));
+        }
+    }
+
+    public Visibility ChangelogVisibility =>
+        _update is null || string.IsNullOrWhiteSpace(_changelogUrl)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
     public string UpdateText => _update is null ? string.Empty : $"可更新 → {_update.VersionNumber}";
 
     public Visibility UpdateVisibility => _update is null ? Visibility.Collapsed : Visibility.Visible;

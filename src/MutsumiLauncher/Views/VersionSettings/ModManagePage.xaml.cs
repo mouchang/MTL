@@ -163,11 +163,23 @@ public partial class ModManagePage : UserControl, IInstancePage
         StartBusy();
         var found = 0;
 
-        // Modrinth：SHA-1 反查。update 接口只会返回**比本地新**、且匹配游戏版本/加载器的文件
+        // Modrinth：逐文件带上自己的 loaders 查更新（PCL2 同款 update_individual）。
+        // 多加载器实例里，用实例 loader 统一过滤会误判。
         try
         {
-            var updates = await new ModrinthClient().CheckUpdatesAsync(sha1Map.Keys.ToList(),
-                info.GameVersion, LoaderKey(info.Loader));
+            var queries = new List<(string Hash, IReadOnlyList<string> Loaders, string? GameVersion)>();
+
+            foreach (var (hash, item) in sha1Map)
+            {
+                var loaders = ModMetadata.LoadersOf(item.FullPath);
+
+                if (loaders.Count == 0)
+                    loaders = [LoaderKey(info.Loader)];
+
+                queries.Add((hash, loaders, info.GameVersion));
+            }
+
+            var updates = await new ModrinthClient().CheckUpdatesIndividualAsync(queries);
 
             AppLog.Info($"modrinth update check: {updates.Count}/{sha1Map.Count} 命中");
             matchedFiles = Math.Max(matchedFiles, updates.Count);
@@ -175,8 +187,18 @@ public partial class ModManagePage : UserControl, IInstancePage
             foreach (var (hash, version) in updates)
             {
                 if (!sha1Map.TryGetValue(hash, out var item)) continue;
-                if (!IsCompatible(version, info.GameVersion, info.Loader)) continue;
-                if (MarkUpdate(item, version)) found++;
+
+                // update_individual 已经按每个文件自己的 loaders + 游戏版本筛过了，
+                // 这里不再用实例级 loader 二次过滤（多加载器实例会误杀）。
+                if (!MarkUpdate(item, version)) continue;
+
+                if (!string.IsNullOrWhiteSpace(version.ProjectId))
+                {
+                    item.ChangelogUrl =
+                        $"https://modrinth.com/mod/{version.ProjectId}/changelog?g={info.GameVersion}";
+                }
+
+                found++;
             }
         }
         catch (Exception ex)
@@ -244,7 +266,14 @@ public partial class ModManagePage : UserControl, IInstancePage
                         ],
                     };
 
-                    if (MarkUpdate(item, version)) found++;
+                    if (!MarkUpdate(item, version)) continue;
+
+                    if (!string.IsNullOrWhiteSpace(project.Detail.WebsiteUrl))
+                    {
+                        item.ChangelogUrl = project.Detail.WebsiteUrl.TrimEnd('/') + "/files";
+                    }
+
+                    found++;
                 }
             }
         }
@@ -310,7 +339,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
                 entries[ModUpdateCache.KeyOf(item.FileName, size)] = new ModUpdateCache.Entry(
                     update.Id, update.Name, update.VersionNumber, update.DatePublished,
-                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, null);
+                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, item.ChangelogUrl);
             }
 
             ModUpdateCache.Save(_version, entries);
@@ -392,6 +421,23 @@ public partial class ModManagePage : UserControl, IInstancePage
         "forge" => 1,
         _ => null,
     };
+
+    /// <summary>打开这个更新的日志页（Modrinth changelog / CurseForge files）。</summary>
+    private void ChangelogMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ModFileItem item }) return;
+
+        var url = item.ChangelogUrl;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            Toast("这个更新没有日志地址。");
+            return;
+        }
+
+        var error = UrlLauncher.Open(url);
+        if (error is not null) Toast(error);
+    }
 
     private async void UpdateMod_Click(object sender, RoutedEventArgs e)
     {
@@ -584,6 +630,8 @@ public partial class ModManagePage : UserControl, IInstancePage
                     },
                 ],
             });
+
+            item.ChangelogUrl = entry.ChangelogUrl;
 
             applied++;
         }

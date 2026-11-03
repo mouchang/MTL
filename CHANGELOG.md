@@ -3,6 +3,50 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.2] - 2026-11-03
+
+### 更新内容
+
+- 检查更新改为逐文件判断加载器，多加载器实例不再误判
+- Mod 列表新增「日志」按钮，直接打开该更新的更新日志
+- 更新信息保存时会带上日志地址
+
+### 技术实现
+
+#### 1. 逐文件 loaders（对齐 PCL2 的 update_individual）
+
+之前整批用一个实例级 loader 过滤，混装实例（同一目录里 Fabric 与 Forge Mod 并存）
+会互相误判。现在每个文件先读自己属于哪个加载器：
+
+```csharp
+public static IReadOnlyList<string> LoadersOf(string jarPath)
+{
+    // fabric.mod.json → fabric；quilt.mod.json → quilt
+    // META-INF/neoforge.mods.toml → neoforge；META-INF/mods.toml → forge
+}
+```
+
+再走 Modrinth 的逐文件接口：
+
+```csharp
+POST /v2/version_files/update_individual
+{"algorithm":"sha1","hashes":[{"hash":"…","loaders":["fabric"],"game_versions":["1.20.1"]}]}
+```
+
+请求本身已经按 loaders + 游戏版本筛过，所以返回结果不再二次过滤。
+实测：`c2me-fabric-…jar` 返回 `0.2.0+alpha.11.18+1.20.1`，`project_id` 正常带回。
+
+#### 2. 更新日志
+
+结果里带 `project_id`（Modrinth）或项目页地址（CurseForge），拼成：
+
+```csharp
+item.ChangelogUrl = $"https://modrinth.com/mod/{version.ProjectId}/changelog?g={gameVersion}";
+item.ChangelogUrl = project.Detail.WebsiteUrl.TrimEnd('/') + "/files";   // CurseForge
+```
+
+列表在「更新」旁边显示「日志」按钮（`ChangelogVisibility` 绑定），
+地址一并写进 `ModUpdateCache`，刷新后依然可点。
 ## [1.1.3-beta.1] - 2026-11-03
 
 ### 更新内容

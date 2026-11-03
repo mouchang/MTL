@@ -109,6 +109,9 @@ public sealed class ModrinthVersion
     [JsonPropertyName("files")] public List<ModrinthFile> Files { get; set; } = [];
 
     [JsonPropertyName("dependencies")] public List<ModrinthDependency> Dependencies { get; set; } = [];
+
+    /// <summary>update_individual 的响应里带这个字段，用来拼更新日志地址。</summary>
+    [JsonPropertyName("project_id")] public string? ProjectId { get; set; }
 }
 
 public sealed class ModrinthDependency
@@ -348,6 +351,58 @@ public sealed class ModrinthClient
                 string.Equals(file.Hashes?.Sha1, hash, StringComparison.OrdinalIgnoreCase));
 
             if (isSameFile) result.Remove(hash);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 逐文件检查更新（Modrinth 的 update_individual）：
+    /// 每个文件带上自己的 loaders 与游戏版本，避免多加载器实例里互相干扰。
+    /// </summary>
+    public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesIndividualAsync(
+        IReadOnlyList<(string Hash, IReadOnlyList<string> Loaders, string? GameVersion)> files,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+
+        if (files.Count == 0) return result;
+
+        var hashes = files
+            .Where(file => !string.IsNullOrWhiteSpace(file.Hash))
+            .Select(file => new Dictionary<string, object>
+            {
+                ["hash"] = file.Hash,
+                ["loaders"] = file.Loaders.Count > 0 ? file.Loaders : Array.Empty<string>(),
+                ["game_versions"] = string.IsNullOrWhiteSpace(file.GameVersion)
+                    ? Array.Empty<string>()
+                    : new[] { file.GameVersion! },
+            })
+            .ToList();
+
+        if (hashes.Count == 0) return result;
+
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["algorithm"] = "sha1",
+            ["hashes"] = hashes,
+        });
+
+        var json = await PostJsonAsync("/version_files/update_individual", payload, cancellationToken);
+
+        var parsed = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (parsed is null) return result;
+
+        foreach (var (hash, version) in parsed)
+        {
+            // 装的已经是这版就跳过
+            if (version.Files.Any(file =>
+                    string.Equals(file.Hashes?.Sha1, hash, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            result[hash] = version;
         }
 
         return result;

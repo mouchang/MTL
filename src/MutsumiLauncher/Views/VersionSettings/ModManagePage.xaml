@@ -113,6 +113,10 @@
                                                        Foreground="{DynamicResource AccentDeep}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0"
                                                        Visibility="{Binding UpdateVisibility}" />
+                                            <Button Style="{StaticResource GhostButton}" Content="日志"
+                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                                    Visibility="{Binding ChangelogVisibility}"
+                                                    Tag="{Binding}" Click="ChangelogMod_Click" />
                                             <Button Style="{StaticResource GhostButton}" Content="更新"
                                                     Height="30" Padding="12,0" Margin="0,0,8,0"
                                                     Visibility="{Binding UpdateVisibility}"
