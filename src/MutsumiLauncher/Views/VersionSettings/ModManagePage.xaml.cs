@@ -152,8 +152,10 @@ public partial class ModManagePage : UserControl, IInstancePage
             {
                 try
                 {
-                    sha1Map.TryAdd(Sha1Of(item.FullPath), item);
-                    fingerprintMap.TryAdd(CurseForgeClient.ComputeFingerprint(item.FullPath), item);
+                    var (sha1, fingerprint) = HashOf(item.FullPath);
+
+                    sha1Map.TryAdd(sha1, item);
+                    if (fingerprint != 0) fingerprintMap.TryAdd(fingerprint, item);
                 }
                 catch (Exception ex)
                 {
@@ -171,124 +173,19 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         owner?.ShowToast("正在检查 Mod 更新…");
         StartBusy();
-        var found = 0;
 
-        // Modrinth：逐文件带上自己的 loaders 查更新（PCL2 同款 update_individual）。
-        // 多加载器实例里，用实例 loader 统一过滤会误判。
-        try
-        {
-            var queries = new List<(string Hash, IReadOnlyList<string> Loaders, string? GameVersion)>();
+        var queries = BuildModrinthQueries(sha1Map, info);
+        var modrinth = new ModrinthClient();
+        var curseForge = new CurseForgeClient();
 
-            foreach (var (hash, item) in sha1Map)
-            {
-                // 用元数据缓存里的结果：之前每次检查都对每个 jar 重新解压一遍，
-                // 几十个 Mod 就是几百毫秒起步，上百个直接卡住。
-                var loader = ReadModMeta(item.FullPath).Loader;
+        // 两个平台并行查：原来是 Modrinth 等完再查 CurseForge，串行等两轮网络。
+        // PCL2 也是两个线程各查一边。
+        var modrinthTask = Task.Run(() => modrinth.CheckUpdatesIndividualAsync(queries));
+        var curseForgeTask = Task.Run(() => CheckCurseForgeAsync(curseForge, fingerprintMap, info));
 
-                IReadOnlyList<string> loaders = string.IsNullOrWhiteSpace(loader)
-                    ? [LoaderKey(info.Loader)]
-                    : [LoaderKey(loader)];
+        await Task.WhenAll(modrinthTask, curseForgeTask);
 
-                queries.Add((hash, loaders, info.GameVersion));
-            }
-
-            var updates = await new ModrinthClient().CheckUpdatesIndividualAsync(queries);
-
-            AppLog.Info($"modrinth update check: {updates.Count}/{sha1Map.Count} 命中");
-            matchedFiles = Math.Max(matchedFiles, updates.Count);
-
-            foreach (var (hash, version) in updates)
-            {
-                if (!sha1Map.TryGetValue(hash, out var item)) continue;
-
-                // update_individual 已经按每个文件自己的 loaders + 游戏版本筛过了，
-                // 这里不再用实例级 loader 二次过滤（多加载器实例会误杀）。
-                if (!IncludeVersion(version.VersionType)) continue;
-                if (!MarkUpdate(item, version)) continue;
-
-                found++;
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "modrinth update check");
-        }
-
-        // CurseForge：批量指纹反查 → 批量取工程信息（带 latestFiles）→ 批量取本地文件信息。
-        // 原来是「每个 Mod 单独查一次文件列表」，一百多个 Mod 就是一百多次请求。
-        try
-        {
-            var curseForge = new CurseForgeClient();
-            var matches = await curseForge.MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
-
-            AppLog.Info($"curseforge update check: {matches.Count}/{fingerprintMap.Count} 命中");
-            matchedFiles = Math.Max(matchedFiles, matches.Count);
-
-            if (matches.Count > 0)
-            {
-                var modIds = matches.Select(match => match.ModId).Distinct().ToList();
-                var fileIds = matches.Select(match => match.FileId).Distinct().ToList();
-
-                var projects = await curseForge.GetModsWithLatestFilesAsync(modIds);
-                var localFiles = await curseForge.GetFilesBatchAsync(fileIds);
-
-                foreach (var match in matches)
-                {
-                    if (FindItem(fingerprintMap, match) is not { } item) continue;
-                    if (!projects.TryGetValue(match.ModId, out var project)) continue;
-
-                    localFiles.TryGetValue(match.FileId, out var local);
-
-                    // 候选：同游戏版本、加载器匹配、且比本地新
-                    var latest = project.Files
-                        .Where(file => !string.IsNullOrWhiteSpace(file.DownloadUrl))
-                        .Where(file => IsCompatible(file, info.GameVersion, info.Loader))
-                        .Where(file => local is null || IsNewer(file, local))
-                        .Where(file => file.Id != match.FileId)
-                        .OrderByDescending(file => file.FileDate)
-                        .ThenByDescending(file => file.Id)
-                        .FirstOrDefault();
-
-                    if (latest is null) continue;
-
-                    var version = new ModrinthVersion
-                    {
-                        Name = latest.DisplayName,
-                        VersionNumber = string.IsNullOrWhiteSpace(latest.DisplayName)
-                            ? latest.FileName
-                            : latest.DisplayName,
-                        VersionType = latest.ReleaseType,
-                        DatePublished = latest.FileDate,
-                        GameVersions = latest.GameVersions.ToList(),
-                        Loaders = latest.Loaders.ToList(),
-                        Files =
-                        [
-                            new ModrinthFile
-                            {
-                                Url = latest.DownloadUrl,
-                                Filename = latest.FileName,
-                                Primary = true,
-                                Size = latest.Length,
-                                Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
-                            },
-                        ],
-                    };
-
-                    if (!IncludeVersion(version.VersionType)) continue;
-                    if (!MarkUpdate(item, version)) continue;
-
-                    if (!string.IsNullOrWhiteSpace(project.Detail.WebsiteUrl))
-                    {
-                    }
-
-                    found++;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex, "curseforge update check");
-        }
+        var found = MergeUpdates(sha1Map, modrinthTask.Result, curseForgeTask.Result, info);
 
         SaveUpdateCache();
 
@@ -371,6 +268,127 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         var merged = _items.Count(item => item.ExtraDownloadUrls.Count > 1);
         if (merged > 0) AppLog.Info($"mod updates: {merged} 条合并了多个下载源");
+    }
+
+
+    /// <summary>把本地哈希整理成 Modrinth 逐文件查询用的载荷。</summary>
+    private List<(string Hash, IReadOnlyList<string> Loaders, string? GameVersion)> BuildModrinthQueries(
+        System.Collections.Concurrent.ConcurrentDictionary<string, ModFileItem> sha1Map,
+        InstanceInfo info)
+    {
+        var queries = new List<(string, IReadOnlyList<string>, string?)>();
+
+        foreach (var (hash, item) in sha1Map)
+        {
+            var loader = ReadModMeta(item.FullPath).Loader;
+
+            IReadOnlyList<string> loaders = string.IsNullOrWhiteSpace(loader)
+                ? [LoaderKey(info.Loader)]
+                : [LoaderKey(loader)];
+
+            queries.Add((hash, loaders, info.GameVersion));
+        }
+
+        return queries;
+    }
+
+    /// <summary>CurseForge 检查：指纹 → 工程（含 latestFiles）→ 本地文件，三次批量请求。</summary>
+    private static async Task<List<(ModFileItem Item, ModrinthVersion Version)>> CheckCurseForgeAsync(
+        CurseForgeClient client,
+        System.Collections.Concurrent.ConcurrentDictionary<uint, ModFileItem> fingerprintMap,
+        InstanceInfo info)
+    {
+        var result = new List<(ModFileItem, ModrinthVersion)>();
+
+        try
+        {
+            var matches = await client.MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
+
+            AppLog.Info($"curseforge update check: {matches.Count}/{fingerprintMap.Count} 命中");
+
+            if (matches.Count == 0) return result;
+
+            var modIds = matches.Select(match => match.ModId).Distinct().ToList();
+            var fileIds = matches.Select(match => match.FileId).Distinct().ToList();
+
+            var projects = await client.GetModsWithLatestFilesAsync(modIds);
+            var localFiles = await client.GetFilesBatchAsync(fileIds);
+
+            foreach (var match in matches)
+            {
+                if (FindItem(fingerprintMap, match) is not { } item) continue;
+                if (!projects.TryGetValue(match.ModId, out var project)) continue;
+
+                localFiles.TryGetValue(match.FileId, out var local);
+
+                var latest = project.Files
+                    .Where(file => !string.IsNullOrWhiteSpace(file.DownloadUrl))
+                    .Where(file => IsCompatible(file, info.GameVersion, info.Loader))
+                    .Where(file => local is null || IsNewer(file, local))
+                    .Where(file => file.Id != match.FileId)
+                    .OrderByDescending(file => file.FileDate)
+                    .ThenByDescending(file => file.Id)
+                    .FirstOrDefault();
+
+                if (latest is null) continue;
+
+                result.Add((item, new ModrinthVersion
+                {
+                    Name = latest.DisplayName,
+                    VersionNumber = string.IsNullOrWhiteSpace(latest.DisplayName)
+                        ? latest.FileName
+                        : latest.DisplayName,
+                    VersionType = latest.ReleaseType,
+                    DatePublished = latest.FileDate,
+                    GameVersions = latest.GameVersions.ToList(),
+                    Loaders = latest.Loaders.ToList(),
+                    Files =
+                    [
+                        new ModrinthFile
+                        {
+                            Url = latest.DownloadUrl,
+                            Filename = latest.FileName,
+                            Primary = true,
+                            Size = latest.Length,
+                            Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
+                        },
+                    ],
+                }));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "curseforge update check");
+        }
+
+        return result;
+    }
+
+    /// <summary>把两个平台的结果合并到列表，返回可更新数量。</summary>
+    private int MergeUpdates(
+        System.Collections.Concurrent.ConcurrentDictionary<string, ModFileItem> sha1Map,
+        Dictionary<string, ModrinthVersion> modrinth,
+        List<(ModFileItem Item, ModrinthVersion Version)> curseForge,
+        InstanceInfo info)
+    {
+        var found = 0;
+
+        AppLog.Info($"modrinth update check: {modrinth.Count}/{sha1Map.Count} 命中");
+
+        foreach (var (hash, version) in modrinth)
+        {
+            if (!sha1Map.TryGetValue(hash, out var item)) continue;
+            if (!IncludeVersion(version.VersionType)) continue;
+            if (MarkUpdate(item, version)) found++;
+        }
+
+        foreach (var (item, version) in curseForge)
+        {
+            if (!IncludeVersion(version.VersionType)) continue;
+            if (MarkUpdate(item, version)) found++;
+        }
+
+        return found;
     }
 
     private void SaveUpdateCache()
@@ -983,6 +1001,36 @@ public partial class ModManagePage : UserControl, IInstancePage
         });
 
         await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 本地哈希缓存（SHA-1 + Murmur2）。PCL2 也把 Murmur 结果写进 INI，
+    /// 文件没变就不重复算——54 个 Mod 第一次约 0.3s，之后基本瞬时。
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Sha1, uint
+        Fingerprint)> HashCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private static (string Sha1, uint Fingerprint) HashOf(string path)
+    {
+        string key;
+
+        try
+        {
+            var info = new FileInfo(path);
+            key = $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+        }
+        catch
+        {
+            return (Sha1Of(path), CurseForgeClient.ComputeFingerprint(path));
+        }
+
+        if (HashCache.TryGetValue(key, out var cached)) return cached;
+
+        var sha1 = Sha1Of(path);
+        var fingerprint = CurseForgeClient.ComputeFingerprint(path);
+
+        HashCache[key] = (sha1, fingerprint);
+        return (sha1, fingerprint);
     }
 
     /// <summary>读版本号与加载器（带缓存）。</summary>

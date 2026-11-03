@@ -3,6 +3,44 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.10] - 2026-11-03
+
+### 更新内容
+
+- Modrinth 与 CurseForge 并行查询，检查耗时减半
+- 本地哈希加缓存，同一批文件重复检查几乎瞬时
+
+### 技术实现
+
+日志显示 54 个 Mod 的耗时分布：
+
+```
+21:24:53 check updates: hashed=54 fingerprints=54
+21:24:56 modrinth update check: 2/54 命中    ← 3 秒
+21:24:57 curseforge update check: 52/54 命中  ← 1 秒
+```
+
+本地哈希已经很快，瓶颈是两轮网络串行等待。
+
+#### 1. 两个平台并行
+
+对照 PCL2：它的 Modrinth 与 CurseForge 查询跑在两个独立线程里（`RunInNewThread`），
+我们原来是 `await` 完 Modrinth 才发 CurseForge。改成：
+
+```csharp
+var modrinthTask = Task.Run(() => modrinth.CheckUpdatesIndividualAsync(queries));
+var curseForgeTask = Task.Run(() => CheckCurseForgeAsync(curseForge, fingerprintMap, info));
+
+await Task.WhenAll(modrinthTask, curseForgeTask);
+```
+
+结果合并放到 UI 线程做（`MergeUpdates`），避免跨线程改绑定属性。
+
+#### 2. 哈希缓存
+
+PCL2 把 MurmurHash 写进 `Cache\ModHash.ini`，按「文件名 + 修改时间 + 大小」缓存。
+我们用内存版，键是「路径 + 大小 + 修改时间」，命中就不用再读一遍 jar。
+第一次约 0.3 秒，之后重复检查基本瞬时。
 ## [1.1.3-beta.9] - 2026-11-03
 
 ### 更新内容
