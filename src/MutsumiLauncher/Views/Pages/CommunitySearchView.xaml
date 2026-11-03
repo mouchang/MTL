@@ -114,7 +114,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Grid Width="42" Height="42" VerticalAlignment="Top">
-                                        <Border CornerRadius="10" Background="{DynamicResource AccentTint}"
+                                        <Border CornerRadius="10" Background="Transparent"
                                                 Visibility="{Binding PlaceholderVisibility}">
                                             <TextBlock Text="{Binding Initial}" FontSize="14"
                                                        Foreground="{DynamicResource AccentDeep}"

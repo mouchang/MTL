@@ -478,6 +478,41 @@
         </Setter>
     </Style>
 
+    <!-- 行内操作按钮：浅色胶囊，和背景拉开层次 -->
+    <Style x:Key="RowActionButton" TargetType="Button">
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="9" Background="{DynamicResource SurfaceSolid}"
+                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentTint}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentDeep}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 危险操作（删除）：默认红字，悬停红底 -->
+    <Style x:Key="RowDangerButton" TargetType="Button" BasedOn="{StaticResource RowActionButton}">
+        <Setter Property="Foreground" Value="#FFC0563F" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
     <!-- 圆角进度条：默认的 WPF 进度条又细又方，这里统一成胶囊形 -->
     <Style x:Key="RoundedProgress" TargetType="ProgressBar">
         <Setter Property="Height" Value="6" />

@@ -89,7 +89,7 @@
                                                 Background="{Binding IconBrush}" VerticalAlignment="Top"
                                                 ClipToBounds="True">
                                             <Grid>
-                                                <TextBlock Text="{Binding Initial}" Foreground="White"
+                                                <TextBlock Text="{Binding Initial}" Foreground="{DynamicResource InkMute}"
                                                            FontSize="13" FontWeight="SemiBold"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            Visibility="{Binding InitialVisibility}" />
@@ -120,23 +120,19 @@
                                                        Foreground="{DynamicResource AccentDeep}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0"
                                                        Visibility="{Binding UpdateVisibility}" />
-                                            <Button Style="{StaticResource GhostButton}" Content="更新"
-                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                            <Button Style="{StaticResource RowActionButton}" Content="更新"
                                                     Visibility="{Binding UpdateVisibility}"
                                                     Tag="{Binding}" Click="UpdateMod_Click" />
-                                            <Button Style="{StaticResource GhostButton}" Content="{Binding ToggleText}"
-                                                    Height="30" Padding="12,0" Margin="0,0,8,0"
+                                            <Button Style="{StaticResource RowActionButton}"
+                                                    Content="{Binding ToggleText}"
                                                     Tag="{Binding}" Click="ToggleMod_Click" />
-                                            <Button Style="{StaticResource GhostButton}" Content="位置"
-                                                    Height="30" Padding="10,0" Margin="0,0,8,0"
+                                            <Button Style="{StaticResource RowActionButton}" Content="位置"
                                                     ToolTip="在资源管理器里定位这个文件"
                                                     Tag="{Binding}" Click="RevealMod_Click" />
-                                            <Button Style="{StaticResource GhostButton}" Content="信息"
-                                                    Height="30" Padding="10,0" Margin="0,0,8,0"
+                                            <Button Style="{StaticResource RowActionButton}" Content="信息"
                                                     ToolTip="按名称搜索 MC百科"
                                                     Tag="{Binding}" Click="InfoMod_Click" />
-                                            <Button Style="{StaticResource GhostButton}" Content="删除"
-                                                    Height="30" Padding="12,0"
+                                            <Button Style="{StaticResource RowDangerButton}" Content="删除"
                                                     Tag="{Binding}" Click="DeleteMod_Click" />
                                         </StackPanel>
                                     </Grid>

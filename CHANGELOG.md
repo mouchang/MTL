@@ -3,6 +3,42 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.15] - 2026-11-03
+
+### 更新内容
+
+- 图标占位不再先显示色块再变透明，从第一帧就是界面背景
+- 「信息」按钮改用百科简称搜索（C2ME 这类全名搜不到）
+- 百科索引支持斜杠别名，英文名写成「短名/全名」也能匹配
+- 行内按钮换成浅色胶囊样式，删除按钮单独用红字
+
+### 技术实现
+
+#### 1. 图标底色
+
+占位底色原来是随机色，图标加载后切成透明——中间会闪一下色块。
+改成默认就透明：
+
+```csharp
+private Brush _iconBrush = Brushes.Transparent;
+```
+
+首字母从白色改成 `InkMute`（透明底上白字看不见）。搜索卡片的占位同样去掉 `AccentTint`。
+
+#### 2. 百科简称
+
+索引里 C2ME 的英文名是 `C^2M-Engine/Concurrent Chunk Management Engine`，
+归一化后拼成一个长串，和 Mod 元数据里的名字对不上。两处改动：
+
+- 建索引时按 `/` 拆别名：`foreach (var alias in entry.English.Split('/', '|'))`
+- 「信息」按钮优先用命中的简称：`match.Abbr`，其次中文名
+
+现在 C2ME 的「信息」会直接搜 `C2ME`。
+
+#### 3. 行内按钮
+
+新增 `RowActionButton`：白底、1px 描边、圆角 9，悬停变主色浅底 + 主色字；
+删除用 `RowDangerButton`（红字）。
 ## [1.1.3-beta.14] - 2026-11-03
 
 ### 更新内容

@@ -83,7 +83,6 @@ public partial class ModManagePage : UserControl, IInstancePage
                     FullPath = file,
                     Enabled = enabled,
                     Initial = Initials(display),
-                    IconBrush = BrushFor(display),
                 });
             }
         }
@@ -963,7 +962,17 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         if (sender is not Button { Tag: ModFileItem item }) return;
 
+        // 全名在百科上常常搜不到（比如 C2ME 的英文全名就是无结果的），
+        // 优先用索引里的简称，其次中文名。
         var keyword = item.DisplayName;
+
+        if (McmodIndex.Find(null, item.DisplayName) is { } match)
+        {
+            keyword = !string.IsNullOrWhiteSpace(match.Abbr)
+                ? match.Abbr
+                : !string.IsNullOrWhiteSpace(match.Chinese) ? match.Chinese : match.English;
+        }
+
         var url = "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword);
 
         var error = UrlLauncher.Open(url);

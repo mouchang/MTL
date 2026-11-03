@@ -87,7 +87,8 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public string Initial { get; init; } = "M";
 
-    private Brush _iconBrush = Brushes.MediumSeaGreen;
+    // 默认透明：加载前就是界面背景，加载后也一致，不会「先有色块再变透明」
+    private Brush _iconBrush = Brushes.Transparent;
 
     /// <summary>
     /// 图标位底色。没有图标时用随机色 + 首字母；有图标时改成白色，

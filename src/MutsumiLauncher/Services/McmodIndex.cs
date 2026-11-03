@@ -344,6 +344,14 @@ public static class McmodIndex
                 data.All.Add(entry);
                 data.ByName.TryAdd(entry.EnKey, entry);
 
+                // 百科的英文名常写成「短名/全名」（C^2M-Engine/Concurrent Chunk Management Engine），
+                // 按斜杠拆成别名，只拿其中一半去匹配也能命中。
+                foreach (var alias in entry.English.Split('/', '|'))
+                {
+                    var key = Normalize(alias);
+                    if (key.Length >= 3) data.ByName.TryAdd(key, entry);
+                }
+
                 if (entry.AbbrKey is { Length: >= 3 }) data.ByAbbr.TryAdd(entry.AbbrKey, entry);
             }
 
