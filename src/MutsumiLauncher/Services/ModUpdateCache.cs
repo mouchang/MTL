@@ -9,7 +9,7 @@ namespace MutsumiLauncher.Services;
 ///
 /// 之前没存：每次刷新列表（刷新按钮、切页、重开实例）都会把 Update 丢掉，
 /// 于是「可更新」徽标消失、还得重新检查一遍。PCL2 是把每个文件的
-/// ProjectVersion / UpdateFile / ChangelogUrls 一起写进 JSON 缓存的，
+/// ProjectVersion / UpdateFile 一起写进 JSON 缓存的，
 /// 这里按同样的思路做，但只存「可更新」这一条结果。
 /// </summary>
 public static class ModUpdateCache
@@ -29,8 +29,7 @@ public static class ModUpdateCache
         string? DownloadUrl,
         string FileName,
         long Size,
-        string? Sha1,
-        string? ChangelogUrl);
+        string? Sha1);
 
     private static string FileFor(string version) => Path.Combine(
         AppPaths.CacheDir, "updates", SafeName(version) + ".json");

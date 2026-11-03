@@ -109,18 +109,6 @@ public static class ExternalSourceService
         config.Save();
     }
 
-    public static void RemoveRoot(string path)
-    {
-        var config = AppConfig.Current;
-        var full = System.IO.Path.GetFullPath(path).TrimEnd('\\', '/');
-
-        config.ExternalRoots.RemoveAll(root =>
-            string.Equals(System.IO.Path.GetFullPath(root.Path).TrimEnd('\\', '/'), full,
-                StringComparison.OrdinalIgnoreCase));
-
-        config.Save();
-    }
-
     /// <summary>
     /// 为外部版本创建影子实例。返回实例名（ref-xxx）；失败返回 null 并给出原因。
     /// </summary>

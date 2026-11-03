@@ -313,53 +313,6 @@ public sealed class ModrinthClient
 
 
     /// <summary>用本地 jar 的 SHA-1 查询 Modrinth 上匹配当前游戏版本/加载器的更新。</summary>
-    public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesAsync(
-        IReadOnlyCollection<string> sha1Hashes, string? gameVersion, string? loader,
-        CancellationToken cancellationToken = default)
-    {
-        var hashes = sha1Hashes
-            .Where(hash => !string.IsNullOrWhiteSpace(hash))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (hashes.Count == 0) return [];
-
-        var payload = new Dictionary<string, object>
-        {
-            ["hashes"] = hashes,
-            ["algorithm"] = "sha1",
-        };
-
-        if (!string.IsNullOrWhiteSpace(gameVersion))
-            payload["game_versions"] = new[] { gameVersion };
-
-        if (!string.IsNullOrWhiteSpace(loader))
-            payload["loaders"] = new[] { loader };
-
-        var json = await PostJsonAsync("/version_files/update",
-            JsonSerializer.Serialize(payload), cancellationToken);
-        var result = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        if (result is null) return [];
-
-        // update 接口对「本地已经是最新」的哈希也会把那个最新版回给你，
-        // 所以用文件 SHA-1 再确认一次：返回的版本里如果装着本地这个文件，就不算更新
-        foreach (var (hash, version) in result.ToList())
-        {
-            var isSameFile = version.Files.Any(file =>
-                string.Equals(file.Hashes?.Sha1, hash, StringComparison.OrdinalIgnoreCase));
-
-            if (isSameFile) result.Remove(hash);
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// 逐文件检查更新（Modrinth 的 update_individual）：
-    /// 每个文件带上自己的 loaders 与游戏版本，避免多加载器实例里互相干扰。
-    /// </summary>
     public async Task<Dictionary<string, ModrinthVersion>> CheckUpdatesIndividualAsync(
         IReadOnlyList<(string Hash, IReadOnlyList<string> Loaders, string? GameVersion)> files,
         CancellationToken cancellationToken = default)

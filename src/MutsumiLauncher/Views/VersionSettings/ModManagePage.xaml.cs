@@ -12,16 +12,6 @@ namespace MutsumiLauncher.Views.VersionSettings;
 
 public partial class ModManagePage : UserControl, IInstancePage
 {
-    private static readonly Color[] Palette =
-    [
-        Color.FromRgb(0x5B, 0x8C, 0x5A),
-        Color.FromRgb(0x4F, 0x7E, 0xA8),
-        Color.FromRgb(0xC9, 0x8A, 0x5B),
-        Color.FromRgb(0x8C, 0x5B, 0xA8),
-        Color.FromRgb(0xA8, 0x5B, 0x6D),
-        Color.FromRgb(0x5B, 0xA8, 0x99),
-    ];
-
     private string _version = string.Empty;
     private string _filter = "all";
     private string _query = string.Empty;
@@ -450,7 +440,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
                 entries[ModUpdateCache.KeyOf(item.FileName)] = new ModUpdateCache.Entry(
                     update.Id, update.Name, update.VersionNumber, update.DatePublished,
-                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, null);
+                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1);
             }
 
             ModUpdateCache.Save(_version, entries);
@@ -1429,13 +1419,6 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         var first = char.ToUpperInvariant(cleaned[0]);
         return first.ToString();
-    }
-
-    private static Brush BrushFor(string name)
-    {
-        var hash = name.Aggregate(17, (current, c) => current * 31 + c);
-        var index = Math.Abs(hash) % Palette.Length;
-        return new SolidColorBrush(Palette[index]);
     }
 
     private void Toast(string message)
