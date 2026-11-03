@@ -116,6 +116,9 @@ jobs:
             $body = $body.Trim()
           }
 
+          # 发布页始终补一行 CHANGELOG 指引：技术实现不贴上去，但不能让人看不到
+          $body = $body + "`n`n完整更新说明（含技术实现）详情见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。"
+
           Set-Content -Path ".github/release-notes.generated.md" -Value $body -Encoding UTF8
           Write-Host $body
 
