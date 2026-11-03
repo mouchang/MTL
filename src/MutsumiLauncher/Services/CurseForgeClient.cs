@@ -167,6 +167,89 @@ public sealed class CurseForgeClient
     }
 
     /// <summary>批量取项目（一次最多 100 个）。</summary>
+    /// <summary>
+    /// 批量取文件详情（POST /mods/files）。检查更新时本地文件可能有上百个，
+    /// 逐个查太慢——PCL2 也是批量拿再比对。
+    /// </summary>
+    public async Task<Dictionary<int, CurseForgeFile>> GetFilesBatchAsync(
+        IReadOnlyCollection<int> fileIds, CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<int, CurseForgeFile>();
+        var ids = fileIds.Where(id => id > 0).Distinct().Take(100).ToList();
+        if (ids.Count == 0) return result;
+
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object> { ["fileIds"] = ids });
+
+        using var document = await PostAsync($"{BaseUrl}/mods/files", payload, cancellationToken);
+
+        if (document is null || !document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array)
+            return result;
+
+        foreach (var element in data.EnumerateArray())
+        {
+            if (ParseFile(element) is not { } file) continue;
+
+            result[file.Id] = file;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 批量取工程信息，顺带解析响应里的 <c>latestFiles</c>。
+    /// 检查更新用它替代「每个 Mod 单独查一次文件列表」。
+    /// </summary>
+    public async Task<Dictionary<int, (CurseForgeModDetail Detail, List<CurseForgeFile> Files)>>
+        GetModsWithLatestFilesAsync(IReadOnlyCollection<int> modIds,
+            CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<int, (CurseForgeModDetail, List<CurseForgeFile>)>();
+        var ids = modIds.Where(id => id > 0).Distinct().Take(100).ToList();
+        if (ids.Count == 0) return result;
+
+        var payload = JsonSerializer.Serialize(new Dictionary<string, object> { ["modIds"] = ids });
+
+        using var document = await PostAsync($"{BaseUrl}/mods", payload, cancellationToken);
+
+        if (document is null || !document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array)
+            return result;
+
+        foreach (var element in data.EnumerateArray())
+        {
+            var id = Int(element, "id");
+            if (id <= 0) continue;
+
+            var detail = new CurseForgeModDetail(
+                id,
+                Text(element, "name") ?? string.Empty,
+                Text(element, "summary") ?? string.Empty,
+                Text(element, "logo") is { } logo ? logo : Text(element, "iconUrl"),
+                string.Empty,
+                Long(element, "downloadCount"),
+                DateTimeOffset.TryParse(Text(element, "dateModified"), out var date)
+                    ? date
+                    : DateTimeOffset.MinValue,
+                Text(element, "links.websiteUrl") ?? string.Empty);
+
+            var files = new List<CurseForgeFile>();
+
+            if (element.TryGetProperty("latestFiles", out var latest)
+                && latest.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var fileElement in latest.EnumerateArray())
+                {
+                    if (ParseFile(fileElement) is { } file) files.Add(file);
+                }
+            }
+
+            result[id] = (detail, files);
+        }
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<CurseForgeModDetail>> GetModsAsync(
         IReadOnlyCollection<int> modIds, CancellationToken cancellationToken = default)
     {

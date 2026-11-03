@@ -106,6 +106,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             .OrderBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        ApplyCachedUpdates();
+
         var enabledCount = _items.Count(item => item.Enabled);
         AllFilterText.Text = $"全部 ({_items.Count})";
         EnabledFilterText.Text = $"启用 ({enabledCount})";
@@ -129,6 +131,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         AppLog.Info($"check updates: version={_version} loader={info.Loader} items={_items.Count}");
 
+        var matchedFiles = 0;
         var sha1Map = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
         var fingerprintMap = new Dictionary<uint, ModFileItem>();
 
@@ -167,6 +170,7 @@ public partial class ModManagePage : UserControl, IInstancePage
                 info.GameVersion, LoaderKey(info.Loader));
 
             AppLog.Info($"modrinth update check: {updates.Count}/{sha1Map.Count} 命中");
+            matchedFiles = Math.Max(matchedFiles, updates.Count);
 
             foreach (var (hash, version) in updates)
             {
@@ -180,58 +184,68 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Error(ex, "modrinth update check");
         }
 
-        // CurseForge：指纹反查 → 按 mod 拉文件列表 → 取比本地新的那一个
+        // CurseForge：批量指纹反查 → 批量取工程信息（带 latestFiles）→ 批量取本地文件信息。
+        // 原来是「每个 Mod 单独查一次文件列表」，一百多个 Mod 就是一百多次请求。
         try
         {
             var curseForge = new CurseForgeClient();
             var matches = await curseForge.MatchFingerprintsAsync(fingerprintMap.Keys.ToList());
 
             AppLog.Info($"curseforge update check: {matches.Count}/{fingerprintMap.Count} 命中");
+            matchedFiles = Math.Max(matchedFiles, matches.Count);
 
-            foreach (var match in matches)
+            if (matches.Count > 0)
             {
-                if (FindItem(fingerprintMap, match) is not { } item) continue;
+                var modIds = matches.Select(match => match.ModId).Distinct().ToList();
+                var fileIds = matches.Select(match => match.FileId).Distinct().ToList();
 
-                var files = await curseForge.GetFilesAsync(match.ModId,
-                    info.GameVersion, LoaderType(info.Loader));
+                var projects = await curseForge.GetModsWithLatestFilesAsync(modIds);
+                var localFiles = await curseForge.GetFilesBatchAsync(fileIds);
 
-                // 本地那一版如果在列表里，拿它的发布时间做基准：只有更新的才提示
-                var current = files.FirstOrDefault(file => file.Id == match.FileId);
-
-                // 同一天的多个文件靠文件 ID 区分（CurseForge 的 ID 是递增的）
-                var latest = files
-                    .Where(file => file.Id != match.FileId && !string.IsNullOrWhiteSpace(file.DownloadUrl))
-                    .OrderByDescending(file => file.FileDate)
-                    .ThenByDescending(file => file.Id)
-                    .FirstOrDefault();
-
-                if (latest is null) continue;
-                if (current is not null && !IsNewer(latest, current)) continue;
-
-                var version = new ModrinthVersion
+                foreach (var match in matches)
                 {
-                    Name = latest.DisplayName,
-                    VersionNumber = string.IsNullOrWhiteSpace(latest.DisplayName)
-                        ? latest.FileName
-                        : latest.DisplayName,
-                    VersionType = latest.ReleaseType,
-                    DatePublished = latest.FileDate,
-                    GameVersions = latest.GameVersions.ToList(),
-                    Loaders = latest.Loaders.ToList(),
-                    Files =
-                    [
-                        new ModrinthFile
-                        {
-                            Url = latest.DownloadUrl,
-                            Filename = latest.FileName,
-                            Primary = true,
-                            Size = latest.Length,
-                            Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
-                        },
-                    ],
-                };
+                    if (FindItem(fingerprintMap, match) is not { } item) continue;
+                    if (!projects.TryGetValue(match.ModId, out var project)) continue;
 
-                if (MarkUpdate(item, version)) found++;
+                    localFiles.TryGetValue(match.FileId, out var local);
+
+                    // 候选：同游戏版本、加载器匹配、且比本地新
+                    var latest = project.Files
+                        .Where(file => !string.IsNullOrWhiteSpace(file.DownloadUrl))
+                        .Where(file => IsCompatible(file, info.GameVersion, info.Loader))
+                        .Where(file => local is null || IsNewer(file, local))
+                        .Where(file => file.Id != match.FileId)
+                        .OrderByDescending(file => file.FileDate)
+                        .ThenByDescending(file => file.Id)
+                        .FirstOrDefault();
+
+                    if (latest is null) continue;
+
+                    var version = new ModrinthVersion
+                    {
+                        Name = latest.DisplayName,
+                        VersionNumber = string.IsNullOrWhiteSpace(latest.DisplayName)
+                            ? latest.FileName
+                            : latest.DisplayName,
+                        VersionType = latest.ReleaseType,
+                        DatePublished = latest.FileDate,
+                        GameVersions = latest.GameVersions.ToList(),
+                        Loaders = latest.Loaders.ToList(),
+                        Files =
+                        [
+                            new ModrinthFile
+                            {
+                                Url = latest.DownloadUrl,
+                                Filename = latest.FileName,
+                                Primary = true,
+                                Size = latest.Length,
+                                Hashes = new ModrinthHashes { Sha1 = latest.Sha1 },
+                            },
+                        ],
+                    };
+
+                    if (MarkUpdate(item, version)) found++;
+                }
             }
         }
         catch (Exception ex)
@@ -239,7 +253,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             AppLog.Error(ex, "curseforge update check");
         }
 
-        StopBusy();
+        SaveUpdateCache();
 
         // 有更新才显示筛选标签
         UpdatesFilter.Visibility = found > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -253,7 +267,59 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         ApplyFilter();
 
-        owner?.ShowToast(found == 0 ? "所有 Mod 都是最新的。" : $"发现 {found} 个可更新的 Mod。");
+        var total = _items.Count;
+
+        // 既没在 Modrinth 命中、也没在 CurseForge 命中的，就是查不到来源的
+        var unknown = Math.Max(0, total - matchedFiles);
+
+        var message = found == 0
+            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（{unknown} 个未找到来源）。" : "所有 Mod 都是最新的。")
+            : unknown > 0
+                ? $"发现 {found} 个可更新的 Mod（{unknown} 个未找到来源）。"
+                : $"发现 {found} 个可更新的 Mod。";
+
+        owner?.ShowToast(message);
+    }
+
+    /// <summary>把当前的可更新状态写盘，供下次打开列表直接还原。</summary>
+    private void SaveUpdateCache()
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        try
+        {
+            var entries = new Dictionary<string, ModUpdateCache.Entry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in _items)
+            {
+                if (item.Update is not { } update) continue;
+
+                var file = update.Files.FirstOrDefault(f => f.Primary) ?? update.Files.FirstOrDefault();
+                if (file is null || string.IsNullOrWhiteSpace(file.Url)) continue;
+
+                long size;
+
+                try
+                {
+                    size = new FileInfo(item.FullPath).Length;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                entries[ModUpdateCache.KeyOf(item.FileName, size)] = new ModUpdateCache.Entry(
+                    update.Id, update.Name, update.VersionNumber, update.DatePublished,
+                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, null);
+            }
+
+            ModUpdateCache.Save(_version, entries);
+            AppLog.Info($"mod updates cache: 保存 {entries.Count} 条");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "save update cache");
+        }
     }
 
     private static bool MarkUpdate(ModFileItem item, ModrinthVersion version)
@@ -278,6 +344,17 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>CurseForge 文件是否比本地那个新：先比发布时间，同一天再比 ID。</summary>
+    /// <summary>CurseForge 文件是否兼容当前游戏版本与加载器。</summary>
+    private static bool IsCompatible(CurseForgeFile file, string gameVersion, string loader)
+    {
+        var loaders = file.Loaders;
+
+        if (loaders.Count > 0 && !loaders.Contains(LoaderKey(loader), StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        return file.GameVersions.Contains(gameVersion);
+    }
+
     private static bool IsNewer(CurseForgeFile candidate, CurseForgeFile current)
         => candidate.FileDate > current.FileDate
            || (candidate.FileDate == current.FileDate && candidate.Id > current.Id);
@@ -410,6 +487,10 @@ public partial class ModManagePage : UserControl, IInstancePage
             }
 
             AppLog.Info($"mod updated: {item.FileName} -> {finalName}");
+
+            // 更新成功：把这条从持久化缓存里删掉，免得刷新后又冒出旧的「可更新」
+            RemoveCachedUpdate(item);
+
             return true;
         }
         catch (Exception ex)
@@ -420,10 +501,94 @@ public partial class ModManagePage : UserControl, IInstancePage
         }
     }
 
+    /// <summary>更新完成后移除对应的缓存条目。</summary>
+    private void RemoveCachedUpdate(ModFileItem item)
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        try
+        {
+            var cached = ModUpdateCache.Load(_version);
+            if (cached.Count == 0) return;
+
+            long size;
+
+            try
+            {
+                size = new FileInfo(item.FullPath).Length;
+            }
+            catch
+            {
+                size = 0;
+            }
+
+            if (cached.Remove(ModUpdateCache.KeyOf(item.FileName, size)))
+                ModUpdateCache.Save(_version, cached);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "remove update cache");
+        }
+    }
+
     private static string Sha1Of(string path)
     {
         using var stream = File.OpenRead(path);
         return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
+    }
+
+    /// <summary>把上次检查更新的结果套回列表，刷新/重开实例后徽标不会消失。</summary>
+    private void ApplyCachedUpdates()
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        var cached = ModUpdateCache.Load(_version);
+        if (cached.Count == 0) return;
+
+        var applied = 0;
+
+        foreach (var item in _items)
+        {
+            var size = 0L;
+
+            try
+            {
+                size = new FileInfo(item.FullPath).Length;
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (!cached.TryGetValue(ModUpdateCache.KeyOf(item.FileName, size), out var entry)) continue;
+            if (entry.DownloadUrl is null) continue;
+
+            item.SetUpdate(new ModrinthVersion
+            {
+                Id = entry.VersionId,
+                Name = entry.Name,
+                VersionNumber = entry.VersionNumber,
+                VersionType = "release",
+                DatePublished = entry.DatePublished,
+                GameVersions = [],
+                Loaders = [],
+                Files =
+                [
+                    new ModrinthFile
+                    {
+                        Url = entry.DownloadUrl,
+                        Filename = entry.FileName,
+                        Primary = true,
+                        Size = entry.Size,
+                        Hashes = new ModrinthHashes { Sha1 = entry.Sha1 },
+                    },
+                ],
+            });
+
+            applied++;
+        }
+
+        if (applied > 0) AppLog.Info($"mod updates cache: 还原 {applied} 条");
     }
 
     private void ApplyFilter()

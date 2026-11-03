@@ -3,6 +3,56 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.1] - 2026-11-03
+
+### 更新内容
+
+- 检查更新的结果会保存下来，刷新列表或重开实例后「可更新」不会消失
+- CurseForge 检查改为批量请求：一百多个 Mod 从上百次请求降到三次
+- 检查完成后提示里会写明有多少 Mod 查不到来源
+
+### 技术实现
+
+#### 1. 结果持久化（对齐 PCL2）
+
+PCL2 把每个本地文件的 `ProjectVersion` / `UpdateFile` / `ChangelogUrls` 一起写进 JSON，
+列表刷新时直接还原，不需要重新联网。我们之前每次 `Refresh()` 都重建 `ModFileItem`，
+`Update` 字段随之丢失，于是徽标消失、只能再点一次检查。
+
+新增 `ModUpdateCache`，按「文件名 + 大小」做键：
+
+```csharp
+public static string KeyOf(string fileName, long size)
+    => fileName.ToLowerInvariant() + "|" + size;
+```
+
+`Refresh()` 末尾 `ApplyCachedUpdates()` 把缓存还原成 `ModrinthVersion` 挂回列表；
+检查完调用 `SaveUpdateCache()`；更新成功后 `RemoveCachedUpdate()` 删掉对应条目，
+避免刷新后旧徽标复活。
+
+#### 2. CurseForge 批量检查
+
+原流程对每个命中的 Mod 调一次 `GetFilesAsync`（内部还会翻页），
+100 个 Mod 就是 100+ 次请求、每次几秒。改成三步：
+
+```csharp
+var matches = await curseForge.MatchFingerprintsAsync(keys);        // 1 次
+var projects = await curseForge.GetModsWithLatestFilesAsync(modIds); // 1 次，带 latestFiles
+var localFiles = await curseForge.GetFilesBatchAsync(fileIds);       // 1 次
+```
+
+候选文件直接从 `latestFiles` 里筛（同游戏版本 + 加载器匹配 + 比本地新），
+不需要再逐个项目拉文件列表。
+
+#### 3. 未识别数量
+
+统计两边指纹/SHA-1 的命中数，提示里给差集：
+
+```csharp
+var unknown = Math.Max(0, total - matchedFiles);
+```
+
+自编译或私有 Mod 无法匹配属于正常现象，明说出来比静默跳过好。
 ## [1.1.2] - 2026-11-02
 
 ### 更新内容
