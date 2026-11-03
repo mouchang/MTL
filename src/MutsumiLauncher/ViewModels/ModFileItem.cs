@@ -87,7 +87,23 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public string Initial { get; init; } = "M";
 
-    public Brush IconBrush { get; init; } = Brushes.MediumSeaGreen;
+    private Brush _iconBrush = Brushes.MediumSeaGreen;
+
+    /// <summary>
+    /// 图标位底色。没有图标时用随机色 + 首字母；有图标时改成白色，
+    /// 免得 PNG 的透明区域透出彩色块（看起来像糊了一块背景）。
+    /// </summary>
+    public Brush IconBrush
+    {
+        get => _iconBrush;
+        set
+        {
+            if (ReferenceEquals(_iconBrush, value)) return;
+
+            _iconBrush = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconBrush)));
+        }
+    }
 
     private string? _iconPath;
 

@@ -548,10 +548,14 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin($"更新 {item.DisplayName}");
         var versionNumber = item.Update!.VersionNumber;
 
+        ShowUpdateProgress($"正在更新 {item.DisplayName}");
+
         var progress = new Progress<DownloadProgress>(p =>
         {
             var percent = p.Total > 0 ? Math.Clamp(p.Received * 100.0 / p.Total, 0, 100) : 0;
             DownloadCenter.Report(task, $"正在下载 {item.DisplayName}", percent, p.Received);
+
+            SetUpdateProgress(percent, $"正在更新 {item.DisplayName} · {percent:0}%");
         });
 
         try
@@ -571,6 +575,10 @@ public partial class ModManagePage : UserControl, IInstancePage
         {
             AppLog.Error(ex, "update mod");
             DownloadCenter.Complete(task, "更新失败：" + ex.Message);
+        }
+        finally
+        {
+            HideUpdateProgress();
         }
     }
 
@@ -614,6 +622,8 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin(title);
         var done = 0;
 
+        ShowUpdateProgress(title);
+
         try
         {
             foreach (var item in targets)
@@ -630,6 +640,10 @@ public partial class ModManagePage : UserControl, IInstancePage
                     DownloadCenter.Report(task,
                         "正在更新 " + current.DisplayName + "（" + captured + "/" + targets.Count + "）",
                         overall, p.Received);
+
+                    SetUpdateProgress(overall,
+                        "正在更新 " + current.DisplayName + "（" + captured + "/" + targets.Count + " · " +
+                        sub.ToString("0") + "%）");
                 });
 
                 owner?.ShowToast("正在更新 " + item.DisplayName + "（" + captured + "/" + targets.Count + "）…");
@@ -640,6 +654,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         finally
         {
             DownloadCenter.Complete(task, "更新完成 " + done + "/" + targets.Count);
+            HideUpdateProgress();
         }
 
         return done;
@@ -784,6 +799,23 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         if (applied > 0) AppLog.Info($"mod updates cache: 还原 {applied} 条");
     }
+
+    // ---------- 更新进度 ----------
+
+    private void ShowUpdateProgress(string text)
+    {
+        UpdateProgressText.Text = text;
+        UpdateProgressValue.Value = 0;
+        UpdateProgressBar.Visibility = Visibility.Visible;
+    }
+
+    private void SetUpdateProgress(double percent, string text)
+    {
+        UpdateProgressValue.Value = Math.Clamp(percent, 0, 100);
+        UpdateProgressText.Text = text;
+    }
+
+    private void HideUpdateProgress() => UpdateProgressBar.Visibility = Visibility.Collapsed;
 
     // ---------- 多选与批量操作 ----------
 
@@ -1220,7 +1252,13 @@ public partial class ModManagePage : UserControl, IInstancePage
                 if (icon is null) continue;
 
                 var path = icon;
-                Application.Current?.Dispatcher.Invoke(() => item.IconPath = path);
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    item.IconPath = path;
+
+                    // 透明 PNG 会透出底色，换成白色才不会显得脏
+                    item.IconBrush = System.Windows.Media.Brushes.White;
+                });
             }
         });
 
@@ -1364,12 +1402,6 @@ public partial class ModManagePage : UserControl, IInstancePage
     private void DeleteMod_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: ModFileItem item }) return;
-
-        var confirm = MessageBox.Show(Window.GetWindow(this)!,
-            $"确定删除「{item.DisplayName}」吗？此操作不可撤销。",
-            "删除 Mod", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-
-        if (confirm != MessageBoxResult.OK) return;
 
         var owner = Window.GetWindow(this);
         if (!MessageDialog.Show(owner, "删除 Mod", $"确定删除「{item.DisplayName}」吗？", "删除")) return;

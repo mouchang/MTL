@@ -57,6 +57,9 @@ public static class McmodIndex
         var data = Lazy.Value;
         if (data.All.Count == 0) return null;
 
+        // 「(Fabric)」这类后缀先去掉，否则百科索引永远对不上
+        title = StripQualifiers(title);
+
         var slugKey = Normalize(slug);
         var titleKey = Normalize(title);
         var bareKey = Normalize(StripDecorations(title));
@@ -402,6 +405,34 @@ public static class McmodIndex
         if (cut > 0) result = result[..cut];
 
         return result.Trim();
+    }
+
+    /// <summary>
+    /// 去掉标题里的加载器修饰：「(Fabric)」「（Forge）」「[1.20.1]」不是名字的一部分，
+    /// 带着它们去匹配百科索引基本必失败。
+    /// </summary>
+    private static string StripQualifiers(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return title ?? string.Empty;
+
+        var text = title.Trim();
+
+        while (true)
+        {
+            var match = Regex.Match(text, @"\s*[\(（\[【][^\)）\]】]*[\)）\]】]$");
+            if (!match.Success) break;
+
+            var inner = match.Value.Trim(' ', '(', ')', '（', '）', '[', ']', '【', '】');
+
+            var noise = Regex.IsMatch(inner,
+                @"(?i)^(fabric|forge|neoforge|quilt|fabricapi|mc[0-9.]*|[0-9.]+|snapshot|[0-9.]+[a-z]?)$");
+
+            if (!noise) break;
+
+            text = text[..match.Index].TrimEnd();
+        }
+
+        return text;
     }
 
     private static string Normalize(string? text)

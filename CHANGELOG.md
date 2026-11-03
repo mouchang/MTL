@@ -3,6 +3,47 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.13] - 2026-11-03
+
+### 更新内容
+
+- 更新 Mod 时页面内显示进度条（第几个 / 百分比），不再只靠角落浮标
+- 修复删除 Mod 需要确认两次
+- 中文名匹配支持去掉「(Fabric)」这类后缀
+- 元数据损坏的 Mod 用宽松解析取名字，不再显示文件名
+- 有图标的 Mod 改用白底，透明区域不再透出随机色块
+
+### 技术实现
+
+#### 1. 页面内进度条
+
+`DownloadCenter` 的浮标只在右下角闪一下，小文件几乎看不到。
+在列表下方加了一行独立进度：
+
+```csharp
+var overall = (index + sub / 100.0) * 100 / targets.Count;
+SetUpdateProgress(overall, "正在更新 …（2/3 · 47%）");
+```
+
+#### 2. 删除确认两次
+
+上一次修「删除前确认」时，页面里已经有一处 `MessageDialog.Show`，
+我又加了一个 `MessageBox`，于是要点两次。删掉后加的那个。
+
+#### 3. 中文名
+
+`McmodIndex.Find` 增加 `StripQualifiers`：循环剥离末尾的 `(Fabric)` `（Forge）` `[1.20.1]`，
+只剥「加载器 / 版本号 / snapshot」这类噪声，真正的副标题不动。
+
+#### 4. 文件名兜底
+
+部分 Mod 的 `fabric.mod.json` 里有裸换行或注释，`JsonDocument` 直接抛异常。
+新增 `ReadLenient`：正则捞 `name` / `version`，放在严格解析之后作为兜底。
+
+#### 5. 图标背景
+
+图标位底色原本是随机色 + 首字母；PNG 带透明通道时会透出这块彩色。
+现在一旦取到图标就把底色改成白色。
 ## [1.1.3-beta.12] - 2026-11-03
 
 ### 更新内容

@@ -124,6 +124,9 @@ public static class ModMetadata
                 }
             }
 
+            // 到这一步还没有结果：试着用正则从 fabric/quilt 元数据里捞
+            if (ReadLenient(archive) is { } lenient) return lenient;
+
             foreach (var tomlName in new[] { "META-INF/neoforge.mods.toml", "META-INF/mods.toml" })
             {
                 var toml = archive.GetEntry(tomlName);
@@ -150,6 +153,41 @@ public static class ModMetadata
     }
 
     /// <summary>界面显示用：优先 MC百科中文名，其次 jar 里的名称，最后文件名。</summary>
+    /// <summary>
+    /// 宽松读取：部分 Mod 的 fabric.mod.json 带裸换行或注释，严格 JSON 解析会失败，
+    /// 这时用正则捞 name / version，总比显示文件名强。
+    /// </summary>
+    private static Info? ReadLenient(ZipArchive archive)
+    {
+        foreach (var name in new[] { "fabric.mod.json", "quilt.mod.json" })
+        {
+            var entry = archive.GetEntry(name);
+            if (entry is null) continue;
+
+            try
+            {
+                using var stream = entry.Open();
+                using var reader = new StreamReader(stream);
+                var text = reader.ReadToEnd();
+
+                var nameMatch = Regex.Match(text, "\"name\"\\s*:\\s*\"([^\"]+)\"");
+                var versionMatch = Regex.Match(text, "\"version\"\\s*:\\s*\"([^\"]+)\"");
+
+                if (!nameMatch.Success) continue;
+
+                return new Info(nameMatch.Groups[1].Value, versionMatch.Success
+                    ? versionMatch.Groups[1].Value
+                    : null, null);
+            }
+            catch
+            {
+                // 继续试下一个
+            }
+        }
+
+        return null;
+    }
+
     public static string DisplayNameFor(string jarPath, string fallback)
     {
         var info = Read(jarPath);
