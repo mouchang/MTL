@@ -3,6 +3,55 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.14] - 2026-11-03
+
+### 更新内容
+
+- 修复部分 Mod 仍显示文件名（元数据 JSON 带裸换行导致解析失败）
+- 图标底色改为透明，界面背景直接透出；资源搜索页同步处理
+- 多文件同时下载时按活跃文件数分摊连接，第三个下载不再「点了没反应」
+
+### 技术实现
+
+#### 1. 元数据解析
+
+`entity_texture_features`、`EuphoriaPatcher` 的 `fabric.mod.json` 里 `description` 带裸换行，
+`JsonDocument.Parse` 直接抛 `JsonReaderException`，`Read` 返回 null，界面退回文件名。
+
+严格解析放进 try，失败后走正则兜底：
+
+```csharp
+try { using var doc = JsonDocument.Parse(stream); … }
+catch (JsonException) { if (ReadLenient(archive) is { } info) return info; }
+```
+
+实测三个原本失败的 jar 都能读出名字与版本。
+
+#### 2. 图标背景
+
+底色从白色改成透明：
+
+```csharp
+item.IconBrush = Brushes.Transparent;
+```
+
+搜索卡片同理，新增 `PlaceholderVisibility`：有图标就把占位色块折叠，
+透明区域显示的是页面背景而不是色块。
+
+#### 3. 下载排队
+
+引擎的全局槽位是 16，直连模式每个文件按 8 段下载——两个文件就占满，
+第三个点击后它的分段全在 `Slots.WaitAsync` 里等着，看起来像没反应。
+
+改成按活跃文件数分摊：
+
+```csharp
+var activeFiles = Math.Max(1, Interlocked.Increment(ref _activeFiles));
+var pieceCap = Math.Clamp(MaxThreads / activeFiles, 2, tuning.MaxPieces);
+```
+
+同时把 `MaxThreads` 提到 24，并保证退出时递减计数。同一时刻的文件越多，
+每个文件分的段越少，但都不会被完全饿死。
 ## [1.1.3-beta.13] - 2026-11-03
 
 ### 更新内容

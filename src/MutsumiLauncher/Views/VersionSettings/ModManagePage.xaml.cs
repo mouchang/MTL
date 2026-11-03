@@ -1256,8 +1256,8 @@ public partial class ModManagePage : UserControl, IInstancePage
                 {
                     item.IconPath = path;
 
-                    // 透明 PNG 会透出底色，换成白色才不会显得脏
-                    item.IconBrush = System.Windows.Media.Brushes.White;
+                    // 透明 PNG 不该透出随机色块；底色透明后自然显示界面背景
+                    item.IconBrush = System.Windows.Media.Brushes.Transparent;
                 });
             }
         });

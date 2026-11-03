@@ -27,7 +27,10 @@ public sealed class DownloadExhaustedException(string message, Exception? inner 
 /// </summary>
 public static class DownloadEngine
 {
-    public static int MaxThreads { get; set; } = 16;
+    public static int MaxThreads { get; set; } = 24;
+
+    /// <summary>当前正在下载的文件数，用来按文件分摊连接预算。</summary>
+    private static int _activeFiles;
 
     /// <summary>累计收到的字节：给任务面板算速度用（很多上层调用只有百分比）。</summary>
     public static long TotalReceived => Interlocked.Read(ref _totalReceived);
@@ -160,6 +163,13 @@ public static class DownloadEngine
 
         var tuning = Tuning.For(proxied);
 
+        // 同时下多个文件时按活跃文件数摊分连接预算：
+        // 以前 2 个文件各占 8 条就把 16 个槽位占满，第三个点下去看着像没反应。
+        var activeFiles = Math.Max(1, Interlocked.Increment(ref _activeFiles));
+        var pieceCap = Math.Clamp(MaxThreads / activeFiles, 2, tuning.MaxPieces);
+
+        try
+        {
         while (true)
         {
             try
@@ -169,7 +179,7 @@ public static class DownloadEngine
                     try
                     {
                         await DownloadRangedAsync(pool, targetPath, size.Value, sha1, progress,
-                            tuning, cancellationToken);
+                            tuning, pieceCap, cancellationToken);
 
                         return targetPath;
                     }
@@ -193,6 +203,11 @@ public static class DownloadEngine
                 AppLog.Info($"all sources failed, retry round {round}: {Path.GetFileName(targetPath)}");
                 await Task.Delay(600, cancellationToken);
             }
+        }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeFiles);
         }
     }
 
@@ -361,11 +376,11 @@ public static class DownloadEngine
     }
 
     private static async Task DownloadRangedAsync(SourcePool pool, string targetPath, long size,
-        string? sha1, IProgress<DownloadProgress>? progress, Tuning tuning,
+        string? sha1, IProgress<DownloadProgress>? progress, Tuning tuning, int pieceCap,
         CancellationToken cancellationToken)
     {
         var temp = targetPath + ".part";
-        var pieceCount = Math.Clamp((int)(size / tuning.PieceSize), 2, tuning.MaxPieces);
+        var pieceCount = Math.Clamp((int)(size / tuning.PieceSize), 2, Math.Min(tuning.MaxPieces, pieceCap));
         var pieceSize = (size + pieceCount - 1) / pieceCount;
 
         var received = 0L;

@@ -100,6 +100,12 @@ public sealed class SearchResultCard : INotifyPropertyChanged
 
     public string? IconPath => _current.IconPath;
 
+    /// <summary>占位块是否显示：有图标就隐藏，否则透明 PNG 会透出底色。</summary>
+    public System.Windows.Visibility PlaceholderVisibility =>
+        string.IsNullOrWhiteSpace(IconPath)
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+
     /// <summary>切到另一个来源（只切显示，不重新请求）。</summary>
     public void Select(ResourcePlatform platform)
     {
@@ -112,7 +118,7 @@ public sealed class SearchResultCard : INotifyPropertyChanged
                  {
                      nameof(Current), nameof(ModrinthSelected), nameof(CurseForgeSelected),
                      nameof(Title), nameof(Author), nameof(Description), nameof(Initial),
-                     nameof(Meta), nameof(IconUrl), nameof(IconPath),
+                     nameof(Meta), nameof(IconUrl), nameof(IconPath), nameof(PlaceholderVisibility),
                  })
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

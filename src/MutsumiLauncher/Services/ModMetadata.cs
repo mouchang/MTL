@@ -98,30 +98,50 @@ public static class ModMetadata
             var fabric = archive.GetEntry("fabric.mod.json");
             if (fabric is not null)
             {
-                using var stream = fabric.Open();
-                using var document = JsonDocument.Parse(stream);
-                var root = document.RootElement;
+                // 不少 Mod 的 fabric.mod.json 里字符串带裸换行（description 最常见），
+                // 严格 JSON 解析会直接抛异常——先试严格，失败再用正则捞。
+                try
+                {
+                    using var stream = fabric.Open();
+                    using var document = JsonDocument.Parse(stream);
+                    var root = document.RootElement;
 
-                return new Info(
-                    Text(root, "name") ?? Text(root, "id") ?? string.Empty,
-                    Text(root, "version"),
-                    Text(root, "id"));
+                    var name = Text(root, "name") ?? Text(root, "id");
+
+                    if (!string.IsNullOrWhiteSpace(name))
+                        return new Info(name!, Text(root, "version"), Text(root, "id"));
+                }
+                catch (JsonException)
+                {
+                    // 落到下面的宽松解析
+                }
+
+                if (ReadLenient(archive) is { } fromFabric) return fromFabric;
             }
 
             var quilt = archive.GetEntry("quilt.mod.json");
             if (quilt is not null)
             {
-                using var stream = quilt.Open();
-                using var document = JsonDocument.Parse(stream);
-
-                if (document.RootElement.TryGetProperty("quilt_loader", out var loader)
-                    && loader.TryGetProperty("metadata", out var metadata))
+                try
                 {
-                    return new Info(
-                        Text(metadata, "name") ?? Text(loader, "id") ?? string.Empty,
-                        Text(loader, "version"),
-                        Text(loader, "id"));
+                    using var stream = quilt.Open();
+                    using var document = JsonDocument.Parse(stream);
+
+                    if (document.RootElement.TryGetProperty("quilt_loader", out var loader)
+                        && loader.TryGetProperty("metadata", out var metadata))
+                    {
+                        var name = Text(metadata, "name") ?? Text(loader, "id");
+
+                        if (!string.IsNullOrWhiteSpace(name))
+                            return new Info(name!, Text(loader, "version"), Text(loader, "id"));
+                    }
                 }
+                catch (JsonException)
+                {
+                    // 继续用宽松解析
+                }
+
+                if (ReadLenient(archive) is { } fromQuilt) return fromQuilt;
             }
 
             // 到这一步还没有结果：试着用正则从 fabric/quilt 元数据里捞
