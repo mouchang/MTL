@@ -3,6 +3,35 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.22] - 2026-11-03
+
+### 更新内容
+
+- 修复「信息」按钮跳到搜索页（中文名查不到百科条目）
+
+### 技术实现
+
+两个 bug 叠在一起：
+
+1. `CnKey` 算出来了却从没登记进 `ByName`，索引里只有英文名能查；
+2. `FindExact` 有条 `key.Length < 3` 的门槛，中文单字名（Sodium 的「钠」）直接被跳过。
+
+所以列表里显示「C^2M 引擎」时精确查找必然失败，退回搜索页，
+URL 里带着 `^` 和空格，百科那边一条结果都没有。
+
+```csharp
+if (entry.CnKey is { Length: >= 1 }) data.ByName.TryAdd(entry.CnKey, entry);
+…
+if (key.Length == 0) continue;
+```
+
+实测：
+
+```
+C^2M 引擎    -> id=3511
+钠           -> id=2785
+实体纹理特性  -> id=5862
+```
 ## [1.1.3-beta.21] - 2026-11-03
 
 ### 更新内容

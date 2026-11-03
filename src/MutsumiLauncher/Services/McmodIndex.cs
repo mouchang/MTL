@@ -69,7 +69,8 @@ public static class McmodIndex
 
         foreach (var key in keys)
         {
-            if (key.Length < 3) continue;
+            // 中文名单字也是合法键（Sodium 的「钠」），不能用长度门槛挡掉
+            if (key.Length == 0) continue;
             if (data.ByName.TryGetValue(key, out var entry)) return ToMatch(entry);
             if (data.ByAbbr.TryGetValue(key, out var byAbbr)) return ToMatch(byAbbr);
         }
@@ -376,6 +377,11 @@ public static class McmodIndex
                     var key = Normalize(alias);
                     if (key.Length >= 3) data.ByName.TryAdd(key, entry);
                 }
+
+                // 中文名也要能精确命中：界面显示的是「C^2M 引擎」「钠」这类名字，
+                // 只登记英文 key 的话永远查不到，最后只能退回搜索页。
+                // 单字中文名也要收（比如 Sodium 的「钠」）
+                if (entry.CnKey is { Length: >= 1 }) data.ByName.TryAdd(entry.CnKey, entry);
 
                 if (entry.AbbrKey is { Length: >= 3 }) data.ByAbbr.TryAdd(entry.AbbrKey, entry);
             }
