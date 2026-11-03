@@ -930,30 +930,19 @@ public partial class ModrinthDetailView : UserControl
 
     private string? _mcmodUrl;
 
-    /// <summary>按 slug / 项目名匹配 MC百科；命中百科页显示中文名，没命中就给搜索页。</summary>
+    /// <summary>
+    /// 「MC百科」按钮：索引里精确命中就直达详情页，否则退回搜索页。
+    /// 统一走 McmodIndex，旧的中文名拼接逻辑已删除。
+    /// </summary>
     private void LoadMcmod(string title, string? slug)
     {
-        var entry = McmodService.Lookup(title, slug);
+        var match = McmodIndex.FindExact(slug, title);
 
-        if (entry is null)
-        {
-            McmodButton.Visibility = Visibility.Collapsed;
-            return;
-        }
+        _mcmodUrl = match is not null
+            ? $"https://www.mcmod.cn/class/{match.Id}.html"
+            : McmodService.SearchUrl(title);
 
-        _mcmodUrl = entry.Address;
-        ApplyMcmodEntry(entry);
-
-    }
-
-    private void ApplyMcmodEntry(McmodEntry entry)
-    {
-        _mcmodUrl = entry.Address;
-
-        McmodButton.Content = string.IsNullOrWhiteSpace(entry.ChineseName)
-            ? (entry.IsExact ? "MC百科" : "MC百科搜索")
-            : $"MC百科 · {entry.ChineseName}";
-
+        McmodButton.Content = "MC百科";
         McmodButton.Visibility = Visibility.Visible;
     }
 

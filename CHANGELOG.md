@@ -3,6 +3,32 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.20] - 2026-11-03
+
+### 更新内容
+
+- 资源详情页的百科按钮统一显示「MC百科」，不再拼模组中文名
+- 详情页百科跳转改走新索引，能直连就直连
+
+### 技术实现
+
+旧代码用 `McmodService.Lookup`（译名表）拼按钮文案：
+
+```csharp
+McmodButton.Content = $"MC百科 · {entry.ChineseName}";
+```
+
+新索引接入后两套逻辑并存，部分 Mod 仍走旧路径。现在统一成一条：
+
+```csharp
+var match = McmodIndex.FindExact(slug, title);
+_mcmodUrl = match is not null
+    ? $"https://www.mcmod.cn/class/{match.Id}.html"
+    : McmodService.SearchUrl(title);
+McmodButton.Content = "MC百科";
+```
+
+`ApplyMcmodEntry` 整个删除，按钮固定可见，文案固定。
 ## [1.1.3-beta.19] - 2026-11-03
 
 ### 更新内容
