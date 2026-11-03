@@ -7,28 +7,33 @@
 
 ### 更新内容
 
-- beta 版的桌面快捷方式和开始菜单改名为「Mutsumi Launcher beta」，不再和正式版冲突
+- beta 版的桌面快捷方式与开始菜单改名为「Mutsumi Launcher beta」，不再和正式版冲突
 
 ### 技术实现
 
-安装器按版本号自动判断是否 beta：
+安装器新增编译期开关 `APP_CHANNEL`：
 
 ```nsis
-Function MTL_SetDisplayName
-  StrCpy $R9 "\${APP_NAME}"
-  \${StrLoc} $0 "\${APP_VERSION}" "beta" ">"
-  \${If} $0 != ""
-    StrCpy $R9 "\${APP_NAME} beta"
-  \${EndIf}
-FunctionEnd
+!ifndef APP_CHANNEL
+  !define APP_CHANNEL ""
+!endif
+!if "${APP_CHANNEL}" == "beta"
+  !define DISPLAY_NAME "${APP_NAME} beta"
+!else
+  !define DISPLAY_NAME "${APP_NAME}"
+!endif
 ```
 
-`.onInit` 调一次，快捷方式、开始菜单目录都用 `$R9`；卸载段另外有一份
-`un.MTL_SetDisplayName`（NSIS 要求卸载函数以 `un.` 开头，且字符串函数要用
-`\${UnStrLoc}` 变体），保证能删掉同名快捷方式。
+快捷方式与开始菜单目录统一用 `${DISPLAY_NAME}`，安装段和卸载段各引用一次，
+保证卸载时删的是同一个名字。
 
-安装目录仍沿用 `Program Files\Mutsumi Launcher`，beta 与正式版的区别只在快捷方式名字，
-避免用户同时装两份时找不到哪个是哪个。
+构建时按版本号决定通道：
+
+```bash
+makensis /DAPP_VERSION=1.1.3-beta.7 /DAPP_CHANNEL=beta installer/MutsumiLauncher.nsi
+```
+
+CI 里自动判断：tag 含 `-`（如 `v1.2.0-beta.1`）即为 beta 通道，正式版不带后缀。
 ## [1.1.3-beta.6] - 2026-11-03
 
 ### 更新内容

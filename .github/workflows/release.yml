@@ -39,6 +39,10 @@ jobs:
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
+
+          # 带预发布标记的 tag（v1.2.0-beta.1）用 beta 通道，快捷方式会带后缀
+          $channel = if ($tag -match "-") { "beta" } else { "" }
+          "channel=$channel" >> $env:GITHUB_OUTPUT
           "title=$title" >> $env:GITHUB_OUTPUT
 
       - name: Remove previous release
@@ -60,7 +64,7 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DAPP_VERSION=${{ steps.version.outputs.version }}" installer/MutsumiLauncher.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DAPP_VERSION=${{ steps.version.outputs.version }}" "/DAPP_CHANNEL=${{ steps.version.outputs.channel }}" installer/MutsumiLauncher.nsi
           $source = Get-ChildItem dist -Filter "MutsumiLauncher-*-setup.exe" | Select-Object -First 1
           if (-not $source) { throw "NSIS 没有产出安装包" }
           $target = "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe"

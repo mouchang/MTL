@@ -2,15 +2,20 @@
 Unicode true
 
 !include "MUI2.nsh"
-!include "LogicLib.nsh"
-!include "StrFunc.nsh"
-; 版本号里带 beta 时，快捷方式与开始菜单带 beta 后缀，避免和正式版冲突
-${StrLoc}
-${UnStrLoc}
 
 !define APP_NAME "Mutsumi Launcher"
 !ifndef APP_VERSION
   !define APP_VERSION "1.0.0"
+!endif
+
+; 预发布版（-DAPP_CHANNEL=beta）用带后缀的名字，避免和正式版快捷方式冲突
+!ifndef APP_CHANNEL
+  !define APP_CHANNEL ""
+!endif
+!if "${APP_CHANNEL}" == "beta"
+  !define DISPLAY_NAME "${APP_NAME} beta"
+!else
+  !define DISPLAY_NAME "${APP_NAME}"
 !endif
 !define APP_EXE "MutsumiLauncher.exe"
 !define APP_PUBLISHER "Mutsumi"
@@ -42,30 +47,7 @@ SetCompressorDictSize 64
 !insertmacro MUI_UNPAGE_INSTFILES
 
 !insertmacro MUI_LANGUAGE "SimpChinese"
-Function MTL_SetDisplayName
-  StrCpy $R9 "${APP_NAME}"
-  ${StrLoc} $0 "${APP_VERSION}" "beta" ">"
-  ${If} $0 != ""
-    StrCpy $R9 "${APP_NAME} beta"
-  ${EndIf}
-FunctionEnd
 
-
-Function un.MTL_SetDisplayName
-  StrCpy $R9 "${APP_NAME}"
-  ${UnStrLoc} $0 "${APP_VERSION}" "beta" ">"
-  ${If} $0 != ""
-    StrCpy $R9 "${APP_NAME} beta"
-  ${EndIf}
-FunctionEnd
-
-Function .onInit
-  Call MTL_SetDisplayName
-FunctionEnd
-
-Function un.onInit
-  Call un.MTL_SetDisplayName
-FunctionEnd
 
 Section "Install"
   SetOutPath "$INSTDIR"
@@ -73,9 +55,9 @@ Section "Install"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
-  CreateDirectory "$SMPROGRAMS\$R9"
-  CreateShortcut "$SMPROGRAMS\$R9\$R9.lnk" "$INSTDIR\${APP_EXE}"
-  CreateShortcut "$DESKTOP\$R9.lnk" "$INSTDIR\${APP_EXE}"
+  CreateDirectory "$SMPROGRAMS\${DISPLAY_NAME}"
+  CreateShortcut "$SMPROGRAMS\${DISPLAY_NAME}\${DISPLAY_NAME}.lnk" "$INSTDIR\${APP_EXE}"
+  CreateShortcut "$DESKTOP\${DISPLAY_NAME}.lnk" "$INSTDIR\${APP_EXE}"
 
   WriteRegStr HKLM "Software\${APP_NAME}" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
@@ -93,9 +75,9 @@ Section "Uninstall"
     ExecWait '"$INSTDIR\${APP_EXE}" --cleanup-references'
   mtl_skip_cleanup:
 
-  Delete "$DESKTOP\$R9.lnk"
-  Delete "$SMPROGRAMS\$R9\$R9.lnk"
-  RMDir "$SMPROGRAMS\$R9"
+  Delete "$DESKTOP\${DISPLAY_NAME}.lnk"
+  Delete "$SMPROGRAMS\${DISPLAY_NAME}\${DISPLAY_NAME}.lnk"
+  RMDir "$SMPROGRAMS\${DISPLAY_NAME}"
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
   DeleteRegKey HKLM "Software\${APP_NAME}"
