@@ -192,12 +192,6 @@ public partial class ModManagePage : UserControl, IInstancePage
                 // 这里不再用实例级 loader 二次过滤（多加载器实例会误杀）。
                 if (!MarkUpdate(item, version)) continue;
 
-                if (!string.IsNullOrWhiteSpace(version.ProjectId))
-                {
-                    item.ChangelogUrl =
-                        $"https://modrinth.com/mod/{version.ProjectId}/changelog?g={info.GameVersion}";
-                }
-
                 found++;
             }
         }
@@ -270,7 +264,6 @@ public partial class ModManagePage : UserControl, IInstancePage
 
                     if (!string.IsNullOrWhiteSpace(project.Detail.WebsiteUrl))
                     {
-                        item.ChangelogUrl = project.Detail.WebsiteUrl.TrimEnd('/') + "/files";
                     }
 
                     found++;
@@ -339,7 +332,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
                 entries[ModUpdateCache.KeyOf(item.FileName, size)] = new ModUpdateCache.Entry(
                     update.Id, update.Name, update.VersionNumber, update.DatePublished,
-                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, item.ChangelogUrl);
+                    file.Url, file.Filename, file.Size, file.Hashes?.Sha1, null);
             }
 
             ModUpdateCache.Save(_version, entries);
@@ -421,23 +414,6 @@ public partial class ModManagePage : UserControl, IInstancePage
         "forge" => 1,
         _ => null,
     };
-
-    /// <summary>打开这个更新的日志页（Modrinth changelog / CurseForge files）。</summary>
-    private void ChangelogMod_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: ModFileItem item }) return;
-
-        var url = item.ChangelogUrl;
-
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            Toast("这个更新没有日志地址。");
-            return;
-        }
-
-        var error = UrlLauncher.Open(url);
-        if (error is not null) Toast(error);
-    }
 
     private async void UpdateMod_Click(object sender, RoutedEventArgs e)
     {
@@ -630,8 +606,6 @@ public partial class ModManagePage : UserControl, IInstancePage
                     },
                 ],
             });
-
-            item.ChangelogUrl = entry.ChangelogUrl;
 
             applied++;
         }
