@@ -3,6 +3,47 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.6] - 2026-11-03
+
+### 更新内容
+
+- 更新时合并两个平台的下载源，主源失败自动换另一个
+- 检查更新新增「含测试版」开关，默认只提示正式版
+
+### 技术实现
+
+#### 1. 多下载源合并
+
+同一个 Mod 版本经常在 Modrinth 与 CurseForge 各有一份（SHA-1 相同或文件名相同）。
+检查阶段把两边的地址按 `sha1:` / `name:` 归组：
+
+```csharp
+return file.Hashes?.Sha1 is { Length: > 0 } sha1
+    ? "sha1:" + sha1
+    : "name:" + file.Filename.ToLowerInvariant();
+```
+
+下载时把它们连同 `DownloadSources.ModFile` 的镜像候选一起交给引擎：
+
+```csharp
+var urls = new List<string> { file.Url };
+urls.AddRange(item.ExtraDownloadUrls);
+urls.AddRange(DownloadSources.ModFile(file.Url).Select(e => e.Url));
+await DownloadEngine.DownloadAsync(urls.Distinct(…).ToList(), target, sha1, size);
+```
+
+#### 2. 发布通道过滤
+
+`AppConfig.IncludePrereleaseUpdates` 默认 `false`，检查时按 `VersionType` 过滤：
+
+```csharp
+private static bool IncludeVersion(string? type)
+    => AppConfig.Current.IncludePrereleaseUpdates
+       || string.IsNullOrWhiteSpace(type)
+       || type.Equals("release", StringComparison.OrdinalIgnoreCase);
+```
+
+工具栏新增「含测试版」复选框，勾选立即写盘并影响下一次检查。
 ## [1.1.3-beta.5] - 2026-11-03
 
 ### 更新内容

@@ -30,6 +30,7 @@ public partial class ModManagePage : UserControl, IInstancePage
     public ModManagePage()
     {
         InitializeComponent();
+        SyncSettingsUi();
     }
 
     public void SetInstance(string version)
@@ -47,6 +48,11 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     private string ModsDir => InstanceService.ModsDirFor(_version);
+
+    private void SyncSettingsUi()
+    {
+        PrereleaseCheck.IsChecked = AppConfig.Current.IncludePrereleaseUpdates;
+    }
 
     public void Refresh()
     {
@@ -126,6 +132,12 @@ public partial class ModManagePage : UserControl, IInstancePage
         _ = FillSizesAsync(_items);
     }
 
+    private void PrereleaseCheck_Click(object sender, RoutedEventArgs e)
+    {
+        AppConfig.Current.IncludePrereleaseUpdates = PrereleaseCheck.IsChecked == true;
+        AppConfig.Current.Save();
+    }
+
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this) as MainWindow;
@@ -200,6 +212,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
                 // update_individual 已经按每个文件自己的 loaders + 游戏版本筛过了，
                 // 这里不再用实例级 loader 二次过滤（多加载器实例会误杀）。
+                if (!IncludeVersion(version.VersionType)) continue;
                 if (!MarkUpdate(item, version)) continue;
 
                 found++;
@@ -270,6 +283,7 @@ public partial class ModManagePage : UserControl, IInstancePage
                         ],
                     };
 
+                    if (!IncludeVersion(version.VersionType)) continue;
                     if (!MarkUpdate(item, version)) continue;
 
                     if (!string.IsNullOrWhiteSpace(project.Detail.WebsiteUrl))
@@ -299,6 +313,8 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         ApplyFilter();
 
+        MergeDownloadSources();
+
         var total = _items.Count;
 
         // 既没在 Modrinth 命中、也没在 CurseForge 命中的，就是查不到来源的
@@ -313,7 +329,62 @@ public partial class ModManagePage : UserControl, IInstancePage
         owner?.ShowToast(message);
     }
 
+    /// <summary>按设置过滤 beta / alpha。</summary>
+    private static bool IncludeVersion(string? type)
+        => AppConfig.Current.IncludePrereleaseUpdates
+           || string.IsNullOrWhiteSpace(type)
+           || type.Equals("release", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>把当前的可更新状态写盘，供下次打开列表直接还原。</summary>
+    /// <summary>
+    /// 同一版本经常在两个平台各有一份（同 SHA-1 或同文件名）。
+    /// 把各自的下载地址收集起来互相补充，下载时就能自动换源。
+    /// </summary>
+    private void MergeDownloadSources()
+    {
+        var byKey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        string? KeyOf(ModFileItem item)
+        {
+            if (item.Update is not { } update) return null;
+
+            var file = update.Files.FirstOrDefault(f => f.Primary) ?? update.Files.FirstOrDefault();
+            if (file is null || string.IsNullOrWhiteSpace(file.Url)) return null;
+
+            return file.Hashes?.Sha1 is { Length: > 0 } sha1
+                ? "sha1:" + sha1
+                : "name:" + file.Filename.ToLowerInvariant();
+        }
+
+        foreach (var item in _items)
+        {
+            if (KeyOf(item) is not { } key || item.Update is not { } update) continue;
+            var file = update.Files.FirstOrDefault(f => f.Primary) ?? update.Files.FirstOrDefault();
+            if (file is null) continue;
+
+            if (!byKey.TryGetValue(key, out var list))
+            {
+                list = [];
+                byKey[key] = list;
+            }
+
+            if (!list.Contains(file.Url, StringComparer.OrdinalIgnoreCase)) list.Add(file.Url);
+        }
+
+        foreach (var item in _items)
+        {
+            if (KeyOf(item) is not { } key) continue;
+            if (!byKey.TryGetValue(key, out var list) || list.Count <= 1) continue;
+
+            item.ExtraDownloadUrls.Clear();
+
+            foreach (var url in list) item.ExtraDownloadUrls.Add(url);
+        }
+
+        var merged = _items.Count(item => item.ExtraDownloadUrls.Count > 1);
+        if (merged > 0) AppLog.Info($"mod updates: {merged} 条合并了多个下载源");
+    }
+
     private void SaveUpdateCache()
     {
         if (string.IsNullOrWhiteSpace(_version)) return;
@@ -497,7 +568,18 @@ public partial class ModManagePage : UserControl, IInstancePage
 
             // 和单独下载一致：文件名前加中文名，方便在资源管理器里认
             var downloadName = PrefixedFileName(item, file.Filename);
-            var downloaded = await ResourceService.DownloadAsync(file, directory, downloadName);
+
+            // 主下载源 + 合并进来的备用源一起交给下载引擎，失败能自动换源
+            var urls = new List<string> { file.Url };
+            urls.AddRange(item.ExtraDownloadUrls.Where(url => !string.IsNullOrWhiteSpace(url)));
+            urls.AddRange(DownloadSources.ModFile(file.Url).Select(endpoint => endpoint.Url));
+
+            var target = Path.Combine(directory, downloadName);
+
+            await DownloadEngine.DownloadAsync(urls.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                target, file.Hashes?.Sha1, file.Size > 0 ? file.Size : null);
+
+            var downloaded = target;
 
             // 原来是被禁用的，新文件保持 .disabled
             var finalName = item.Enabled ? downloadName : downloadName + ".disabled";

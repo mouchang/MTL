@@ -145,6 +145,9 @@ public sealed class ModFileItem : INotifyPropertyChanged
         }
     }
 
+    /// <summary>同一版本的其它下载源（两个平台指向同一个文件时合并，用于失败换源）。</summary>
+    public List<string> ExtraDownloadUrls { get; } = [];
+
     /// <summary>选中状态变化（页面用它刷新底部操作栏）。</summary>
     public event EventHandler? SelectionChanged;
 

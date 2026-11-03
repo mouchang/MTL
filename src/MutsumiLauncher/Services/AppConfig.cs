@@ -74,6 +74,9 @@ public sealed class AppConfig
     /// <summary>社区下载源：mcim（默认，国内加速）或 official。</summary>
     public string ModMirror { get; set; } = "auto";
 
+    /// <summary>检查更新时是否包含 beta / alpha 版本（默认只看正式版）。</summary>
+    public bool IncludePrereleaseUpdates { get; set; }
+
     /// <summary>主题：light（默认）/ dark / custom。</summary>
     public string ThemeMode { get; set; } = "light";
 
