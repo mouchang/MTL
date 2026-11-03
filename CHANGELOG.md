@@ -3,6 +3,40 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.11] - 2026-11-03
+
+### 更新内容
+
+- 修复检查更新结束后遮罩不消失（界面一直卡在「检查更新中」）
+- 修复提示里的「未找到来源」数量恒等于总数
+
+### 技术实现
+
+并行化那次改动里漏了两处：
+
+**1. `StopBusy()` 被一起删掉了**
+
+替换代码块时从 toast 一直删到 `SaveUpdateCache()`，而原来的 `StopBusy()`
+正好夹在中间，于是检查完遮罩不收起，看起来像「还没结束」。
+现在放进 `finally`，成功失败都会收起：
+
+```csharp
+try
+{
+    await Task.WhenAll(modrinthTask, curseForgeTask);
+    (found, matchedFiles) = MergeUpdates(...);
+}
+finally
+{
+    StopBusy();
+}
+```
+
+**2. `matchedFiles` 变量被删了但引用还在**
+
+它一直保持 0，`unknown = total - 0` 就等于全部 Mod 数，
+于是提示变成「发现 2 个可更新（54 个未找到来源）」——数字对不上。
+`MergeUpdates` 现在返回 `(Found, Matched)`，用命中集合去重计数。
 ## [1.1.3-beta.10] - 2026-11-03
 
 ### 更新内容

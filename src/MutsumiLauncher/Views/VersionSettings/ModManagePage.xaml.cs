@@ -141,7 +141,6 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         AppLog.Info($"check updates: version={_version} loader={info.Loader} items={_items.Count}");
 
-        var matchedFiles = 0;
         var sha1Map = new System.Collections.Concurrent.ConcurrentDictionary<string, ModFileItem>(
             StringComparer.OrdinalIgnoreCase);
         var fingerprintMap = new System.Collections.Concurrent.ConcurrentDictionary<uint, ModFileItem>();
@@ -183,9 +182,25 @@ public partial class ModManagePage : UserControl, IInstancePage
         var modrinthTask = Task.Run(() => modrinth.CheckUpdatesIndividualAsync(queries));
         var curseForgeTask = Task.Run(() => CheckCurseForgeAsync(curseForge, fingerprintMap, info));
 
-        await Task.WhenAll(modrinthTask, curseForgeTask);
+        var found = 0;
+        var matchedFiles = 0;
 
-        var found = MergeUpdates(sha1Map, modrinthTask.Result, curseForgeTask.Result, info);
+        try
+        {
+            await Task.WhenAll(modrinthTask, curseForgeTask);
+
+            (found, matchedFiles) = MergeUpdates(sha1Map, modrinthTask.Result,
+                curseForgeTask.Result, info);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "check updates");
+        }
+        finally
+        {
+            // 无论成功失败都要收起遮罩，否则界面会一直卡在「检查更新中」
+            StopBusy();
+        }
 
         SaveUpdateCache();
 
@@ -365,30 +380,36 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>把两个平台的结果合并到列表，返回可更新数量。</summary>
-    private int MergeUpdates(
+    private (int Found, int Matched) MergeUpdates(
         System.Collections.Concurrent.ConcurrentDictionary<string, ModFileItem> sha1Map,
         Dictionary<string, ModrinthVersion> modrinth,
         List<(ModFileItem Item, ModrinthVersion Version)> curseForge,
         InstanceInfo info)
     {
         var found = 0;
+        var matched = new HashSet<ModFileItem>();
 
         AppLog.Info($"modrinth update check: {modrinth.Count}/{sha1Map.Count} 命中");
 
         foreach (var (hash, version) in modrinth)
         {
             if (!sha1Map.TryGetValue(hash, out var item)) continue;
+
+            matched.Add(item);
+
             if (!IncludeVersion(version.VersionType)) continue;
             if (MarkUpdate(item, version)) found++;
         }
 
         foreach (var (item, version) in curseForge)
         {
+            matched.Add(item);
+
             if (!IncludeVersion(version.VersionType)) continue;
             if (MarkUpdate(item, version)) found++;
         }
 
-        return found;
+        return (found, matched.Count);
     }
 
     private void SaveUpdateCache()
