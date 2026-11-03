@@ -966,14 +966,10 @@ public partial class ModManagePage : UserControl, IInstancePage
         // 优先用索引里的简称，其次中文名。
         var keyword = item.DisplayName;
 
-        // 只有「百科英文名是复合写法」的条目才用简称——比如 C2ME 的
-        // C^2M-Engine/Concurrent Chunk Management Engine，全名在百科上搜不到。
-        // 其它 Mod 一律搜全名（或中文名），简称反而搜不出来。
-        if (McmodIndex.Find(null, item.DisplayName) is { Abbr: { Length: > 0 } abbr } match
-            && match.English.Contains('/'))
-        {
-            keyword = abbr;
-        }
+        // C2ME 在百科上的英文名是复合写法（C^2M-Engine/Concurrent Chunk…），
+        // 用全名搜不到任何结果，只能搜简称。其它 Mod 一律搜全名。
+        if (keyword.Contains("Chunk Management Engine", StringComparison.OrdinalIgnoreCase))
+            keyword = "C2ME";
 
         var url = "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword);
 

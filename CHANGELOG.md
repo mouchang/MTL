@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.18] - 2026-11-03
+
+### 更新内容
+
+- 「信息」按钮只对 C2ME 用简称搜索，其余 Mod 一律全名
+
+### 技术实现
+
+去掉了按百科别名规则判断的通用逻辑，只保留这一条特例：
+
+```csharp
+if (keyword.Contains("Chunk Management Engine", StringComparison.OrdinalIgnoreCase))
+    keyword = "C2ME";
+```
+
+不再改索引，也不影响其它任何 Mod 的搜索关键词。
 ## [1.1.3-beta.17] - 2026-11-03
 
 ### 更新内容
