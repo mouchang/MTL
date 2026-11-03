@@ -480,17 +480,19 @@
 
     <!-- 行内操作按钮：浅色胶囊，和背景拉开层次 -->
     <Style x:Key="RowActionButton" TargetType="Button">
-        <Setter Property="Height" Value="30" />
-        <Setter Property="Padding" Value="12,0" />
-        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinWidth" Value="56" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Margin" Value="0,0,10,0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" CornerRadius="9" Background="{DynamicResource SurfaceSolid}"
-                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                    <Border x:Name="Bd" CornerRadius="10" Background="{DynamicResource SurfaceSolid}"
+                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                            Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>

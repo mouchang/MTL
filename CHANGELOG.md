@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.16] - 2026-11-03
+
+### 更新内容
+
+- 行内按钮不再挤成一团：补上内边距、最小宽度与间距
+
+### 技术实现
+
+上一版的胶囊模板忘了把 `Padding` 传给 Border，文字直接贴边，
+四个按钮自然挤在一起：
+
+```xml
+<Border CornerRadius="10" Padding="{TemplateBinding Padding}" …>
+```
+
+同时把高度 30→32、最小宽度 56、按钮间距 8→10。
 ## [1.1.3-beta.15] - 2026-11-03
 
 ### 更新内容
