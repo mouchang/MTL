@@ -106,9 +106,9 @@
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <TextBlock Text="{Binding StateText}" FontSize="11"
                                                            Foreground="{DynamicResource AccentDeep}" />
-                                                <TextBlock Text="{Binding SizeText}" FontSize="11"
+                                                <TextBlock Text="{Binding DetailText}" FontSize="11"
                                                            Foreground="{DynamicResource InkMute}"
-                                                           Margin="10,0,0,0" />
+                                                           Margin="10,0,0,0" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </StackPanel>
 

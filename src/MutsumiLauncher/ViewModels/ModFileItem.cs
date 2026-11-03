@@ -33,6 +33,42 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public string SizeText { get; init; } = string.Empty;
 
+    private string _loaderText = string.Empty;
+
+    /// <summary>加载器（Fabric / Forge / NeoForge …），后台读 jar 元数据后填入。</summary>
+    public string LoaderText
+    {
+        get => _loaderText;
+        set
+        {
+            if (_loaderText == value) return;
+
+            _loaderText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LoaderText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DetailText)));
+        }
+    }
+
+    private string _versionText = string.Empty;
+
+    /// <summary>Mod 自身声明的版本号。</summary>
+    public string VersionText
+    {
+        get => _versionText;
+        set
+        {
+            if (_versionText == value) return;
+
+            _versionText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VersionText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DetailText)));
+        }
+    }
+
+    /// <summary>第二行的组合文本：加载器 · 版本 · 大小（空项自动省略）。</summary>
+    public string DetailText => string.Join(" · ",
+        new[] { _loaderText, _versionText, SizeText }.Where(text => !string.IsNullOrWhiteSpace(text)));
+
     public bool Enabled { get; init; }
 
     public string Initial { get; init; } = "M";

@@ -3,6 +3,36 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.4] - 2026-11-03
+
+### 更新内容
+
+- Mod 列表第二行显示「加载器 · 版本号 · 大小」
+- 元数据带缓存，重复刷新不重复读 jar
+
+### 技术实现
+
+`ModFileItem` 增加 `LoaderText` / `VersionText`，并用组合属性输出第二行：
+
+```csharp
+public string DetailText => string.Join(" · ",
+    new[] { _loaderText, _versionText, SizeText }.Where(t => !string.IsNullOrWhiteSpace(t)));
+```
+
+`LoadMetadataAsync` 原本只读显示名，现在一并读版本号与加载器：
+
+```csharp
+version = ModMetadata.Read(path)?.Version;
+loader  = ModMetadata.LoadersOf(path) switch { "fabric" => "Fabric", "forge" => "Forge", … };
+```
+
+缓存键带上大小与修改时间，文件没变就不重复解压：
+
+```csharp
+key = $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+```
+
+实测 6 个 Fabric Mod 都能读到版本与加载器（1 个 jar 内 `fabric.mod.json` 本身损坏，只显示加载器）。
 ## [1.1.3-beta.3] - 2026-11-03
 
 ### 更新内容

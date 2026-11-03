@@ -900,6 +900,54 @@ public partial class ModManagePage : UserControl, IInstancePage
     /// 后台读 jar 元数据，把显示名从文件名换成真正的 Mod 名（有 MC百科中文名就用中文）。
     /// 并发 4，别一口气开几百个 zip。
     /// </summary>
+    /// <summary>jar 元数据缓存：按「路径 + 大小 + 修改时间」记，刷新列表不用重读。</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Version,
+        string Loader)> MetaCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>读版本号与加载器（带缓存）。</summary>
+    private static (string Version, string Loader) ReadModMeta(string path)
+    {
+        string key;
+
+        try
+        {
+            var info = new FileInfo(path);
+            key = $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+        }
+        catch
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        if (MetaCache.TryGetValue(key, out var cached)) return (cached.Version, cached.Loader);
+
+        var version = string.Empty;
+        var loader = string.Empty;
+
+        try
+        {
+            version = ModMetadata.Read(path)?.Version ?? string.Empty;
+
+            var loaders = ModMetadata.LoadersOf(path);
+
+            loader = loaders.Count == 0 ? string.Empty : loaders[0] switch
+            {
+                "fabric" => "Fabric",
+                "forge" => "Forge",
+                "neoforge" => "NeoForge",
+                "quilt" => "Quilt",
+                var other => other,
+            };
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "read mod meta " + path);
+        }
+
+        MetaCache[key] = (version, loader);
+        return (version, loader);
+    }
+
     private static async Task LoadMetadataAsync(IReadOnlyList<ModFileItem> items)
     {
         using var semaphore = new SemaphoreSlim(4);
@@ -910,12 +958,20 @@ public partial class ModManagePage : UserControl, IInstancePage
 
             try
             {
-                var display = await Task.Run(() =>
-                    ModMetadata.DisplayNameFor(item.FullPath, item.DisplayName));
+                var (display, version, loader) = await Task.Run(() =>
+                {
+                    var name = ModMetadata.DisplayNameFor(item.FullPath, item.DisplayName);
+                    var (metaVersion, metaLoader) = ReadModMeta(item.FullPath);
 
-                if (string.IsNullOrWhiteSpace(display) || display == item.DisplayName) return;
+                    return (name, metaVersion, metaLoader);
+                });
 
-                Application.Current?.Dispatcher.Invoke(() => item.DisplayName = display);
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (!string.IsNullOrWhiteSpace(display)) item.DisplayName = display;
+                    if (!string.IsNullOrWhiteSpace(loader)) item.LoaderText = loader;
+                    if (!string.IsNullOrWhiteSpace(version)) item.VersionText = version;
+                });
             }
             catch (Exception ex)
             {
