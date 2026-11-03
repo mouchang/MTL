@@ -3,6 +3,26 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.19] - 2026-11-03
+
+### 更新内容
+
+- 「信息」按钮改为直达 MC百科详情页；索引里找不到时才退回搜索
+
+### 技术实现
+
+和资源模块、PCL2 的行为对齐：拿到百科 ID 就直接跳 `class/{id}.html`。
+
+```csharp
+var url = McmodIndex.FindExact(null, item.DisplayName) is { } match
+    ? $"https://www.mcmod.cn/class/{match.Id}.html"
+    : "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(item.DisplayName);
+```
+
+为此新增 `FindExact`：只做标题 / slug / 简称的精确查找，不走模糊匹配。
+宁可退回搜索，也不要因为模糊命中把用户带到别的 Mod 页面。
+
+C2ME 的特例也随之下线——它的英文名在索引里有斜杠别名，精确查找直接命中 id 3511。
 ## [1.1.3-beta.18] - 2026-11-03
 
 ### 更新内容

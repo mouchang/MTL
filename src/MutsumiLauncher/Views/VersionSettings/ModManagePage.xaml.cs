@@ -964,14 +964,11 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         // 全名在百科上常常搜不到（比如 C2ME 的英文全名就是无结果的），
         // 优先用索引里的简称，其次中文名。
-        var keyword = item.DisplayName;
-
-        // C2ME 在百科上的英文名是复合写法（C^2M-Engine/Concurrent Chunk…），
-        // 用全名搜不到任何结果，只能搜简称。其它 Mod 一律搜全名。
-        if (keyword.Contains("Chunk Management Engine", StringComparison.OrdinalIgnoreCase))
-            keyword = "C2ME";
-
-        var url = "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword);
+        // 索引里能精确命中就直接进详情页（和资源模块一致，也是 PCL2 的做法），
+        // 命中不了才退回搜索——宁可多点一次，也别链到错误的条目上。
+        var url = McmodIndex.FindExact(null, item.DisplayName) is { } match
+            ? $"https://www.mcmod.cn/class/{match.Id}.html"
+            : "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(item.DisplayName);
 
         var error = UrlLauncher.Open(url);
         if (error is not null) Toast(error);

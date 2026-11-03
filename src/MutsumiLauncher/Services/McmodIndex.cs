@@ -52,6 +52,31 @@ public static class McmodIndex
     /// 按 slug / 标题匹配 MC百科条目；匹配不上返回 null。
     /// <paramref name="slug"/> 比标题可信得多（Modrinth 的 slug 就是项目标识），先试它。
     /// </summary>
+    /// <summary>
+    /// 只做精确查找（标题/slug/简称完全一致才命中），不做模糊匹配。
+    /// 用来决定「直接跳详情页」——宁可退回搜索，也不要链到错误的条目。
+    /// </summary>
+    public static Match? FindExact(string? slug, string? title)
+    {
+        var data = Lazy.Value;
+        if (data.All.Count == 0) return null;
+
+        var keys = new[]
+        {
+            Normalize(slug), Normalize(title),
+            Normalize(title is null ? null : StripQualifiers(title)),
+        };
+
+        foreach (var key in keys)
+        {
+            if (key.Length < 3) continue;
+            if (data.ByName.TryGetValue(key, out var entry)) return ToMatch(entry);
+            if (data.ByAbbr.TryGetValue(key, out var byAbbr)) return ToMatch(byAbbr);
+        }
+
+        return null;
+    }
+
     public static Match? Find(string? slug, string? title)
     {
         var data = Lazy.Value;
