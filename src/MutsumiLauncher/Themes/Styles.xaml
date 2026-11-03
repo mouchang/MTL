@@ -478,35 +478,6 @@
         </Setter>
     </Style>
 
-    <!-- 圆角勾选框：默认的 CheckBox 是 Win32 时代的方框，和整套 UI 不搭 -->
-    <Style x:Key="MtlCheckBox" TargetType="CheckBox">
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="CheckBox">
-                    <Grid Width="22" Height="22" Background="Transparent">
-                        <Border x:Name="Box" CornerRadius="7" BorderThickness="1.6"
-                                BorderBrush="{DynamicResource CardBorder}"
-                                Background="{DynamicResource SurfaceSolid}" />
-                        <Path x:Name="Check" Data="M5,11 L9,15 L17,6" Stroke="{DynamicResource InkOnAccent}"
-                              StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentDeep}" />
-                        </Trigger>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Accent}" />
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentDeep}" />
-                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <!-- 圆角进度条：默认的 WPF 进度条又细又方，这里统一成胶囊形 -->
     <Style x:Key="RoundedProgress" TargetType="ProgressBar">
         <Setter Property="Height" Value="6" />

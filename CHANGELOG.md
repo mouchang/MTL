@@ -3,6 +3,20 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.9] - 2026-11-03
+
+### 更新内容
+
+- 修复启动崩溃（`Item has already been added. Key: MtlCheckBox`）
+
+### 技术实现
+
+上一版为多选框新增了 `MtlCheckBox` 样式，但 **Styles.xaml 里本来就有同名样式**——
+资源字典在加载时抛 `ArgumentException`，App.InitializeComponent 直接失败，
+启动只剩一个错误弹窗。
+
+删除重复定义，沿用原有的 `MtlCheckBox`（18px、圆角 5、主色填充 + 白色勾选图标）。
+本地构建不会报错，只有运行时合并资源字典才暴露，所以这次以启动日志为准。
 ## [1.1.3-beta.8] - 2026-11-03
 
 ### 更新内容
