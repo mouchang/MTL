@@ -30,7 +30,6 @@ public partial class ModManagePage : UserControl, IInstancePage
     public ModManagePage()
     {
         InitializeComponent();
-        SyncSettingsUi();
     }
 
     public void SetInstance(string version)
@@ -48,11 +47,6 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     private string ModsDir => InstanceService.ModsDirFor(_version);
-
-    private void SyncSettingsUi()
-    {
-        PrereleaseCheck.IsChecked = AppConfig.Current.IncludePrereleaseUpdates;
-    }
 
     public void Refresh()
     {
@@ -132,12 +126,6 @@ public partial class ModManagePage : UserControl, IInstancePage
         _ = FillSizesAsync(_items);
     }
 
-    private void PrereleaseCheck_Click(object sender, RoutedEventArgs e)
-    {
-        AppConfig.Current.IncludePrereleaseUpdates = PrereleaseCheck.IsChecked == true;
-        AppConfig.Current.Save();
-    }
-
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this) as MainWindow;
@@ -154,24 +142,24 @@ public partial class ModManagePage : UserControl, IInstancePage
         AppLog.Info($"check updates: version={_version} loader={info.Loader} items={_items.Count}");
 
         var matchedFiles = 0;
-        var sha1Map = new Dictionary<string, ModFileItem>(StringComparer.OrdinalIgnoreCase);
-        var fingerprintMap = new Dictionary<uint, ModFileItem>();
+        var sha1Map = new System.Collections.Concurrent.ConcurrentDictionary<string, ModFileItem>(
+            StringComparer.OrdinalIgnoreCase);
+        var fingerprintMap = new System.Collections.Concurrent.ConcurrentDictionary<uint, ModFileItem>();
 
-        await Task.Run(() =>
-        {
-            foreach (var item in _items)
+        // 哈希是纯本地 CPU 活，串行算几百个 jar 会明显拖慢检查；按 4 路并行
+        await Task.Run(() => Parallel.ForEach(_items,
+            new ParallelOptions { MaxDegreeOfParallelism = 4 }, item =>
             {
                 try
                 {
-                    sha1Map[Sha1Of(item.FullPath)] = item;
-                    fingerprintMap[CurseForgeClient.ComputeFingerprint(item.FullPath)] = item;
+                    sha1Map.TryAdd(Sha1Of(item.FullPath), item);
+                    fingerprintMap.TryAdd(CurseForgeClient.ComputeFingerprint(item.FullPath), item);
                 }
                 catch (Exception ex)
                 {
                     AppLog.Error(ex, "hash mod " + item.FileName);
                 }
-            }
-        });
+            }));
 
         AppLog.Info($"check updates: hashed={sha1Map.Count} fingerprints={fingerprintMap.Count}");
 
@@ -193,10 +181,13 @@ public partial class ModManagePage : UserControl, IInstancePage
 
             foreach (var (hash, item) in sha1Map)
             {
-                var loaders = ModMetadata.LoadersOf(item.FullPath);
+                // 用元数据缓存里的结果：之前每次检查都对每个 jar 重新解压一遍，
+                // 几十个 Mod 就是几百毫秒起步，上百个直接卡住。
+                var loader = ReadModMeta(item.FullPath).Loader;
 
-                if (loaders.Count == 0)
-                    loaders = [LoaderKey(info.Loader)];
+                IReadOnlyList<string> loaders = string.IsNullOrWhiteSpace(loader)
+                    ? [LoaderKey(info.Loader)]
+                    : [LoaderKey(loader)];
 
                 queries.Add((hash, loaders, info.GameVersion));
             }
@@ -329,11 +320,8 @@ public partial class ModManagePage : UserControl, IInstancePage
         owner?.ShowToast(message);
     }
 
-    /// <summary>按设置过滤 beta / alpha。</summary>
-    private static bool IncludeVersion(string? type)
-        => AppConfig.Current.IncludePrereleaseUpdates
-           || string.IsNullOrWhiteSpace(type)
-           || type.Equals("release", StringComparison.OrdinalIgnoreCase);
+    /// <summary>测试版也参与更新检查（用户要求默认识别）。</summary>
+    private static bool IncludeVersion(string? type) => true;
 
     /// <summary>把当前的可更新状态写盘，供下次打开列表直接还原。</summary>
     /// <summary>
@@ -437,7 +425,9 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>把 CurseForge 的匹配结果对回本地文件：优先用回显的指纹，其次文件名。</summary>
-    private static ModFileItem? FindItem(Dictionary<uint, ModFileItem> map, CurseForgeFingerprintMatch match)
+    private static ModFileItem? FindItem(
+        System.Collections.Concurrent.ConcurrentDictionary<uint, ModFileItem> map,
+        CurseForgeFingerprintMatch match)
     {
         if (match.Fingerprint != 0 && map.TryGetValue(match.Fingerprint, out var byFingerprint))
             return byFingerprint;

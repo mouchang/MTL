@@ -3,6 +3,46 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.8] - 2026-11-03
+
+### 更新内容
+
+- 检查更新明显变快（哈希并行、加载器读缓存）
+- 多选框换成圆角样式，不再是系统方框
+- 移除「含测试版」开关，更新检查默认包含测试版
+
+### 技术实现
+
+#### 1. 提速
+
+两处瓶颈：
+
+- 哈希（SHA-1 + Murmur2）在 Task.Run 里串行跑，几百个 jar 累计可观
+- `update_individual` 的 loaders 参数每个文件重新 `ZipFile.OpenRead` 一次，等于又扫了一遍全部 jar
+
+```csharp
+Parallel.ForEach(_items, new ParallelOptions { MaxDegreeOfParallelism = 4 }, item =>
+{
+    sha1Map.TryAdd(Sha1Of(item.FullPath), item);
+    fingerprintMap.TryAdd(CurseForgeClient.ComputeFingerprint(item.FullPath), item);
+});
+```
+
+loaders 改读元数据缓存：
+
+```csharp
+var loader = ReadModMeta(item.FullPath).Loader;   // 命中缓存，不重新解压
+```
+
+#### 2. 多选框
+
+新增 `MtlCheckBox` 样式：22px 圆角方块，选中时填充主色 + 白色对勾，悬停描边加深。
+模板里只有 `Border` + `Path`，没有系统控件那层灰色边框。
+
+#### 3. 测试版
+
+去掉工具栏复选框与 `AppConfig.IncludePrereleaseUpdates`，`IncludeVersion` 恒为 true，
+检查更新默认把 beta / alpha 也算进候选。
 ## [1.1.3-beta.7] - 2026-11-03
 
 ### 更新内容
