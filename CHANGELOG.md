@@ -3,6 +3,27 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.17] - 2026-11-03
+
+### 更新内容
+
+- 「信息」按钮只对 C2ME 这类复合英文名用简称，其它 Mod 仍搜全名
+
+### 技术实现
+
+上一版对所有命中百科索引的 Mod 都优先用简称，导致搜索关键词变成 `Sodium` 以外的短词，
+反而搜不到。改成只在百科英文名是「短名/全名」复合写法时才用简称：
+
+```csharp
+if (McmodIndex.Find(null, item.DisplayName) is { Abbr: { Length: > 0 } abbr } match
+    && match.English.Contains('/'))
+{
+    keyword = abbr;
+}
+```
+
+C2ME 的百科英文名是 `C^2M-Engine/Concurrent Chunk Management Engine`，命中这条规则；
+其余 Mod 保持原来的全名搜索。
 ## [1.1.3-beta.16] - 2026-11-03
 
 ### 更新内容
