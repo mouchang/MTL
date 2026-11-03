@@ -3,6 +3,32 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.7] - 2026-11-03
+
+### 更新内容
+
+- beta 版的桌面快捷方式和开始菜单改名为「Mutsumi Launcher beta」，不再和正式版冲突
+
+### 技术实现
+
+安装器按版本号自动判断是否 beta：
+
+```nsis
+Function MTL_SetDisplayName
+  StrCpy $R9 "\${APP_NAME}"
+  \${StrLoc} $0 "\${APP_VERSION}" "beta" ">"
+  \${If} $0 != ""
+    StrCpy $R9 "\${APP_NAME} beta"
+  \${EndIf}
+FunctionEnd
+```
+
+`.onInit` 调一次，快捷方式、开始菜单目录都用 `$R9`；卸载段另外有一份
+`un.MTL_SetDisplayName`（NSIS 要求卸载函数以 `un.` 开头，且字符串函数要用
+`\${UnStrLoc}` 变体），保证能删掉同名快捷方式。
+
+安装目录仍沿用 `Program Files\Mutsumi Launcher`，beta 与正式版的区别只在快捷方式名字，
+避免用户同时装两份时找不到哪个是哪个。
 ## [1.1.3-beta.6] - 2026-11-03
 
 ### 更新内容
