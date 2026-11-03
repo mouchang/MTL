@@ -31,7 +31,21 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public required string FullPath { get; init; }
 
-    public string SizeText { get; init; } = string.Empty;
+    private string _sizeText = string.Empty;
+
+    /// <summary>文件大小。列表先渲染、后台再补，所以是可写的。</summary>
+    public string SizeText
+    {
+        get => _sizeText;
+        set
+        {
+            if (_sizeText == value) return;
+
+            _sizeText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SizeText)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DetailText)));
+        }
+    }
 
     private string _loaderText = string.Empty;
 

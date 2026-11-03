@@ -74,9 +74,12 @@ public static class ModUpdateCache
         }
     }
 
-    /// <summary>缓存键：文件名 + 大小。同名同大小的文件视为同一个，避免每次都按 SHA-1 算。</summary>
-    public static string KeyOf(string fileName, long size)
-        => fileName.ToLowerInvariant() + "|" + size;
+    /// <summary>
+    /// 缓存键用文件名。不能用「文件名 + 大小」——列表改成异步补大小时，
+    /// 渲染那一刻还拿不到 size，键对不上就还原不了。
+    /// 同一个 mods 目录里文件名本来就唯一。
+    /// </summary>
+    public static string KeyOf(string fileName) => fileName.ToLowerInvariant();
 
     private static string SafeName(string text)
     {

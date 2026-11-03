@@ -75,22 +75,12 @@ public partial class ModManagePage : UserControl, IInstancePage
                     ? Path.GetFileNameWithoutExtension(name)
                     : Path.GetFileNameWithoutExtension(name[..^".disabled".Length]);
 
-                var size = 0L;
-                try
-                {
-                    size = new FileInfo(file).Length;
-                }
-                catch
-                {
-                    // 忽略单个文件读取失败
-                }
-
+                // 大小留空，渲染后由后台补：目录里几百个 jar 时同步读会明显卡顿
                 _items.Add(new ModFileItem
                 {
                     FileName = name,
                     DisplayName = display,   // 先用文件名占位，后台解析 jar 元数据后替换
                     FullPath = file,
-                    SizeText = InstanceService.FormatSize(size),
                     Enabled = enabled,
                     Initial = Initials(display),
                     IconBrush = BrushFor(display),
@@ -129,10 +119,11 @@ public partial class ModManagePage : UserControl, IInstancePage
         DisabledFilter.Visibility = _filter == "disabled" || disabledItems > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
-        EnabledFilterText.Text = $"启用 ({enabledCount})";
-        DisabledFilterText.Text = $"禁用 ({_items.Count - enabledCount})";
 
         ApplyFilter();
+
+        // 界面已经出来了，大小和元数据在后台补
+        _ = FillSizesAsync(_items);
     }
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
@@ -338,7 +329,7 @@ public partial class ModManagePage : UserControl, IInstancePage
                 var file = update.Files.FirstOrDefault(f => f.Primary) ?? update.Files.FirstOrDefault();
                 if (file is null || string.IsNullOrWhiteSpace(file.Url)) continue;
 
-                long size;
+                long size = 0;
 
                 try
                 {
@@ -346,10 +337,10 @@ public partial class ModManagePage : UserControl, IInstancePage
                 }
                 catch
                 {
-                    continue;
+                    // 文件刚好被移走也无所谓，记录用而已
                 }
 
-                entries[ModUpdateCache.KeyOf(item.FileName, size)] = new ModUpdateCache.Entry(
+                entries[ModUpdateCache.KeyOf(item.FileName)] = new ModUpdateCache.Entry(
                     update.Id, update.Name, update.VersionNumber, update.DatePublished,
                     file.Url, file.Filename, file.Size, file.Hashes?.Sha1, null);
             }
@@ -552,18 +543,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             var cached = ModUpdateCache.Load(_version);
             if (cached.Count == 0) return;
 
-            long size;
-
-            try
-            {
-                size = new FileInfo(item.FullPath).Length;
-            }
-            catch
-            {
-                size = 0;
-            }
-
-            if (cached.Remove(ModUpdateCache.KeyOf(item.FileName, size)))
+            if (cached.Remove(ModUpdateCache.KeyOf(item.FileName)))
                 ModUpdateCache.Save(_version, cached);
         }
         catch (Exception ex)
@@ -590,18 +570,7 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         foreach (var item in _items)
         {
-            var size = 0L;
-
-            try
-            {
-                size = new FileInfo(item.FullPath).Length;
-            }
-            catch
-            {
-                continue;
-            }
-
-            if (!cached.TryGetValue(ModUpdateCache.KeyOf(item.FileName, size), out var entry)) continue;
+            if (!cached.TryGetValue(ModUpdateCache.KeyOf(item.FileName), out var entry)) continue;
             if (entry.DownloadUrl is null) continue;
 
             item.SetUpdate(new ModrinthVersion
@@ -903,6 +872,46 @@ public partial class ModManagePage : UserControl, IInstancePage
     /// <summary>jar 元数据缓存：按「路径 + 大小 + 修改时间」记，刷新列表不用重读。</summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Version,
         string Loader)> MetaCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 后台补文件大小。列表先渲染、再填这一行，
+    /// 这样几百个 Mod 的目录也不会在打开瞬间卡住。
+    /// </summary>
+    private static async Task FillSizesAsync(IReadOnlyList<ModFileItem> items)
+    {
+        using var semaphore = new SemaphoreSlim(8);
+
+        var tasks = items.Select(async item =>
+        {
+            await semaphore.WaitAsync();
+
+            try
+            {
+                var size = await Task.Run(() =>
+                {
+                    try
+                    {
+                        return new FileInfo(item.FullPath).Length;
+                    }
+                    catch
+                    {
+                        return 0L;
+                    }
+                });
+
+                if (size <= 0) return;
+
+                var text = InstanceService.FormatSize(size);
+                Application.Current?.Dispatcher.Invoke(() => item.SizeText = text);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
 
     /// <summary>读版本号与加载器（带缓存）。</summary>
     private static (string Version, string Loader) ReadModMeta(string path)

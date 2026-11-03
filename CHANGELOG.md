@@ -3,6 +3,47 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.5] - 2026-11-03
+
+### 更新内容
+
+- 打开 Mod 管理时列表立即出现，大小与版本信息在后台补全
+
+### 技术实现
+
+#### 1. 扫描阶段不再读文件大小
+
+之前 `Refresh()` 对每个 jar 做一次 `new FileInfo(file).Length`，
+两百个 Mod 就是两百次同步 I/O，界面要等这一圈才出来。
+现在扫描只取文件名，大小留空：
+
+```csharp
+_items.Add(new ModFileItem { FileName = name, FullPath = file, Enabled = enabled, … });
+```
+
+渲染完再后台补：
+
+```csharp
+private static async Task FillSizesAsync(IReadOnlyList<ModFileItem> items)
+{
+    using var semaphore = new SemaphoreSlim(8);
+    …
+    Application.Current?.Dispatcher.Invoke(() => item.SizeText = text);
+}
+```
+
+`SizeText` 因此从 `init` 改成可写属性，赋值时同时通知 `DetailText`。
+
+#### 2. 更新缓存键改为文件名
+
+缓存键原本是「文件名 + 大小」，但异步补大小意味着渲染那一刻还没有 size，
+按 `KeyOf(name, size)` 根本查不到。改成只用文件名——同一个 mods 目录里文件名本来就唯一：
+
+```csharp
+public static string KeyOf(string fileName) => fileName.ToLowerInvariant();
+```
+
+`Entry.Size` 仍保留（写盘时若是更新阶段再读一次），只作展示用。
 ## [1.1.3-beta.4] - 2026-11-03
 
 ### 更新内容
