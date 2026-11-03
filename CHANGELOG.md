@@ -3,6 +3,42 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.3-beta.3] - 2026-11-03
+
+### 更新内容
+
+- Mod 列表支持多选，底部出现批量操作栏（启用 / 禁用 / 更新 / 删除 / 取消）
+- 删除 Mod 前弹确认框（单条与批量都有）
+- 每行新增「位置」（资源管理器定位）与「信息」（MC百科搜索）
+- 「启用」「禁用」筛选项按数据自动显隐
+
+### 技术实现
+
+#### 1. 多选
+
+`ModFileItem` 增加 `IsSelected` 与 `SelectionChanged` 事件，行首绑定复选框：
+
+```xml
+<CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+```
+
+`Refresh()` 时为每个条目挂事件，选中变化即刷新底部栏；`RefreshSelectionBar()` 按选中项
+的实际状态决定按钮可用性（例如选中的都启用时，「启用」置灰）。
+
+#### 2. 批量操作
+
+- 启用/禁用：批量改扩展名（`.jar` ↔ `.jar.disabled`），与单条逻辑一致
+- 更新：复用单条的 `ApplyUpdateAsync`，逐个执行并统计
+- 删除：先确认，再逐个删除并统计失败数
+
+#### 3. 行内操作
+
+```csharp
+Process.Start(new ProcessStartInfo { FileName = "explorer.exe",
+    Arguments = $"/select,\"{item.FullPath}\"", UseShellExecute = true });
+```
+
+「信息」在没有项目 ID 的情况下按名称去 MC百科搜索（PCL2 的兜底做法）。
 ## [1.1.3-beta.2] - 2026-11-03
 
 ### 更新内容

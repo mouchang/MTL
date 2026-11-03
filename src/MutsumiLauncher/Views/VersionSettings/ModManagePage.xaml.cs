@@ -108,8 +108,27 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         ApplyCachedUpdates();
 
+        foreach (var item in _items) item.SelectionChanged += OnSelectionChanged;
+
         var enabledCount = _items.Count(item => item.Enabled);
-        AllFilterText.Text = $"全部 ({_items.Count})";
+        RefreshSelectionBar();
+
+        // 筛选项按数据自动显隐：全部启用时不显示「启用」，没有禁用项时不显示「禁用」
+        var anyCount = _items.Count;
+        var enabledItems = enabledCount;
+        var disabledItems = anyCount - enabledItems;
+
+        AllFilterText.Text = $"全部 ({anyCount})";
+        EnabledFilterText.Text = $"启用 ({enabledItems})";
+        DisabledFilterText.Text = $"禁用 ({disabledItems})";
+
+        EnabledFilter.Visibility = _filter == "enabled" || (enabledItems > 0 && enabledItems < anyCount)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        DisabledFilter.Visibility = _filter == "disabled" || disabledItems > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         EnabledFilterText.Text = $"启用 ({enabledCount})";
         DisabledFilterText.Text = $"禁用 ({_items.Count - enabledCount})";
 
@@ -613,6 +632,166 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (applied > 0) AppLog.Info($"mod updates cache: 还原 {applied} 条");
     }
 
+    // ---------- 多选与批量操作 ----------
+
+    private List<ModFileItem> SelectedItems => _items.Where(item => item.IsSelected).ToList();
+
+    /// <summary>选中状态变化后刷新底部栏。</summary>
+    private void OnSelectionChanged(object? sender, EventArgs e) => RefreshSelectionBar();
+
+    private void RefreshSelectionBar()
+    {
+        var selected = SelectedItems;
+
+        SelectionBar.Visibility = selected.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SelectionText.Text = $"已选择 {selected.Count} 个文件";
+
+        SelectEnableButton.IsEnabled = selected.Any(item => !item.Enabled);
+        SelectDisableButton.IsEnabled = selected.Any(item => item.Enabled);
+        SelectUpdateButton.IsEnabled = selected.Any(item => item.CanUpdate);
+        SelectDeleteButton.IsEnabled = selected.Count > 0;
+    }
+
+    private void ClearSelection_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var item in _items) item.IsSelected = false;
+
+        RefreshSelectionBar();
+    }
+
+    private async void BatchEnable_Click(object sender, RoutedEventArgs e)
+        => await SetEnabledAsync(SelectedItems.Where(item => !item.Enabled).ToList(), true);
+
+    private async void BatchDisable_Click(object sender, RoutedEventArgs e)
+        => await SetEnabledAsync(SelectedItems.Where(item => item.Enabled).ToList(), false);
+
+    /// <summary>批量启用/禁用：改扩展名，和单条操作走同一套规则。</summary>
+    private async Task SetEnabledAsync(List<ModFileItem> items, bool enabled)
+    {
+        if (items.Count == 0) return;
+
+        var owner = Window.GetWindow(this) as MainWindow;
+
+        await Task.Run(() =>
+        {
+            foreach (var item in items)
+            {
+                try
+                {
+                    var target = enabled
+                        ? item.FullPath[..^".disabled".Length]
+                        : item.FullPath + ".disabled";
+
+                    if (string.Equals(target, item.FullPath, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!File.Exists(item.FullPath)) continue;
+
+                    File.Move(item.FullPath, target, overwrite: true);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error(ex, "batch toggle " + item.FileName);
+                }
+            }
+        });
+
+        owner?.ShowToast($"已{(enabled ? "启用" : "禁用")} {items.Count} 个 Mod");
+        Refresh();
+    }
+
+    private async void BatchUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        var targets = SelectedItems.Where(item => item.CanUpdate).ToList();
+        if (targets.Count == 0) return;
+
+        var owner = Window.GetWindow(this) as MainWindow;
+        var done = 0;
+
+        SelectUpdateButton.IsEnabled = false;
+
+        try
+        {
+            foreach (var item in targets)
+            {
+                owner?.ShowToast($"正在更新 {item.DisplayName}（{done + 1}/{targets.Count}）…");
+
+                if (await ApplyUpdateAsync(item, owner)) done++;
+            }
+        }
+        finally
+        {
+            SelectUpdateButton.IsEnabled = true;
+        }
+
+        owner?.ShowToast($"批量更新完成 {done}/{targets.Count}");
+        Refresh();
+    }
+
+    private void BatchDelete_Click(object sender, RoutedEventArgs e)
+    {
+        var targets = SelectedItems;
+        if (targets.Count == 0) return;
+
+        var owner = Window.GetWindow(this);
+        var answer = MessageBox.Show(owner!, $"确定删除选中的 {targets.Count} 个 Mod 文件吗？此操作不可撤销。",
+            "删除 Mod", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+
+        if (answer != MessageBoxResult.OK) return;
+
+        var failed = 0;
+
+        foreach (var item in targets)
+        {
+            try
+            {
+                File.Delete(item.FullPath);
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                AppLog.Error(ex, "batch delete " + item.FileName);
+            }
+        }
+
+        (owner as MainWindow)?.ShowToast(failed == 0
+            ? $"已删除 {targets.Count} 个 Mod"
+            : $"删除完成，{failed} 个失败（详见日志）");
+
+        Refresh();
+    }
+
+    /// <summary>在资源管理器里定位这个文件。</summary>
+    private void RevealMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ModFileItem item }) return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{item.FullPath}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "reveal mod");
+            Toast("打开资源管理器失败。");
+        }
+    }
+
+    /// <summary>信息：按名字去 MC百科搜索（和 PCL2 的兜底一致）。</summary>
+    private void InfoMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ModFileItem item }) return;
+
+        var keyword = item.DisplayName;
+        var url = "https://www.mcmod.cn/s?key=" + Uri.EscapeDataString(keyword);
+
+        var error = UrlLauncher.Open(url);
+        if (error is not null) Toast(error);
+    }
+
     private void ApplyFilter()
     {
         if (ModList is null) return;
@@ -913,6 +1092,12 @@ public partial class ModManagePage : UserControl, IInstancePage
     private void DeleteMod_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: ModFileItem item }) return;
+
+        var confirm = MessageBox.Show(Window.GetWindow(this)!,
+            $"确定删除「{item.DisplayName}」吗？此操作不可撤销。",
+            "删除 Mod", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.OK) return;
 
         var owner = Window.GetWindow(this);
         if (!MessageDialog.Show(owner, "删除 Mod", $"确定删除「{item.DisplayName}」吗？", "删除")) return;

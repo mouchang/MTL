@@ -79,6 +79,25 @@ public sealed class ModFileItem : INotifyPropertyChanged
 
     public bool CanUpdate => _update is not null;
 
+    private bool _isSelected;
+
+    /// <summary>多选状态（底部批量操作栏据此显示）。</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            SelectionChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>选中状态变化（页面用它刷新底部操作栏）。</summary>
+    public event EventHandler? SelectionChanged;
+
     public string UpdateText => _update is null ? string.Empty : $"可更新 → {_update.VersionNumber}";
 
     public Visibility UpdateVisibility => _update is null ? Visibility.Collapsed : Visibility.Visible;
