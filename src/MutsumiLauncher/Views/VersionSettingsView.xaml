@@ -1,4 +1,4 @@
-<UserControl x:Class="MutsumiLauncher.Views.VersionSettingsView"
+﻿<UserControl x:Class="MutsumiLauncher.Views.VersionSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
@@ -49,7 +49,7 @@
                         <Grid>
                             <!-- 选中高亮：一块圆角块在条目之间滑动，滑动时轻微「呼吸」伸缩 -->
                             <Border x:Name="NavIndicator" Height="44" Margin="6,0" VerticalAlignment="Top"
-                                    CornerRadius="12" Background="#E6C9EDD5"
+                                    CornerRadius="12" Background="#F28FD8A8"
                                     IsHitTestVisible="False" Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>

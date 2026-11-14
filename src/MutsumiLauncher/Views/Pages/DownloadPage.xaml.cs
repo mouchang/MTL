@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -25,9 +26,46 @@ public partial class DownloadPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // 首次显示时把高亮放进当前来源
+        foreach (var child in SourcePanel.Children)
+        {
+            if (FindChecked(child) is { } radio)
+            {
+                Controls.SlidingHighlight.Move(SourceIndicator, radio, SourcePanel, animate: false);
+                break;
+            }
+        }
+
         if (_versionsRequested) return;
         _versionsRequested = true;
         _ = _viewModel?.LoadAsync();
+    }
+
+    /// <summary>在容器里找第一个被选中的单选项（子项可能嵌在社区分组里）。</summary>
+    private static RadioButton? FindChecked(object? node)
+    {
+        switch (node)
+        {
+            case RadioButton { IsChecked: true } radio:
+                return radio;
+
+            case Panel panel:
+                foreach (var child in panel.Children)
+                {
+                    if (FindChecked(child) is { } hit) return hit;
+                }
+
+                return null;
+
+            case Border { Child: { } inner }:
+                return FindChecked(inner);
+
+            case ToggleButton { Content: { } content }:
+                return FindChecked(content);
+
+            default:
+                return null;
+        }
     }
 
     /// <summary>从版本设置跳转到「社区资源 → Mod」，并预选版本与加载器。</summary>

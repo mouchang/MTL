@@ -1,4 +1,4 @@
-<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
+﻿<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
@@ -12,8 +12,19 @@
         <!-- ============ 左侧分类 ============ -->
         <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10"
                 VerticalAlignment="Top" Margin="0,4,0,0">
+            <Grid>
+                <!-- 选中高亮：和版本设置侧栏同款 -->
+                <Border x:Name="NavIndicator" Height="52" Width="164"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        CornerRadius="14" Background="#F28FD8A8"
+                        IsHitTestVisible="False" Opacity="0">
+                    <Border.RenderTransform>
+                        <TranslateTransform X="0" Y="0" />
+                    </Border.RenderTransform>
+                </Border>
+
             <StackPanel x:Name="NavPanel">
-                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="basic"
+                <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav" Tag="basic"
                              IsChecked="True" Checked="Nav_Checked">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE790;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
@@ -21,7 +32,7 @@
                     </StackPanel>
                 </RadioButton>
 
-                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="launch"
+                <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav" Tag="launch"
                              Checked="Nav_Checked">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
@@ -29,7 +40,7 @@
                     </StackPanel>
                 </RadioButton>
 
-                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="download"
+                <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav" Tag="download"
                              Checked="Nav_Checked">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
@@ -37,7 +48,7 @@
                     </StackPanel>
                 </RadioButton>
 
-                <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav" Tag="about"
+                <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav" Tag="about"
                              Checked="Nav_Checked">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE946;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
@@ -45,6 +56,7 @@
                     </StackPanel>
                 </RadioButton>
             </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ============ 右侧内容 ============ -->

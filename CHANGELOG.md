@@ -3,6 +3,29 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.12] - 2026-11-14
+
+### 更新内容
+
+- 设置页（主设置，不是版本设置）的侧栏也换成滑动高亮
+- 高亮颜色加深：`#E6C9EDD5` → `#F28FD8A8`
+- 修复顶栏高亮位置偏移、下载页/设置页首次进入时高亮不出现
+
+### 技术实现
+
+#### 1. 顶栏偏移
+
+指示器原来是 `VerticalAlignment=Center`，而位置又按 `TransformToAncestor` 算了一遍 Y，
+两者叠加导致高亮偏下且高度溢出。改成 `VerticalAlignment=Top`，只由位移决定位置。
+
+#### 2. 首次进入
+
+`Source_Checked` / `Nav_Checked` 在 XAML 解析阶段就会触发，此时控件还没有尺寸。
+现在 `Loaded` 时统一补一次（`animate: false` 直接就位），避免高亮块不出现。
+
+#### 3. 颜色
+
+四个导航（顶栏、版本设置、下载页、设置页）统一用 `#F28FD8A8`，比之前的浅绿明显一档。
 ## [1.1.4-beta.11] - 2026-11-14
 
 ### 更新内容

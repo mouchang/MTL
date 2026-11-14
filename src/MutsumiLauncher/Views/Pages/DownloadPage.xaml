@@ -16,7 +16,7 @@
                 <!-- 选中高亮：和版本设置侧栏同款 -->
                 <Border x:Name="SourceIndicator" Height="52" Width="270"
                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                        CornerRadius="14" Background="#E6C9EDD5"
+                        CornerRadius="14" Background="#F28FD8A8"
                         IsHitTestVisible="False" Opacity="0">
                     <Border.RenderTransform>
                         <TranslateTransform X="0" Y="0" />

@@ -29,6 +29,19 @@ public partial class SettingsPage : UserControl
     {
         InitializeComponent();
 
+        // 首次显示时把高亮直接放到当前分类（XAML 加载阶段布局还没算好）
+        Loaded += (_, _) =>
+        {
+            foreach (var child in NavPanel.Children)
+            {
+                if (child is RadioButton { IsChecked: true } radio)
+                {
+                    Controls.SlidingHighlight.Move(NavIndicator, radio, NavPanel, animate: false);
+                    break;
+                }
+            }
+        };
+
         _saveDebounce.Tick += (_, _) =>
         {
             _saveDebounce.Stop();
@@ -102,6 +115,11 @@ public partial class SettingsPage : UserControl
         LaunchScroll.Visibility = key == "launch" ? Visibility.Visible : Visibility.Collapsed;
         DownloadScroll.Visibility = key == "download" ? Visibility.Visible : Visibility.Collapsed;
         AboutScroll.Visibility = key == "about" ? Visibility.Visible : Visibility.Collapsed;
+
+        if (sender is RadioButton radio)
+        {
+            Controls.SlidingHighlight.Move(NavIndicator, radio, NavPanel, animate: true);
+        }
     }
 
     // ==================== 内存 ====================
