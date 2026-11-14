@@ -351,6 +351,22 @@ public partial class SettingsPage : UserControl
 
     private void ApplySeed_Click(object sender, RoutedEventArgs e) => ApplySeed(SeedHexBox.Text);
 
+    /// <summary>用 Windows 个性化里的主题色当种子。</summary>
+    private void UseSystemAccent_Click(object sender, RoutedEventArgs e)
+    {
+        if (ThemeService.ReadSystemAccent() is not { } accent)
+        {
+            SeedHint.Text = "读不到系统主题色";
+            return;
+        }
+
+        var hex = $"#FF{accent.R:X2}{accent.G:X2}{accent.B:X2}";
+        SeedHexBox.Text = hex;
+
+        ApplySeed(hex);
+        SeedHint.Text = "已跟随系统";
+    }
+
     private void ApplySeed(string? hex)
     {
         var normalized = ThemeService.NormalizeHex(hex);

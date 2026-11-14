@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.26] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题新增「跟随系统」：一键取 Windows 个性化里的主题色当种子
+- 新增配色预览条：主色 / 高亮 / 窗口 / 卡片 / 正文五个色块
+
+### 技术实现
+
+系统主题色读 `HKCU\Software\Microsoft\Windows\DWM` 的 `ColorizationColor`，
+取低 24 位作为种子色：
+
+```csharp
+return Color.FromRgb((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
+```
+
+预览条直接用 `DynamicResource` 绑定当前主题的五个画刷，换主题时自动跟着变。
 ## [1.1.4-beta.25] - 2026-11-14
 
 ### 更新内容

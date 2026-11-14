@@ -143,12 +143,36 @@
                                     <Button Style="{StaticResource SecondaryButton}" Content="应用这个色值"
                                             Height="34" Padding="16,0" Margin="10,0,0,0"
                                             Click="ApplySeed_Click" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="跟随系统"
+                                            Height="34" Padding="16,0" Margin="8,0,0,0"
+                                            ToolTip="使用 Windows 个性化设置里的主题色"
+                                            Click="UseSystemAccent_Click" />
                                     <TextBlock x:Name="SeedHint" Style="{StaticResource Caption}"
                                                Margin="12,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <TextBlock Text="配色风格" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
                                 <WrapPanel x:Name="StylePanel" />
+
+                                <TextBlock Text="预览" Style="{StaticResource FieldLabel}" Margin="0,12,0,8" />
+                                <Border Height="40" CornerRadius="12" ClipToBounds="True"
+                                        HorizontalAlignment="Left" Width="360"
+                                        BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{DynamicResource AccentDeep}" />
+                                        <Border Grid.Column="1" Background="{DynamicResource AccentWash}" />
+                                        <Border Grid.Column="2" Background="{DynamicResource WindowBase}" />
+                                        <Border Grid.Column="3" Background="{DynamicResource SurfaceSolid}" />
+                                        <Border Grid.Column="4" Background="{DynamicResource Ink}" />
+                                    </Grid>
+                                </Border>
 
                                 <Button Style="{StaticResource SecondaryButton}" Content="恢复默认外观"
                                         Height="32" Padding="16,0" Margin="0,18,0,0"

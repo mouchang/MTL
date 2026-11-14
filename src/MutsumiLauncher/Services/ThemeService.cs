@@ -164,6 +164,29 @@ public static class ThemeService
         }
     }
 
+    /// <summary>
+    /// 读 Windows 个性化里的主题色（DWM ColorizationColor），失败返回 null。
+    /// </summary>
+    public static Color? ReadSystemAccent()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\DWM");
+
+            if (key?.GetValue("ColorizationColor") is not int value) return null;
+
+            return Color.FromRgb(
+                (byte)((value >> 16) & 0xFF),
+                (byte)((value >> 8) & 0xFF),
+                (byte)(value & 0xFF));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static string NormalizeHex(string? hex)
     {
         if (string.IsNullOrWhiteSpace(hex)) return DefaultAccent;
