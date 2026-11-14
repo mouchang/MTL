@@ -3,6 +3,20 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.29] - 2026-11-15
+
+### 更新内容
+
+- 主题模块回滚到 1.1.4-beta.20 的自有实现
+- 删除自定义主题，外观只剩「明亮 / 暗色」两档
+
+### 技术实现
+
+回滚 `ThemeService` / `AppConfig` / `SettingsPage` / `MainWindow` 到 5540585 的版本，
+删除后续引入的 `MaterialTheme`（种子色推导）、液态玻璃、字体、缩放等选项。
+
+自定义主题整块移除：单选按钮、底色/主色面板、色板与色值输入、`ApplyCustomTheme` 等一并删除，
+`ThemeMode` 只剩 `light` / `dark`，老配置里的 `custom` 会按明亮处理。
 ## [1.1.4-beta.28] - 2026-11-15
 
 ### 更新内容

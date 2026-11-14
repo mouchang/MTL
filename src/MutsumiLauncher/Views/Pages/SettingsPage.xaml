@@ -112,113 +112,27 @@
                             <TextBlock Text="换主题只改配色，布局和功能都不动；改动立刻生效。"
                                        Style="{StaticResource Caption}" Margin="0,4,0,12" />
 
-                            <!-- 实时预览：色块都绑动态资源，换主题立刻变 -->
-                            <Border CornerRadius="14" Height="132" Margin="0,0,0,4"
-                                    Background="{DynamicResource WindowBase}"
-                                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
-                                    ClipToBounds="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="118" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                            <Grid x:Name="ThemeSegmentHost" HorizontalAlignment="Left">
+                                <Border x:Name="ThemeIndicator" Height="32" Width="64"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        CornerRadius="16" Background="{DynamicResource AccentWash}"
+                                        IsHitTestVisible="False" Opacity="0">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" Y="0" />
+                                    </Border.RenderTransform>
+                                </Border>
 
-                                    <Border Background="{DynamicResource SidebarBg}" Padding="10">
-                                        <StackPanel>
-                                            <Border Height="24" CornerRadius="8" Margin="0,0,0,6"
-                                                    Background="{DynamicResource AccentWash}" />
-                                            <Border Height="24" CornerRadius="8" Margin="0,0,0,6"
-                                                    Background="{DynamicResource HoverWash}" />
-                                            <Border Height="24" CornerRadius="8"
-                                                    Background="{DynamicResource HoverWash}" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <StackPanel Grid.Column="1" Margin="14,12,14,12">
-                                        <Border Height="34" CornerRadius="10"
-                                                Background="{DynamicResource SurfaceSolid}"
-                                                BorderBrush="{DynamicResource CardBorder}"
-                                                BorderThickness="1" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                            <Border Height="26" Width="72" CornerRadius="13"
-                                                    Background="{DynamicResource AccentDeep}" />
-                                            <Border Height="26" Width="72" CornerRadius="13" Margin="8,0,0,0"
-                                                    Background="{DynamicResource AccentWash}" />
-                                        </StackPanel>
-                                        <Border Height="8" CornerRadius="4" Width="150"
-                                                HorizontalAlignment="Left" Margin="0,12,0,0"
-                                                Background="{DynamicResource InkMute}" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <TextBlock Text="主题模式" Style="{StaticResource FieldLabel}" Margin="0,14,0,8" />
-                            <WrapPanel x:Name="ModePanel" />
-
-                            <CheckBox x:Name="PureBlackCheck" Style="{StaticResource MtlCheckBox}"
-                                      Content="深色模式使用纯黑背景" Margin="0,10,0,0"
-                                      Click="PureBlack_Changed" />
-
-                            <TextBlock Text="主题色" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                            <WrapPanel x:Name="SeedPanel" />
-
-                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <TextBox x:Name="SeedHexBox" Style="{StaticResource MtlTextBox}"
-                                         Width="130" Height="34" VerticalContentAlignment="Center" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="应用这个色值"
-                                        Height="34" Padding="16,0" Margin="10,0,0,0"
-                                        Click="ApplySeed_Click" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="跟随系统"
-                                        Height="34" Padding="16,0" Margin="8,0,0,0"
-                                        ToolTip="使用 Windows 个性化设置里的主题色"
-                                        Click="UseSystemAccent_Click" />
-                                <TextBlock x:Name="SeedHint" Style="{StaticResource Caption}"
-                                           Margin="12,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <TextBlock Text="配色风格" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                            <WrapPanel x:Name="StylePanel" />
-
-                            <TextBlock Text="导航栏样式" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                            <WrapPanel x:Name="NavStylePanel" />
-
-                            <TextBlock Text="切换动画" Style="{StaticResource FieldLabel}" Margin="0,12,0,8" />
-                            <WrapPanel x:Name="TransitionPanel" />
-
-                            <TextBlock Text="液态玻璃" Style="{StaticResource FieldLabel}" Margin="0,12,0,8" />
-                            <WrapPanel x:Name="GlassPanel" />
-
-                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <CheckBox x:Name="BlurCheck" Style="{StaticResource MtlCheckBox}"
-                                          Content="背景模糊" Click="Blur_Changed" />
-                                <TextBlock Text="卡片会透出被模糊的背景" Style="{StaticResource Caption}"
-                                           Margin="10,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <TextBlock Text="界面字体" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                            <ComboBox x:Name="FontCombo" Style="{StaticResource MtlComboBox}" Width="260" Height="34" HorizontalAlignment="Left"
-                                      SelectionChanged="Font_Changed" />
-
-                            <TextBlock Text="文字缩放" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="56" />
-                                </Grid.ColumnDefinitions>
-                                <Slider x:Name="ScaleSlider" Minimum="85" Maximum="130"
-                                        Style="{StaticResource MtlSlider}" VerticalAlignment="Center"
-                                        ValueChanged="Scale_Changed" Margin="0,0,12,0" />
-                                <TextBlock x:Name="ScaleValueText" Grid.Column="1"
-                                           Style="{StaticResource Caption}" VerticalAlignment="Center"
-                                           TextAlignment="Right" />
+                                <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="ThemeLightRadio" Style="{StaticResource SegmentItemOverlay}"
+                                             GroupName="ThemeMode" Content="明亮"
+                                             Margin="0,0,4,0" Checked="ThemeMode_Checked" />
+                                <RadioButton x:Name="ThemeDarkRadio" Style="{StaticResource SegmentItemOverlay}"
+                                             GroupName="ThemeMode" Content="暗色"
+                                             Margin="0,0,4,0" Checked="ThemeMode_Checked" />
+                                </StackPanel>
                             </Grid>
-
-                            <Button Style="{StaticResource SecondaryButton}" Content="恢复默认外观"
-                                    Height="32" Padding="16,0" Margin="0,18,0,0"
-                                    HorizontalAlignment="Left" Click="ResetTheme_Click" />
                         </StackPanel>
                     </Border>
-
                 </StackPanel>
             </ScrollViewer>
 

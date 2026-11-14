@@ -80,53 +80,8 @@ public sealed class AppConfig
     /// <summary>自定义主题的主色（#AARRGGBB）。</summary>
     public string ThemeAccent { get; set; } = ThemeService.DefaultAccent;
 
-    /// <summary>（已废弃）自定义主题底色，已移除暗色，仅为兼容旧配置保留。</summary>
+    /// <summary>自定义主题的底色：light / dark。</summary>
     public string ThemeBase { get; set; } = "light";
-
-    /// <summary>（已废弃）自定义主题色调，改由色相控制。</summary>
-    public string ThemeTone { get; set; } = "green";
-
-    /// <summary>（已废弃）自定义主题浓度，改由饱和度控制。</summary>
-    public string ThemeStrength { get; set; } = "normal";
-
-    /// <summary>（已废弃）自定义背景色，改由明度控制。</summary>
-    public string ThemeBackground { get; set; } = string.Empty;
-
-    /// <summary>（已废弃）色相，改由种子色推导。</summary>
-    public int ThemeHue { get; set; } = 200;
-
-    /// <summary>（已废弃）饱和度，改由种子色推导。</summary>
-    public int ThemeSat { get; set; } = 60;
-
-    /// <summary>（已废弃）明度，改由种子色推导。</summary>
-    public int ThemeLight { get; set; } = 62;
-
-    /// <summary>自定义主题的种子色（#AARRGGBB）。</summary>
-    public string ThemeSeed { get; set; } = ThemeService.DefaultAccent;
-
-    /// <summary>深色模式下是否使用纯黑背景。</summary>
-    public bool ThemePureBlack { get; set; }
-
-    /// <summary>导航栏样式：floating（悬浮）/ docked（停靠）。</summary>
-    public string ThemeNavStyle { get; set; } = "docked";
-
-    /// <summary>页面切换动画：slide / fade。</summary>
-    public string ThemeTransition { get; set; } = "slide";
-
-    /// <summary>液态玻璃：none / standard / ultra。</summary>
-    public string ThemeLiquidGlass { get; set; } = "none";
-
-    /// <summary>背景模糊。</summary>
-    public bool ThemeSidebarBlur { get; set; }
-
-    /// <summary>界面字体（空表示默认）。</summary>
-    public string ThemeFont { get; set; } = string.Empty;
-
-    /// <summary>界面缩放百分比（85-125）。</summary>
-    public int ThemeScale { get; set; } = 100;
-
-    /// <summary>配色风格：soft / balanced / vibrant / mono。</summary>
-    public string ThemeStyle { get; set; } = "balanced";
 
     /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;

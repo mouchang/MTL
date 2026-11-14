@@ -37,6 +37,15 @@ public partial class SettingsPage : UserControl
             else if (MemoryManualRadio.IsChecked == true)
                 Controls.SlidingHighlight.Move(MemoryIndicator, MemoryManualRadio, MemorySegmentHost, animate: false);
 
+            foreach (var themeRadio in new[] { ThemeLightRadio, ThemeDarkRadio })
+            {
+                if (themeRadio.IsChecked == true)
+                {
+                    Controls.SlidingHighlight.Move(ThemeIndicator, themeRadio, ThemeSegmentHost, animate: false);
+                    break;
+                }
+            }
+
             foreach (var child in NavPanel.Children)
             {
                 if (child is RadioButton { IsChecked: true } radio)
@@ -226,291 +235,24 @@ public partial class SettingsPage : UserControl
     {
         _themeLoading = true;
 
-        var config = AppConfig.Current;
+        var mode = AppConfig.Current.ThemeMode == "dark" ? AppTheme.Dark : AppTheme.Light;
 
-        BuildThemeOptions();
-
-        SeedHexBox.Text = ThemeService.NormalizeHex(config.ThemeSeed);
-        SeedHint.Text = string.Empty;
-
-        PureBlackCheck.IsChecked = config.ThemePureBlack;
-        PureBlackCheck.IsEnabled = ThemeService.IsDark || ThemeService.ParseMode(config.ThemeMode) == ColorMode.Dark;
-
-        SelectMode(ThemeService.ParseMode(config.ThemeMode));
-        SyncStyleSelection(ThemeService.Style);
-
-        BuildOptionChips();
-        SyncOptionChips();
-        LoadFonts(config.ThemeFont);
-        ScaleSlider.Value = Math.Clamp(config.ThemeScale, 85, 130);
-        ScaleValueText.Text = ((int)ScaleSlider.Value) + "%";
-        BlurCheck.IsChecked = config.ThemeSidebarBlur;
+        ThemeLightRadio.IsChecked = mode == AppTheme.Light;
+        ThemeDarkRadio.IsChecked = mode == AppTheme.Dark;
 
         _themeLoading = false;
     }
 
-    /// <summary>导航栏 / 动画 / 玻璃三组选项（代码生成）。</summary>
-    private void BuildOptionChips()
+    private void ThemeMode_Checked(object sender, RoutedEventArgs e)
     {
-        if (NavStylePanel.Children.Count == 0)
+        if (sender is RadioButton themeRadio && ThemeIndicator is not null && ThemeSegmentHost is not null)
         {
-            AddOption(NavStylePanel, "停靠", "nav", "docked");
-            AddOption(NavStylePanel, "悬浮", "nav", "floating");
+            Controls.SlidingHighlight.Move(ThemeIndicator, themeRadio, ThemeSegmentHost, animate: true);
         }
-
-        if (TransitionPanel.Children.Count == 0)
-        {
-            AddOption(TransitionPanel, "滑动", "transition", "slide");
-            AddOption(TransitionPanel, "淡入", "transition", "fade");
-        }
-
-        if (GlassPanel.Children.Count == 0)
-        {
-            AddOption(GlassPanel, "关闭", "glass", "none");
-            AddOption(GlassPanel, "标准", "glass", "standard");
-            AddOption(GlassPanel, "极致", "glass", "ultra");
-        }
-    }
-
-    private void AddOption(Panel host, string label, string group, string value)
-    {
-        var chip = new RadioButton
-        {
-            Style = (Style)FindResource("SegmentItem"),
-            GroupName = "ThemeOption_" + group,
-            Content = label,
-            Margin = new Thickness(0, 0, 8, 8),
-            Tag = value,
-        };
-
-        chip.Checked += (_, _) =>
-        {
-            if (_themeLoading) return;
-
-            ThemeService.SetOptions(
-                navStyle: group == "nav" ? value : null,
-                transition: group == "transition" ? value : null,
-                liquidGlass: group == "glass" ? value : null);
-        };
-
-        host.Children.Add(chip);
-    }
-
-    private void SyncOptionChips()
-    {
-        var config = AppConfig.Current;
-
-        foreach (var child in NavStylePanel.Children)
-            if (child is RadioButton { Tag: string value } chip)
-                chip.IsChecked = value == config.ThemeNavStyle;
-
-        foreach (var child in TransitionPanel.Children)
-            if (child is RadioButton { Tag: string value } chip)
-                chip.IsChecked = value == config.ThemeTransition;
-
-        foreach (var child in GlassPanel.Children)
-            if (child is RadioButton { Tag: string value } chip)
-                chip.IsChecked = value == config.ThemeLiquidGlass;
-    }
-
-    /// <summary>列出系统字体，第一项是默认。</summary>
-    private void LoadFonts(string current)
-    {
-        if (FontCombo.Items.Count > 0) return;
-
-        FontCombo.Items.Add("默认");
-
-        foreach (var family in System.Windows.Media.Fonts.SystemFontFamilies
-                     .Select(f => f.Source)
-                     .Distinct()
-                     .OrderBy(name => name, StringComparer.CurrentCulture))
-        {
-            FontCombo.Items.Add(family);
-        }
-
-        FontCombo.SelectedItem = string.IsNullOrWhiteSpace(current) ? "默认" : current;
-        if (FontCombo.SelectedIndex < 0) FontCombo.SelectedIndex = 0;
-    }
-
-    private void Font_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (_themeLoading || FontCombo.SelectedItem is not string name) return;
-
-        ThemeService.SetOptions(font: name == "默认" ? string.Empty : name);
-    }
-
-    private void Scale_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (ScaleValueText is null) return;
-
-        ScaleValueText.Text = ((int)ScaleSlider.Value) + "%";
 
         if (_themeLoading) return;
 
-        ThemeService.SetOptions(scale: (int)ScaleSlider.Value);
-    }
-
-    private void Blur_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_themeLoading) return;
-
-        ThemeService.SetOptions(sidebarBlur: BlurCheck.IsChecked == true);
-    }
-
-    /// <summary>主题模式：跟随系统 / 浅色 / 深色。</summary>
-    private void BuildThemeOptions()
-    {
-        if (ModePanel.Children.Count == 0)
-        {
-            AddModeChip("跟随系统", ColorMode.System);
-            AddModeChip("浅色", ColorMode.Light);
-            AddModeChip("深色", ColorMode.Dark);
-        }
-
-        if (SeedPanel.Children.Count == 0)
-        {
-            foreach (var (name, hex) in ThemeService.ThemeSeeds)
-            {
-                var swatch = new Button
-                {
-                    Width = 36,
-                    Height = 36,
-                    Margin = new Thickness(0, 0, 8, 8),
-                    ToolTip = name,
-                    Cursor = System.Windows.Input.Cursors.Hand,
-                    Background = new SolidColorBrush(ThemeService.ParseColor(hex)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)),
-                    BorderThickness = new Thickness(1),
-                };
-
-                swatch.Click += (_, _) =>
-                {
-                    SeedHexBox.Text = hex;
-                    ApplySeed(hex);
-                };
-
-                SeedPanel.Children.Add(swatch);
-            }
-        }
-
-        if (StylePanel.Children.Count == 0)
-        {
-            AddStyleChip("柔和", "soft");
-            AddStyleChip("平衡", "balanced");
-            AddStyleChip("鲜艳", "vibrant");
-            AddStyleChip("单色", "mono");
-        }
-    }
-
-    private void AddModeChip(string label, ColorMode mode)
-    {
-        var chip = new RadioButton
-        {
-            Style = (Style)FindResource("SegmentItem"),
-            GroupName = "ThemeMode",
-            Content = label,
-            Margin = new Thickness(0, 0, 8, 8),
-            Tag = mode,
-        };
-
-        chip.Checked += (_, _) =>
-        {
-            if (_themeLoading || chip.Tag is not ColorMode target) return;
-
-            ThemeService.SetTheme(target);
-            PureBlackCheck.IsEnabled = ThemeService.IsDark;
-        };
-
-        ModePanel.Children.Add(chip);
-    }
-
-    private void SelectMode(ColorMode mode)
-    {
-        foreach (var child in ModePanel.Children)
-            if (child is RadioButton { Tag: ColorMode value } chip) chip.IsChecked = value == mode;
-    }
-
-    private void AddStyleChip(string label, string value)
-    {
-        var chip = new RadioButton
-        {
-            Style = (Style)FindResource("SegmentItem"),
-            GroupName = "ThemeStyle",
-            Content = label,
-            Margin = new Thickness(0, 0, 8, 8),
-            Tag = value,
-        };
-
-        chip.Checked += (_, _) =>
-        {
-            if (_themeLoading) return;
-
-            ThemeService.SetTheme(ThemeService.Mode, SeedHexBox.Text, value);
-            SeedHint.Text = "已应用";
-        };
-
-        StylePanel.Children.Add(chip);
-    }
-
-    private void SyncStyleSelection(string style)
-    {
-        var loading = _themeLoading;
-        _themeLoading = true;
-
-        foreach (var child in StylePanel.Children)
-            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == style;
-
-        _themeLoading = loading;
-    }
-
-    /// <summary>纯黑开关：只在深色生效。</summary>
-    private void PureBlack_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_themeLoading) return;
-
-        ThemeService.SetTheme(ThemeService.Mode, null, null, PureBlackCheck.IsChecked == true);
-    }
-
-    private void ApplySeed_Click(object sender, RoutedEventArgs e) => ApplySeed(SeedHexBox.Text);
-
-    private void ApplySeed(string? hex)
-    {
-        var normalized = ThemeService.NormalizeHex(hex);
-        SeedHexBox.Text = normalized;
-
-        ThemeService.SetTheme(ThemeService.Mode, normalized, ThemeService.Style);
-        SeedHint.Text = "已应用";
-    }
-
-    /// <summary>用 Windows 个性化里的主题色当种子。</summary>
-    private void UseSystemAccent_Click(object sender, RoutedEventArgs e)
-    {
-        if (ThemeService.ReadSystemAccent() is not { } accent)
-        {
-            SeedHint.Text = "读不到系统主题色";
-            return;
-        }
-
-        var hex = $"#FF{accent.R:X2}{accent.G:X2}{accent.B:X2}";
-        SeedHexBox.Text = hex;
-
-        ApplySeed(hex);
-        SeedHint.Text = "已跟随系统";
-    }
-
-    private void ResetTheme_Click(object sender, RoutedEventArgs e)
-    {
-        _themeLoading = true;
-
-        SeedHexBox.Text = ThemeService.DefaultAccent;
-        PureBlackCheck.IsChecked = false;
-        SelectMode(ColorMode.System);
-        SyncStyleSelection(ThemeService.DefaultStyle);
-
-        _themeLoading = false;
-
-        ThemeService.SetTheme(ColorMode.System, ThemeService.DefaultAccent, ThemeService.DefaultStyle, false);
-        SeedHint.Text = "已恢复默认";
+        ThemeService.SetTheme(ThemeDarkRadio.IsChecked == true ? AppTheme.Dark : AppTheme.Light);
     }
 
     // ==================== 版本隔离 ====================

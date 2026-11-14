@@ -72,52 +72,6 @@ public partial class MainWindow : Window
             _ = ShowFirstRunAnnouncementAsync();
         };
         SizeChanged += (_, _) => UpdateShellClip();
-
-        ThemeService.Changed += ApplyUiOptions;
-        Loaded += (_, _) => ApplyUiOptions();
-    }
-
-    /// <summary>应用外观选项：字体、缩放、背景模糊、导航栏样式。</summary>
-    private void ApplyUiOptions()
-    {
-        // 字体：替换资源 + 窗口默认字体（已创建的元素里显式用 StaticResource UiFont 的要重启才换）
-        if (!string.IsNullOrWhiteSpace(ThemeService.FontFamilyName))
-        {
-            try
-            {
-                var family = new FontFamily(ThemeService.FontFamilyName);
-                Application.Current.Resources["UiFont"] = family;
-                FontFamily = family;
-            }
-            catch
-            {
-                // 字体名不可用时忽略
-            }
-        }
-
-        // 界面缩放
-        var scale = ThemeService.TextScale / 100.0;
-        ShellRoot.LayoutTransform = Math.Abs(scale - 1) < 0.005 ? null : new ScaleTransform(scale, scale);
-
-        // 导航栏样式：悬浮时加投影、圆角更大、位置略微上浮
-        NavBarSurface.CornerRadius = new CornerRadius(ThemeService.NavFloating ? 22 : 16);
-        NavBarSurface.Effect = ThemeService.NavFloating
-            ? new DropShadowEffect
-            {
-                BlurRadius = 26,
-                ShadowDepth = 5,
-                Direction = 270,
-                Opacity = 0.22,
-                Color = Colors.Black,
-            }
-            : null;
-        TitleBar.Margin = ThemeService.NavFloating ? new Thickness(18, 8, 18, 0) : new Thickness(18, 12, 18, 0);
-
-        // 背景模糊
-        var blur = ThemeService.SidebarBlur;
-        Backdrop.Effect = blur || _currentPage != "launch"
-            ? new BlurEffect { Radius = blur ? 48 : 36, KernelType = KernelType.Gaussian }
-            : null;
     }
 
     protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
@@ -175,22 +129,6 @@ public partial class MainWindow : Window
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
                 });
-
-            // 滑动 / 淡入两种切换动画
-            if (ThemeService.Transition == "slide")
-            {
-                var offset = new TranslateTransform(16, 0);
-                page.RenderTransform = offset;
-                offset.BeginAnimation(TranslateTransform.XProperty,
-                    new DoubleAnimation(16, 0, TimeSpan.FromMilliseconds(220))
-                    {
-                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                    });
-            }
-            else
-            {
-                page.RenderTransform = null;
-            }
         }
         else
         {
