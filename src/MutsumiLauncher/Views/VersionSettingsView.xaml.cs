@@ -231,7 +231,7 @@ public partial class VersionSettingsView : UserControl
         if (page is IInstancePage instancePage)
         {
             Dispatcher.BeginInvoke(new Action(instancePage.ScrollToTop),
-                System.Windows.Threading.DispatcherPriority.Loaded);
+                System.Windows.Threading.DispatcherPriority.ContextIdle);
         }
 
         // 与主窗口导航栏同款：淡入 + 轻微上浮
