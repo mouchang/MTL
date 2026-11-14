@@ -279,6 +279,9 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         SaveUpdateCache();
 
+        // 检查完也回到第 1 行（用户预期和更新后一致）
+        _scrollTopPending = true;
+
         // 有更新才显示筛选标签
         SyncUpdateFilter();
 

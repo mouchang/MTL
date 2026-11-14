@@ -3,6 +3,25 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.9] - 2026-11-14
+
+### 更新内容
+
+- 切换完成反馈重做：不再做几何回弹，改为高亮柔光轻亮一下
+- 侧栏切换加快：380ms → 230ms
+- 检查 Mod 更新后同样回到列表顶部（之前只有更新后才会）
+
+### 技术实现
+
+回弹改缩放会显得"弹一下"，改成动画柔光的透明度更安静：
+
+```csharp
+_indicatorShadow.BeginAnimation(DropShadowEffect.OpacityProperty, pulse); // 0.18 → 0.42 → 0.18
+```
+
+柔光由代码创建（XAML 里的 `DropShadowEffect` 可能被冻结，无法动画）。
+
+检查更新的收尾补上 `_scrollTopPending = true`，由 `ApplyFilter` 在换完数据后滚到第 1 行。
 ## [1.1.4-beta.8] - 2026-11-14
 
 ### 更新内容

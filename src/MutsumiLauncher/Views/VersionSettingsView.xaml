@@ -52,16 +52,8 @@
                                     CornerRadius="12" Background="#E6C9EDD5"
                                     IsHitTestVisible="False" Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
-                                <Border.Effect>
-                                    <!-- 一点柔光，边缘不至于像硬纸片 -->
-                                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
-                                                      Opacity="0.18" Color="{DynamicResource ShadowColor}" />
-                                </Border.Effect>
                                 <Border.RenderTransform>
-                                    <TransformGroup>
-                                        <TranslateTransform x:Name="NavIndicatorSlide" Y="0" />
-                                        <ScaleTransform x:Name="NavIndicatorScale" ScaleX="1" ScaleY="1" />
-                                    </TransformGroup>
+                                    <TranslateTransform x:Name="NavIndicatorSlide" Y="0" />
                                 </Border.RenderTransform>
                             </Border>
 

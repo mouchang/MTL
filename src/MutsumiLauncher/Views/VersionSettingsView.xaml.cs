@@ -25,6 +25,17 @@ public partial class VersionSettingsView : UserControl
     {
         InitializeComponent();
 
+        _indicatorShadow = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            BlurRadius = 14,
+            ShadowDepth = 2,
+            Direction = 270,
+            Opacity = 0.18,
+            Color = (System.Windows.Media.Color)FindResource("ShadowColor"),
+        };
+
+        NavIndicator.Effect = _indicatorShadow;
+
         var overview = new OverviewPage();
         overview.Renamed += OnRenamed;
         overview.Deleted += OnDeleted;
@@ -313,6 +324,9 @@ public partial class VersionSettingsView : UserControl
     // 连点时会叠加：用序号丢弃过期的 Completed 回调
     private int _indicatorSequence;
 
+    // 高亮块的柔光（代码创建，才允许动画）
+    private System.Windows.Media.Effects.DropShadowEffect? _indicatorShadow;
+
     private void MoveNavIndicator(string key)
     {
         if (NavIndicator is null || NavPanel is null) return;
@@ -351,7 +365,7 @@ public partial class VersionSettingsView : UserControl
             EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
         };
 
-        var duration = TimeSpan.FromMilliseconds(380);
+        var duration = TimeSpan.FromMilliseconds(230);
 
         // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
         var sequence = ++_indicatorSequence;
@@ -377,35 +391,34 @@ public partial class VersionSettingsView : UserControl
         }
     }
 
-    /// <summary>切换完成时的落定反馈：轻微放大再收回。</summary>
+    /// <summary>切换完成的反馈：让高亮的柔光轻轻亮一下，不改几何形状。</summary>
     private void PlayIndicatorSettle()
     {
-        if (NavIndicatorScale is null) return;
+        if (_indicatorShadow is null) return;
 
-        var settle = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+        var pulse = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromMilliseconds(220),
+            Duration = TimeSpan.FromMilliseconds(260),
         };
 
-        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.18,
             System.Windows.Media.Animation.KeyTime.FromPercent(0)));
 
-        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.045,
-            System.Windows.Media.Animation.KeyTime.FromPercent(0.45),
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.42,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0.35),
             new System.Windows.Media.Animation.CubicEase
             {
                 EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
             }));
 
-        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.18,
             System.Windows.Media.Animation.KeyTime.FromPercent(1),
             new System.Windows.Media.Animation.CubicEase
             {
                 EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
             }));
 
-        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, settle);
-        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, settle);
+        _indicatorShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, pulse);
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
