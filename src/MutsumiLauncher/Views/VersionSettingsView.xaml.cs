@@ -285,13 +285,13 @@ public partial class VersionSettingsView : UserControl
         }
 
         slide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(190))
+            new System.Windows.Media.Animation.DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(220))
             {
                 EasingFunction = ease,
             });
 
         page.BeginAnimation(OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190))
+            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
             {
                 EasingFunction = ease,
             });
@@ -342,13 +342,13 @@ public partial class VersionSettingsView : UserControl
         // 指示器比条目矮 8px，垂直居中
         y += 4;
 
-        // 用对称缓动：两端都慢，中途能看到它确实在「走」
-        var ease = new System.Windows.Media.Animation.CubicEase
+        // 正弦缓动 + 340ms：起步和收尾都很轻，中段匀速，观感最接近「滑」而不是「跳」
+        var ease = new System.Windows.Media.Animation.SineEase
         {
             EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
         };
 
-        var duration = TimeSpan.FromMilliseconds(240);
+        var duration = TimeSpan.FromMilliseconds(380);
 
         // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
         NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,

@@ -3,6 +3,38 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.6] - 2026-11-14
+
+### 更新内容
+
+- 侧栏切换更柔：去掉选中加粗，改为 380ms 正弦缓动 + 柔光边缘
+- 更新检查的遮罩改成圆角卡片，不再露出四个直角
+
+### 技术实现
+
+#### 1. 去掉字重跳变
+
+选中项原来会把 `FontWeight` 改成 SemiBold，切换完成的瞬间文字会「啪」地变粗。
+字重本身无法平滑过渡，直接去掉，选中状态只由胶囊表达。
+
+#### 2. 更柔的移动
+
+```csharp
+var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
+var duration = TimeSpan.FromMilliseconds(380);
+```
+
+胶囊加了一点 `DropShadowEffect`（BlurRadius 14 / Opacity 0.18），边缘不再是硬边；
+底色改成 `#E6C9EDD5`（90% 不透明），和侧栏底色过渡更自然。
+
+#### 3. 遮罩圆角
+
+原来蒙层是一个铺满的 `Border`，四角是直角。现在拆成两层：
+
+```xml
+<Border Background="#66FFFFFF" CornerRadius="18" />   <!-- 蒙层 -->
+<Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16" />  <!-- 提示卡 -->
+```
 ## [1.1.4-beta.5] - 2026-11-14
 
 ### 更新内容

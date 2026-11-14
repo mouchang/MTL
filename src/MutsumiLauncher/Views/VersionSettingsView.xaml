@@ -49,10 +49,14 @@
                         <Grid>
                             <!-- 选中高亮：一块圆角块在条目之间滑动，滑动时轻微「呼吸」伸缩 -->
                             <Border x:Name="NavIndicator" Height="44" Margin="6,0" VerticalAlignment="Top"
-                                    CornerRadius="12" Background="{DynamicResource AccentTintDeep}"
-                                    BorderBrush="{DynamicResource Accent}" BorderThickness="1"
+                                    CornerRadius="12" Background="#E6C9EDD5"
                                     IsHitTestVisible="False" Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
+                                <Border.Effect>
+                                    <!-- 一点柔光，边缘不至于像硬纸片 -->
+                                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                                      Opacity="0.18" Color="{DynamicResource ShadowColor}" />
+                                </Border.Effect>
                                 <Border.RenderTransform>
                                     <TransformGroup>
                                         <TranslateTransform x:Name="NavIndicatorSlide" Y="0" />

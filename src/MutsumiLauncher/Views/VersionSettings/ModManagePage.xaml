@@ -1,4 +1,4 @@
-<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.ModManagePage"
+﻿<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.ModManagePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:MutsumiLauncher.Controls"
@@ -186,28 +186,33 @@
 
         <!-- 检查更新时盖住整页：也挡住上面的按钮，避免重复触发 -->
         <Border x:Name="CheckingOverlay" Grid.Row="0" Grid.RowSpan="5"
-                Background="#59FFFFFF" Opacity="0" Visibility="Collapsed">
-            <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
-                    Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
-                                      Opacity="0.15" Color="{DynamicResource ShadowColor}" />
-                </Border.Effect>
-                <StackPanel Width="220">
-                    <Grid Height="6" ClipToBounds="True">
-                        <Border Background="{DynamicResource Divider}" CornerRadius="3" />
-                        <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
-                                Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
-                            <Border.RenderTransform>
-                                <TranslateTransform x:Name="BusyTranslate" X="-64" />
-                            </Border.RenderTransform>
-                        </Border>
-                    </Grid>
-                    <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
-                               HorizontalAlignment="Center"
-                               Foreground="{DynamicResource InkSoft}" FontSize="13" />
-                </StackPanel>
-            </Border>
+                Background="Transparent" Opacity="0" Visibility="Collapsed">
+            <Grid>
+                <!-- 蒙层做成和页面同圆角的卡片，别露出四个直角 -->
+                <Border Background="#66FFFFFF" CornerRadius="18" />
+
+                <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
+                        Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
+                                          Opacity="0.15" Color="{DynamicResource ShadowColor}" />
+                    </Border.Effect>
+                    <StackPanel Width="220">
+                        <Grid Height="6" ClipToBounds="True">
+                            <Border Background="{DynamicResource Divider}" CornerRadius="3" />
+                            <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="BusyTranslate" X="-64" />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource InkSoft}" FontSize="13" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
