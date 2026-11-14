@@ -17,6 +17,13 @@ public partial class ModManagePage : UserControl, IInstancePage
     private string _query = string.Empty;
     private List<ModFileItem> _items = [];
 
+    // MODS 目录实时监听：外部增删文件、我们自己改扩展名都会触发刷新
+    private FileSystemWatcher? _modsWatcher;
+    private System.Windows.Threading.DispatcherTimer? _refreshDebounce;
+
+    /// <summary>更新进行中：此时不再让监听器插进来刷新，避免打断选中状态。</summary>
+    private bool _updating;
+
     public ModManagePage()
     {
         InitializeComponent();
@@ -33,10 +40,73 @@ public partial class ModManagePage : UserControl, IInstancePage
         InstallNewModButton.IsEnabled = supported;
         InstallNewModButton.ToolTip = supported ? null : "原版没有加载器，无法安装 Mod";
 
+        StartWatching(ModsDir);
         Refresh();
     }
 
     private string ModsDir => InstanceService.ModsDirFor(_version);
+
+    /// <summary>
+    /// 监听 mods 目录，文件增删 / 改名（启用禁用）后自动刷新列表。
+    /// 用 400ms 防抖：一次下载完成会连着抛出好几个事件。
+    /// </summary>
+    private void StartWatching(string dir)
+    {
+        _modsWatcher?.Dispose();
+        _modsWatcher = null;
+
+        try
+        {
+            Directory.CreateDirectory(dir);
+
+            _refreshDebounce ??= CreateDebounceTimer();
+
+            var watcher = new FileSystemWatcher(dir)
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true,
+            };
+
+            watcher.Created += (_, _) => ScheduleRefresh();
+            watcher.Deleted += (_, _) => ScheduleRefresh();
+            watcher.Renamed += (_, _) => ScheduleRefresh();
+            watcher.Changed += (_, _) => ScheduleRefresh();
+
+            _modsWatcher = watcher;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "watch mods " + dir);
+        }
+    }
+
+    private System.Windows.Threading.DispatcherTimer CreateDebounceTimer()
+    {
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(400),
+        };
+
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (!_updating) Refresh();
+        };
+
+        return timer;
+    }
+
+    private void ScheduleRefresh()
+    {
+        if (_updating || _refreshDebounce is null) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            _refreshDebounce.Stop();
+            _refreshDebounce.Start();
+        });
+    }
 
     public void Refresh()
     {
@@ -117,7 +187,18 @@ public partial class ModManagePage : UserControl, IInstancePage
         _ = FillSizesAsync(_items);
     }
 
-    private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync();
+
+    /// <summary>打开 Mod 板块时自动跑一次（每个版本设置会话只跑一次，由外层控制）。</summary>
+    public void AutoCheckUpdates()
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        AppLog.Info($"mod auto check: version={_version}");
+        _ = CheckUpdatesAsync();
+    }
+
+    private async Task CheckUpdatesAsync()
     {
         var owner = Window.GetWindow(this) as MainWindow;
 
@@ -536,6 +617,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin($"更新 {item.DisplayName}");
         var versionNumber = item.Update!.VersionNumber;
 
+        _updating = true;
         ShowUpdateProgress($"正在更新 {item.DisplayName}");
 
         var progress = new Progress<DownloadProgress>(p =>
@@ -567,6 +649,11 @@ public partial class ModManagePage : UserControl, IInstancePage
         finally
         {
             HideUpdateProgress();
+            _updating = false;
+
+            // 单条更新后也回到顶部，和批量保持一致
+            Refresh();
+            ScrollToTop();
         }
     }
 
@@ -600,6 +687,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             : $"更新完成 {done}/{targets.Count}，其余失败（详见日志）。");
 
         Refresh();
+        ScrollToTop();
     }
 
     /// <summary>批量更新：在下载面板里显示总体进度（第几个 / 百分比）。</summary>
@@ -610,6 +698,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin(title);
         var done = 0;
 
+        _updating = true;
         ShowUpdateProgress(title);
 
         try
@@ -643,6 +732,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         {
             DownloadCenter.Complete(task, "更新完成 " + done + "/" + targets.Count);
             HideUpdateProgress();
+            _updating = false;
         }
 
         return done;
@@ -890,6 +980,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         }
 
         Refresh();
+        ScrollToTop();
     }
 
     private void BatchDelete_Click(object sender, RoutedEventArgs e)
@@ -1045,8 +1136,6 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         return $"[{display}] {fileName}";
     }
-
-    private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
 
     private void InstallNewMod_Click(object sender, RoutedEventArgs e)
     {

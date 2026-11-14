@@ -1,9 +1,9 @@
-<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.OverviewPage"
+﻿<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.OverviewPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer x:Name="RootScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,0,4,0">
 
             <Border Style="{StaticResource GlassCard}" Padding="20">

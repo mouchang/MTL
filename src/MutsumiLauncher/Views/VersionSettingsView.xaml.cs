@@ -12,6 +12,10 @@ public partial class VersionSettingsView : UserControl
     private readonly HashSet<string> _loaded = new(StringComparer.Ordinal);
     private string _version = string.Empty;
 
+    // 一个「版本设置」会话里，Mod 板块只自动检查一次更新；
+    // 关掉浮层再打开会重置（Load 里清零）。
+    private bool _modsAutoChecked;
+
     public VersionSettingsView()
     {
         InitializeComponent();
@@ -160,11 +164,11 @@ public partial class VersionSettingsView : UserControl
             ? "版本设置"
             : $"版本设置 · {ExternalSourceService.DisplayName(version)}";
 
-        // 只初始化当前看得见的那一页：版本设置里每页都要扫盘（Mod 列表、存档、导出统计），
-        // 一次性全加载会让打开浮层卡上好几百毫秒
+        // 每次打开都回到「概览」，而不是停在上次关掉时的板块
+        _modsAutoChecked = false;
         _loaded.Clear();
-
-        if (CurrentPageKey() is { } key) InitializePage(key);
+        NavOverview.IsChecked = true;
+        ShowPage("overview");
 
         // 调试用：MTL_VERSION_TAB=overview|launch|mods|saves|export 直接进某个标签页
         var tab = Environment.GetEnvironmentVariable("MTL_VERSION_TAB");
@@ -221,9 +225,47 @@ public partial class VersionSettingsView : UserControl
         InitializePage(key);
 
         PageHost.Content = page;
-        page.Opacity = 0;
+
+        // 切板块回到顶部：否则从存档 / Mod 列表滚到一半再切回来会停在老位置。
+        // 放到 Loaded 优先级，等模板和可视树都建好再滚，Mod 列表的 ScrollViewer 才找得到。
+        if (page is IInstancePage instancePage)
+        {
+            Dispatcher.BeginInvoke(new Action(instancePage.ScrollToTop),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        // 与主窗口导航栏同款：淡入 + 轻微上浮
+        var ease = new System.Windows.Media.Animation.CubicEase
+        {
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+        };
+
+        var slide = page.RenderTransform as System.Windows.Media.TranslateTransform;
+
+        if (slide is null)
+        {
+            slide = new System.Windows.Media.TranslateTransform();
+            page.RenderTransform = slide;
+        }
+
+        slide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(190))
+            {
+                EasingFunction = ease,
+            });
+
         page.BeginAnimation(OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190))
+            {
+                EasingFunction = ease,
+            });
+
+        // 打开 Mod 板块时自动检查一次更新（每个设置会话只做一次）
+        if (key == "mods" && page is ModManagePage mods && !_modsAutoChecked)
+        {
+            _modsAutoChecked = true;
+            mods.AutoCheckUpdates();
+        }
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

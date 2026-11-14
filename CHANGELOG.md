@@ -3,6 +3,49 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.1] - 2026-11-14
+
+### 更新内容
+
+- 版本设置每次打开都回到「概览」，不再停在上次关闭时的板块
+- Mod 列表改为实时扫描，移除「刷新」按钮；外部增删文件会自动更新
+- 打开 Mod 板块时自动检查一次更新（同一会话内切换板块不重复检查）
+- 切换版本设置板块时回到顶部，并加入与主界面导航一致的淡入上浮动画
+- Mod 更新完成后自动回到列表顶端
+
+### 技术实现
+
+#### 1. 打开即回概览
+
+`Load()` 里重置选中项并显式调用 `ShowPage("overview")`：
+
+```csharp
+_modsAutoChecked = false;
+_loaded.Clear();
+NavOverview.IsChecked = true;
+ShowPage("overview");
+```
+
+#### 2. 实时扫描
+
+`ModManagePage` 用 `FileSystemWatcher` 监听 mods 目录，400ms 防抖后刷新：
+
+```csharp
+watcher.Created += (_, _) => ScheduleRefresh();
+watcher.Renamed += (_, _) => ScheduleRefresh();
+```
+
+更新进行中（`_updating`）跳过监听触发的刷新，避免打断选中状态。
+
+#### 3. 自动检查更新
+
+`VersionSettingsView.ShowPage` 在进入 `mods` 时调用 `AutoCheckUpdates()`，
+并用 `_modsAutoChecked` 保证每个设置会话只查一次；关闭浮层后 `Load()` 清零。
+
+#### 4. 回到顶部与切换动画
+
+`IInstancePage` 新增 `ScrollToTop()`，各页在 `ShowPage` 里以 `DispatcherPriority.Loaded` 调用
+（等模板建好再找 ScrollViewer）；动画与主窗口导航一致：190ms 淡入 + 10px 上浮，`CubicEase`。
 ## [1.1.3] - 2026-11-03
 
 ### 更新内容

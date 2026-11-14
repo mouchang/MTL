@@ -4,4 +4,7 @@ namespace MutsumiLauncher.Views.VersionSettings;
 public interface IInstancePage
 {
     void SetInstance(string version);
+
+    /// <summary>切到这一页时把内容滚回顶部。</summary>
+    void ScrollToTop();
 }

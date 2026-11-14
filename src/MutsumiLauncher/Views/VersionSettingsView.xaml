@@ -47,8 +47,9 @@
 
                     <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
                         <StackPanel x:Name="NavPanel">
-                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
-                                         Tag="overview" IsChecked="True" Checked="Nav_Checked">
+                            <RadioButton x:Name="NavOverview" Style="{StaticResource SidebarItem}"
+                                         GroupName="SettingsNav" Tag="overview" IsChecked="True"
+                                         Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE946;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
                                     <TextBlock Text="概览" VerticalAlignment="Center" />
