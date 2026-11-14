@@ -239,7 +239,122 @@ public partial class SettingsPage : UserControl
         SelectMode(ThemeService.ParseMode(config.ThemeMode));
         SyncStyleSelection(ThemeService.Style);
 
+        BuildOptionChips();
+        SyncOptionChips();
+        LoadFonts(config.ThemeFont);
+        ScaleSlider.Value = Math.Clamp(config.ThemeScale, 85, 130);
+        ScaleValueText.Text = ((int)ScaleSlider.Value) + "%";
+        BlurCheck.IsChecked = config.ThemeSidebarBlur;
+
         _themeLoading = false;
+    }
+
+    /// <summary>导航栏 / 动画 / 玻璃三组选项（代码生成）。</summary>
+    private void BuildOptionChips()
+    {
+        if (NavStylePanel.Children.Count == 0)
+        {
+            AddOption(NavStylePanel, "停靠", "nav", "docked");
+            AddOption(NavStylePanel, "悬浮", "nav", "floating");
+        }
+
+        if (TransitionPanel.Children.Count == 0)
+        {
+            AddOption(TransitionPanel, "滑动", "transition", "slide");
+            AddOption(TransitionPanel, "淡入", "transition", "fade");
+        }
+
+        if (GlassPanel.Children.Count == 0)
+        {
+            AddOption(GlassPanel, "关闭", "glass", "none");
+            AddOption(GlassPanel, "标准", "glass", "standard");
+            AddOption(GlassPanel, "极致", "glass", "ultra");
+        }
+    }
+
+    private void AddOption(Panel host, string label, string group, string value)
+    {
+        var chip = new RadioButton
+        {
+            Style = (Style)FindResource("SegmentItem"),
+            GroupName = "ThemeOption_" + group,
+            Content = label,
+            Margin = new Thickness(0, 0, 8, 8),
+            Tag = value,
+        };
+
+        chip.Checked += (_, _) =>
+        {
+            if (_themeLoading) return;
+
+            ThemeService.SetOptions(
+                navStyle: group == "nav" ? value : null,
+                transition: group == "transition" ? value : null,
+                liquidGlass: group == "glass" ? value : null);
+        };
+
+        host.Children.Add(chip);
+    }
+
+    private void SyncOptionChips()
+    {
+        var config = AppConfig.Current;
+
+        foreach (var child in NavStylePanel.Children)
+            if (child is RadioButton { Tag: string value } chip)
+                chip.IsChecked = value == config.ThemeNavStyle;
+
+        foreach (var child in TransitionPanel.Children)
+            if (child is RadioButton { Tag: string value } chip)
+                chip.IsChecked = value == config.ThemeTransition;
+
+        foreach (var child in GlassPanel.Children)
+            if (child is RadioButton { Tag: string value } chip)
+                chip.IsChecked = value == config.ThemeLiquidGlass;
+    }
+
+    /// <summary>列出系统字体，第一项是默认。</summary>
+    private void LoadFonts(string current)
+    {
+        if (FontCombo.Items.Count > 0) return;
+
+        FontCombo.Items.Add("默认");
+
+        foreach (var family in System.Windows.Media.Fonts.SystemFontFamilies
+                     .Select(f => f.Source)
+                     .Distinct()
+                     .OrderBy(name => name, StringComparer.CurrentCulture))
+        {
+            FontCombo.Items.Add(family);
+        }
+
+        FontCombo.SelectedItem = string.IsNullOrWhiteSpace(current) ? "默认" : current;
+        if (FontCombo.SelectedIndex < 0) FontCombo.SelectedIndex = 0;
+    }
+
+    private void Font_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_themeLoading || FontCombo.SelectedItem is not string name) return;
+
+        ThemeService.SetOptions(font: name == "默认" ? string.Empty : name);
+    }
+
+    private void Scale_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (ScaleValueText is null) return;
+
+        ScaleValueText.Text = ((int)ScaleSlider.Value) + "%";
+
+        if (_themeLoading) return;
+
+        ThemeService.SetOptions(scale: (int)ScaleSlider.Value);
+    }
+
+    private void Blur_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_themeLoading) return;
+
+        ThemeService.SetOptions(sidebarBlur: BlurCheck.IsChecked == true);
     }
 
     /// <summary>主题模式：跟随系统 / 浅色 / 深色。</summary>

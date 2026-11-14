@@ -45,6 +45,24 @@ public static class ThemeService
     /// <summary>深色下是否使用纯黑底。</summary>
     public static bool PureBlack { get; private set; }
 
+    /// <summary>导航栏悬浮样式。</summary>
+    public static bool NavFloating { get; private set; }
+
+    /// <summary>页面切换动画：slide / fade。</summary>
+    public static string Transition { get; private set; } = "slide";
+
+    /// <summary>液态玻璃：none / standard / ultra。</summary>
+    public static string LiquidGlass { get; private set; } = "none";
+
+    /// <summary>背景模糊。</summary>
+    public static bool SidebarBlur { get; private set; }
+
+    /// <summary>界面字体（空表示默认）。</summary>
+    public static string FontFamilyName { get; private set; } = string.Empty;
+
+    /// <summary>界面缩放百分比。</summary>
+    public static int TextScale { get; private set; } = 100;
+
     /// <summary>设置页可选的种子色。</summary>
     public static readonly (string Name, string Hex)[] ThemeSeeds =
     [
@@ -89,7 +107,15 @@ public static class ThemeService
         Mode = mode;
         Seed = NormalizeHex(seedHex);
         Style = MaterialTheme.StyleName(MaterialTheme.ParseStyle(style));
-        PureBlack = pureBlack ?? PureBlack;
+
+        var config = AppConfig.Current;
+        PureBlack = pureBlack ?? config.ThemePureBlack;
+        NavFloating = config.ThemeNavStyle == "floating";
+        Transition = config.ThemeTransition == "fade" ? "fade" : "slide";
+        LiquidGlass = config.ThemeLiquidGlass is "standard" or "ultra" ? config.ThemeLiquidGlass : "none";
+        SidebarBlur = config.ThemeSidebarBlur;
+        FontFamilyName = config.ThemeFont;
+        TextScale = Math.Clamp(config.ThemeScale, 85, 130);
 
         IsDark = mode switch
         {
@@ -99,10 +125,29 @@ public static class ThemeService
         };
 
         var theme = MaterialTheme.Build(ParseColor(Seed), MaterialTheme.ParseStyle(Style), IsDark,
-            LightPalette(), PureBlack && IsDark);
+            LightPalette(), PureBlack && IsDark, LiquidGlass);
 
         Install(BuildDictionary(theme));
         Changed?.Invoke();
+    }
+
+    /// <summary>外观选项（导航栏 / 动画 / 玻璃 / 模糊 / 字体 / 缩放）统一入口。</summary>
+    public static void SetOptions(string? navStyle = null, string? transition = null,
+        string? liquidGlass = null, bool? sidebarBlur = null, string? font = null, int? scale = null)
+    {
+        var config = AppConfig.Current;
+
+        if (navStyle is not null) config.ThemeNavStyle = navStyle == "floating" ? "floating" : "docked";
+        if (transition is not null) config.ThemeTransition = transition == "fade" ? "fade" : "slide";
+        if (liquidGlass is not null)
+            config.ThemeLiquidGlass = liquidGlass is "standard" or "ultra" ? liquidGlass : "none";
+        if (sidebarBlur is not null) config.ThemeSidebarBlur = sidebarBlur.Value;
+        if (font is not null) config.ThemeFont = font;
+        if (scale is not null) config.ThemeScale = Math.Clamp(scale.Value, 85, 130);
+
+        config.Save();
+
+        Apply(Mode, Seed, Style, PureBlack);
     }
 
     public static string ModeName(ColorMode mode) => mode switch

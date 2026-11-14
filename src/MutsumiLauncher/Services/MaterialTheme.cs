@@ -39,7 +39,7 @@ public static class MaterialTheme
 
     /// <summary>从种子色算出整套画刷（浅色或深色）。</summary>
     public static Dictionary<string, Color> Build(Color seed, Style style, bool dark,
-        IReadOnlyDictionary<string, Color> template, bool pureBlack = false)
+        IReadOnlyDictionary<string, Color> template, bool pureBlack = false, string liquidGlass = "none")
     {
         var colors = new Dictionary<string, Color>(template, StringComparer.Ordinal);
 
@@ -107,6 +107,8 @@ public static class MaterialTheme
             colors["ShadowColorSoft"] = Tone(neutralChroma, 10);
             colors["ShadowTint"] = Tone(neutralChroma, 0);
 
+            ApplyGlass(colors, liquidGlass);
+
             return colors;
         }
 
@@ -162,7 +164,28 @@ public static class MaterialTheme
         colors["ShadowColorSoft"] = Tone(neutralChroma, 30);
         colors["ShadowTint"] = Tone(neutralChroma, 14);
 
+        ApplyGlass(colors, liquidGlass);
+
         return colors;
+    }
+
+    /// <summary>液态玻璃强度：卡片更透、背景更多透出来。</summary>
+    private static void ApplyGlass(Dictionary<string, Color> colors, string mode)
+    {
+        if (mode is not ("standard" or "ultra")) return;
+
+        var factor = mode == "ultra" ? 0.42 : 0.68;
+        var veilFactor = mode == "ultra" ? 0.55 : 0.75;
+
+        foreach (var key in new[] { "Glass", "GlassMedium", "GlassStrong", "GlassHover", "GlassHoverSoft",
+                     "SurfacePanel", "SurfaceFloat", "SidebarBg", "PaneBg", "AvatarCard", "PillBg" })
+        {
+            if (!colors.TryGetValue(key, out var color)) continue;
+            colors[key] = WithAlpha(color, (byte)Math.Clamp(Math.Round(color.A * factor), 24, 255));
+        }
+
+        if (colors.TryGetValue("BackdropVeil", out var veil))
+            colors["BackdropVeil"] = WithAlpha(veil, (byte)Math.Clamp(Math.Round(veil.A * veilFactor), 8, 255));
     }
 
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);

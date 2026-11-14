@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
+<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
@@ -178,6 +178,40 @@
 
                             <TextBlock Text="配色风格" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
                             <WrapPanel x:Name="StylePanel" />
+
+                            <TextBlock Text="导航栏样式" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
+                            <WrapPanel x:Name="NavStylePanel" />
+
+                            <TextBlock Text="切换动画" Style="{StaticResource FieldLabel}" Margin="0,12,0,8" />
+                            <WrapPanel x:Name="TransitionPanel" />
+
+                            <TextBlock Text="液态玻璃" Style="{StaticResource FieldLabel}" Margin="0,12,0,8" />
+                            <WrapPanel x:Name="GlassPanel" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <CheckBox x:Name="BlurCheck" Style="{StaticResource MtlCheckBox}"
+                                          Content="背景模糊" Click="Blur_Changed" />
+                                <TextBlock Text="卡片会透出被模糊的背景" Style="{StaticResource Caption}"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <TextBlock Text="界面字体" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
+                            <ComboBox x:Name="FontCombo" Style="{StaticResource MtlComboBox}" Width="260" Height="34" HorizontalAlignment="Left"
+                                      SelectionChanged="Font_Changed" />
+
+                            <TextBlock Text="文字缩放" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="56" />
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="ScaleSlider" Minimum="85" Maximum="130"
+                                        Style="{StaticResource MtlSlider}" VerticalAlignment="Center"
+                                        ValueChanged="Scale_Changed" Margin="0,0,12,0" />
+                                <TextBlock x:Name="ScaleValueText" Grid.Column="1"
+                                           Style="{StaticResource Caption}" VerticalAlignment="Center"
+                                           TextAlignment="Right" />
+                            </Grid>
 
                             <Button Style="{StaticResource SecondaryButton}" Content="恢复默认外观"
                                     Height="32" Padding="16,0" Margin="0,18,0,0"

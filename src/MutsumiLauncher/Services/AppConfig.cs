@@ -107,6 +107,24 @@ public sealed class AppConfig
     /// <summary>深色模式下是否使用纯黑背景。</summary>
     public bool ThemePureBlack { get; set; }
 
+    /// <summary>导航栏样式：floating（悬浮）/ docked（停靠）。</summary>
+    public string ThemeNavStyle { get; set; } = "docked";
+
+    /// <summary>页面切换动画：slide / fade。</summary>
+    public string ThemeTransition { get; set; } = "slide";
+
+    /// <summary>液态玻璃：none / standard / ultra。</summary>
+    public string ThemeLiquidGlass { get; set; } = "none";
+
+    /// <summary>背景模糊。</summary>
+    public bool ThemeSidebarBlur { get; set; }
+
+    /// <summary>界面字体（空表示默认）。</summary>
+    public string ThemeFont { get; set; } = string.Empty;
+
+    /// <summary>界面缩放百分比（85-125）。</summary>
+    public int ThemeScale { get; set; } = 100;
+
     /// <summary>配色风格：soft / balanced / vibrant / mono。</summary>
     public string ThemeStyle { get; set; } = "balanced";
 

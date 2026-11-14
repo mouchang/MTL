@@ -3,6 +3,30 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.28] - 2026-11-15
+
+### 更新内容
+
+- 主题页补齐 FlClash 的全部条目：主题模式、纯黑、主题色、配色风格、导航栏样式、切换动画、液态玻璃、背景模糊、界面字体、文字缩放
+
+### 技术实现
+
+对应关系：
+
+| FlClash | 本项目 |
+| --- | --- |
+| `ThemeMode`（system/light/dark） | `ColorMode` |
+| `primaryColor` + `colorStyle` | `Seed` + `Style`，由 `MaterialTheme.Build` 展开 |
+| `pureBlack` | `ThemePureBlack`，深色表面 tone 置 0 |
+| `floatingNavigationBar` | `ThemeNavStyle`，悬浮时导航条加投影、圆角 22 |
+| `tabAnimation`（slide/fade） | `ThemeTransition`，页面切换走位移或纯淡入 |
+| `liquidGlass`（none/standard/ultra） | `ThemeLiquidGlass`，玻璃层与遮罩的 alpha 乘 0.68 / 0.42 |
+| `sidebarBlur` | `ThemeSidebarBlur`，背景图 `BlurEffect` 半径 48 |
+| `fontFamily` | `ThemeFont`，替换 `UiFont` 资源 |
+| `textScaleFactor` | `ThemeScale`，`ShellRoot.LayoutTransform` 85-130% |
+
+字体替换注意：页面里显式用 `{StaticResource UiFont}` 的元素在运行时不会重画，
+所以改成窗口级 `FontFamily` + 资源替换，新开的页面一定是新字体。
 ## [1.1.4-beta.27] - 2026-11-14
 
 ### 更新内容
