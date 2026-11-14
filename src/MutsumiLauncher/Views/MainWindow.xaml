@@ -43,22 +43,24 @@
                                     Background="{DynamicResource WindowBar}" BorderBrush="{DynamicResource WindowBorder}" BorderThickness="1"
                                     IsHitTestVisible="False" />
 
-                            <!-- 选中高亮：和版本设置侧栏同款，按页签实际宽度滑动 -->
-                            <Border x:Name="NavTabIndicator" Height="40" Width="72"
-                                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                                    CornerRadius="12" Background="#F28FD8A8"
-                                    IsHitTestVisible="False" Opacity="0">
-                                <Border.RenderTransform>
-                                    <TranslateTransform X="0" Y="0" />
-                                </Border.RenderTransform>
-                            </Border>
+                            <!-- 页签层：高亮块和页签同层，位移/淡入挂在整层上，位置才和页签一致 -->
+                            <Grid x:Name="NavTabLayer" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Opacity="0" IsHitTestVisible="False">
+                                <Grid.RenderTransform>
+                                    <TranslateTransform Y="-6" />
+                                </Grid.RenderTransform>
+
+                                <Border x:Name="NavTabIndicator" Height="44" Width="72"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        CornerRadius="12" Background="#F28FD8A8"
+                                        IsHitTestVisible="False" Opacity="0">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" Y="0" />
+                                    </Border.RenderTransform>
+                                </Border>
 
                             <StackPanel x:Name="NavTabs" Orientation="Horizontal"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        Opacity="0" IsHitTestVisible="False">
-                                <StackPanel.RenderTransform>
-                                    <TranslateTransform Y="-6" />
-                                </StackPanel.RenderTransform>
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
 
                                 <RadioButton x:Name="NavLaunch" Style="{StaticResource NavTab}"
                                              GroupName="MainNav" Tag="launch" Checked="Nav_Checked">
@@ -82,6 +84,7 @@
                                     </StackPanel>
                                 </RadioButton>
                             </StackPanel>
+                            </Grid>
 
                             <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"

@@ -246,7 +246,7 @@ public partial class MainWindow : Window
 
         if (target is null) return;
 
-        Controls.SlidingHighlight.Move(NavTabIndicator, target, NavInner, animate: true);
+        Controls.SlidingHighlight.Move(NavTabIndicator, target, NavTabLayer, animate: true);
         NavTabIndicator.Visibility = Visibility.Visible;
     }
 
@@ -256,14 +256,14 @@ public partial class MainWindow : Window
         AppLog.Info($"nav expanded={expanded} animate={animate}");
 
         var fullWidth = NavInner.ActualWidth > 0 ? NavInner.ActualWidth : 40;
-        var translate = (TranslateTransform)NavTabs.RenderTransform;
+        var translate = (TranslateTransform)NavTabLayer.RenderTransform;
 
         if (!animate)
         {
             NavBarSurface.Width = expanded ? fullWidth : 40;
             NavBarSurface.Height = expanded ? 68 : 40;
-            NavTabs.Opacity = expanded ? 1 : 0;
-            NavTabs.IsHitTestVisible = expanded;
+            NavTabLayer.Opacity = expanded ? 1 : 0;
+            NavTabLayer.IsHitTestVisible = expanded;
             NavTabIndicator.Opacity = expanded ? 1 : 0;
             translate.Y = expanded ? 0 : -6;
             CloseChrome.Opacity = expanded ? 0 : 1;
@@ -285,13 +285,13 @@ public partial class MainWindow : Window
             });
 
         // 页签等导航条铺开后再浮出
-        NavTabs.BeginAnimation(OpacityProperty,
+        NavTabLayer.BeginAnimation(OpacityProperty,
             new DoubleAnimation(expanded ? 1 : 0, TimeSpan.FromMilliseconds(200))
             {
                 BeginTime = expanded ? TimeSpan.FromMilliseconds(170) : TimeSpan.Zero,
                 EasingFunction = ease,
             });
-        NavTabs.IsHitTestVisible = expanded;
+        NavTabLayer.IsHitTestVisible = expanded;
 
         NavTabIndicator.BeginAnimation(OpacityProperty,
             new DoubleAnimation(expanded ? 1 : 0, TimeSpan.FromMilliseconds(200))
@@ -415,8 +415,8 @@ public partial class MainWindow : Window
             new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = dissolve });
         CloseButton.BeginAnimation(OpacityProperty,
             new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = dissolve });
-        NavTabs.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(NavTabs.Opacity, 0, TimeSpan.FromMilliseconds(160)));
+        NavTabLayer.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(NavTabLayer.Opacity, 0, TimeSpan.FromMilliseconds(160)));
     }
 
     private void CloseVersionSettings()
@@ -438,7 +438,7 @@ public partial class MainWindow : Window
             // 清掉动画后再复原标题栏与导航层状态
             MenuButton.BeginAnimation(OpacityProperty, null);
             CloseButton.BeginAnimation(OpacityProperty, null);
-            NavTabs.BeginAnimation(OpacityProperty, null);
+            NavTabLayer.BeginAnimation(OpacityProperty, null);
             MenuButton.Opacity = 1;
             CloseButton.Opacity = 1;
 

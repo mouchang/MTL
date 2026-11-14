@@ -3,6 +3,29 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.13] - 2026-11-14
+
+### 更新内容
+
+- 修复顶栏高亮块错位：现在和页签共用同一坐标系
+
+### 技术实现
+
+高亮块原来挂在 `NavInner` 下，而页签 `NavTabs` 自身带 `TranslateTransform Y=-6` 且居中，
+两者坐标系不同，算出来的偏移自然差了一截（截图里高亮块压在页签字上、上沿还越出导航条）。
+
+现在把页签和高亮包进同一个 `Grid x:Name="NavTabLayer"`，位移/淡入挂在整层上，
+高亮相对该层定位，与页签完全同源：
+
+```xml
+<Grid x:Name="NavTabLayer">
+  <TranslateTransform Y="-6" />
+  <Border x:Name="NavTabIndicator" … />
+  <StackPanel x:Name="NavTabs" …>…</StackPanel>
+</Grid>
+```
+
+`SetNavExpanded` 里的透明度动画也一并改到这一层。
 ## [1.1.4-beta.12] - 2026-11-14
 
 ### 更新内容
