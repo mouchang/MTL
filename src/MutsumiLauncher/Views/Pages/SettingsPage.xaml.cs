@@ -17,7 +17,6 @@ public partial class SettingsPage : UserControl
     private bool _memoryLoading;
     private bool _themeLoading;
     private bool _isolationLoading;
-    private readonly List<Border> _swatches = [];
 
     /// <summary>拖内存滑块会连续触发 ValueChanged，攒一下再落盘，别每跳一格就写一次配置。</summary>
     private readonly System.Windows.Threading.DispatcherTimer _saveDebounce = new()
