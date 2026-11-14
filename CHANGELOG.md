@@ -3,6 +3,28 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.24] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题按 PCL-CE 的思路重做：色相 / 饱和度 / 明度三个滑块 + 六个配色预设
+- 窗口底色直接由「明度」决定，低明度自动转深色文字
+- 卡片、侧栏、描边、阴影全部由这一组 HSL 值推导，界面不再有灰色残留
+
+### 技术实现
+
+参考 PCL-CE 的 `Config.Preference.Theme`（ColorMode / ColorTheme / Hue / Sat / Light），
+把原来「主色 + 色调 + 浓度 + 背景色」四套手写参数，收敛成 `ThemeHue / ThemeSat / ThemeLight`：
+
+```csharp
+var bg = HslToRgb(h, s * 0.45, l);            // 窗口底色
+var accentLight = HslToRgb(h, s * 1.15, dark ? 0.70 : 0.46);
+var contrast = dark ? Colors.White : Colors.Black;
+colors["CardBorder"] = WithAlpha(contrast, 0x2A);
+```
+
+深色底（明度 < 52%）自动切浅色文字、白色低透明度描边；浅色底反之。
+预设直接给 (色相, 饱和度, 明度)，点一下三个滑块一起走。
 ## [1.1.4-beta.23] - 2026-11-14
 
 ### 更新内容

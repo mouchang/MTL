@@ -33,64 +33,45 @@ public static class ThemeService
     {
         var config = AppConfig.Current;
 
-        // 旧配置里的 "dark" 不再有对应主题，按明亮处理
         Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light,
-            config.ThemeAccent, config.ThemeTone, config.ThemeStrength, config.ThemeBackground);
+            config.ThemeHue, config.ThemeSat, config.ThemeLight);
     }
 
-    public static void SetTheme(AppTheme mode, string? accent = null, string? tone = null, string? strength = null, string? background = null)
+    public static void SetTheme(AppTheme mode, int? hue = null, int? sat = null, int? light = null)
     {
         var config = AppConfig.Current;
 
         config.ThemeMode = mode == AppTheme.Custom ? "custom" : "light";
 
-        if (!string.IsNullOrWhiteSpace(accent)) config.ThemeAccent = accent;
-        if (!string.IsNullOrWhiteSpace(tone)) config.ThemeTone = tone;
-        if (!string.IsNullOrWhiteSpace(strength)) config.ThemeStrength = strength;
-
-        // background 传 null 表示「保持不变」，传空串才是「跟随主色」
-        if (background is not null) config.ThemeBackground = background.Trim();
+        if (hue is not null) config.ThemeHue = hue.Value;
+        if (sat is not null) config.ThemeSat = sat.Value;
+        if (light is not null) config.ThemeLight = light.Value;
 
         config.Save();
 
-        Apply(mode, config.ThemeAccent, config.ThemeTone, config.ThemeStrength, config.ThemeBackground);
+        Apply(mode, config.ThemeHue, config.ThemeSat, config.ThemeLight);
     }
 
-    public static void Apply(AppTheme mode, string? accentHex, string? tone = null, string? strength = null, string? backgroundHex = null)
+    public static void Apply(AppTheme mode, int? hue = null, int? sat = null, int? light = null)
     {
         Mode = mode;
-        Accent = NormalizeHex(accentHex);
-        Tone = NormalizeTone(tone);
-        Strength = NormalizeStrength(strength);
-        Background = string.IsNullOrWhiteSpace(backgroundHex) ? string.Empty : NormalizeHex(backgroundHex);
+        Hue = Math.Clamp(hue ?? 200, 0, 360);
+        Sat = Math.Clamp(sat ?? 60, 0, 100);
+        Light = Math.Clamp(light ?? 62, 0, 100);
 
-        var colors = mode == AppTheme.Custom
-            ? BuildCustom(Accent, Tone, Strength, Background)
-            : LightPalette();
+        var colors = mode == AppTheme.Custom ? BuildCustom(Hue, Sat, Light) : LightPalette();
 
         Install(BuildDictionary(colors));
     }
 
-    /// <summary>当前自定义色调（neutral / cool / warm / green）。</summary>
-    public static string Tone { get; private set; } = "green";
+    /// <summary>自定义主题：色相 0-360。</summary>
+    public static int Hue { get; private set; } = 200;
 
-    /// <summary>当前着色浓度（soft / normal / strong）。</summary>
-    public static string Strength { get; private set; } = "normal";
+    /// <summary>自定义主题：饱和度 0-100。</summary>
+    public static int Sat { get; private set; } = 60;
 
-    /// <summary>自定义背景色；空表示跟随主色。</summary>
-    public static string Background { get; private set; } = string.Empty;
-
-    public static string NormalizeTone(string? tone) => tone switch
-    {
-        "neutral" or "cool" or "warm" or "green" => tone,
-        _ => "green",
-    };
-
-    public static string NormalizeStrength(string? strength) => strength switch
-    {
-        "soft" or "strong" => strength,
-        _ => "normal",
-    };
+    /// <summary>自定义主题：明度 0-100（决定窗口底色深浅）。</summary>
+    public static int Light { get; private set; } = 62;
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
     private static void Install(ResourceDictionary theme)
@@ -298,122 +279,131 @@ public static class ThemeService
     };
 
     /// <summary>
-    /// 自定义主题：主色 + 色调 + 浓度，重算整套色板。
-    /// 主色决定按钮/高亮，色调决定窗口卡片的冷暖，浓度决定着色轻重。
+    /// 自定义主题：按 PCL-CE 的思路用 HSL 生成整套色板——
+    /// 色相决定整体色系，饱和度决定鲜艳程度，明度决定窗口底色深浅（低明度自动转深色文字）。
     /// </summary>
-    private static Dictionary<string, Color> BuildCustom(string accentHex, string toneName, string strength, string backgroundHex)
+    private static Dictionary<string, Color> BuildCustom(int hue, int sat, int light)
     {
         var colors = LightPalette();
-        var accent = ParseColor(accentHex);
 
-        // 主色在浅底上太亮会看不清，压暗一点
-        if (Luminance(accent) > 0.72) accent = Blend(accent, Colors.Black, 0.35);
+        var h = hue % 360 / 360.0;
+        var s = sat / 100.0;
+        var l = light / 100.0;
+        var dark = l < 0.52;
 
-        var tone = ToneColor(accent, toneName);
-        var k = StrengthFactor(strength);
+        // 窗口底色：用用户选的明度，饱和度压低一点，避免刺眼
+        var bg = HslToRgb(h, s * 0.45, l);
 
-        // 主色系
-        colors["Accent"] = Blend(accent, Colors.White, 0.42);
-        colors["AccentDeep"] = accent;
-        colors["AccentWash"] = Blend(accent, Colors.White, 0.28);
-        colors["AccentTint"] = Blend(accent, Colors.White, 0.86);
-        colors["AccentTintDeep"] = Blend(accent, Colors.White, 0.68);
-        colors["AccentTintSoft"] = Blend(accent, Colors.White, 0.93);
+        // 主色：同色相，明度往反方向拉开，保证和背景有对比
+        var accentLight = HslToRgb(h, Math.Min(1, s * 1.15), dark ? 0.70 : 0.46);
+        var accentDeep = HslToRgb(h, Math.Min(1, s * 1.05), dark ? 0.55 : 0.36);
 
-        colors["InkOnAccent"] = Blend(accent, Colors.Black, 0.62);
-        colors["PrimaryFill"] = Blend(accent, Colors.Black, 0.16);
-        colors["PrimaryFillHover"] = Blend(accent, Colors.Black, 0.26);
+        var contrast = dark ? Colors.White : Colors.Black;
 
-        // 窗口 / 卡片 / 侧栏：按色调和浓度微微着色，避免「彩色按钮 + 灰界面」
-        colors["WindowBase"] = Tint(colors["WindowBase"], tone, 0.10 * k);
-        colors["PaneBg"] = Tint(colors["PaneBg"], tone, 0.08 * k);
-        colors["SurfacePanel"] = Tint(colors["SurfacePanel"], tone, 0.05 * k);
-        colors["SurfaceFloat"] = Tint(colors["SurfaceFloat"], tone, 0.04 * k);
-        colors["SidebarBg"] = Tint(colors["SidebarBg"], tone, 0.20 * k);
-        colors["AvatarCard"] = Tint(colors["AvatarCard"], tone, 0.10 * k);
-        colors["PillBg"] = Tint(colors["PillBg"], tone, 0.10 * k);
+        colors["Accent"] = Blend(accentLight, contrast, 0.22);
+        colors["AccentDeep"] = accentDeep;
+        colors["AccentWash"] = Blend(accentLight, bg, 0.45);
+        colors["AccentTint"] = Blend(accentDeep, bg, 0.85);
+        colors["AccentTintDeep"] = Blend(accentDeep, bg, 0.70);
+        colors["AccentTintSoft"] = Blend(accentDeep, bg, 0.92);
 
-        colors["Glass"] = Tint(colors["Glass"], tone, 0.16 * k);
-        colors["GlassMedium"] = Tint(colors["GlassMedium"], tone, 0.14 * k);
-        colors["GlassStrong"] = Tint(colors["GlassStrong"], tone, 0.10 * k);
-        colors["GlassHover"] = Tint(colors["GlassHover"], tone, 0.16 * k);
-        colors["GlassHoverSoft"] = Tint(colors["GlassHoverSoft"], tone, 0.16 * k);
+        colors["PrimaryFill"] = accentDeep;
+        colors["PrimaryFillHover"] = Blend(accentDeep, contrast, 0.12);
+        colors["InkOnAccent"] = dark ? Blend(accentLight, Colors.Black, 0.75) : Colors.White;
 
-        colors["GlassStroke"] = Tint(colors["GlassStroke"], tone, 0.35 * k);
-        colors["RingStroke"] = Tint(colors["RingStroke"], tone, 0.45 * k);
-        colors["CardBorder"] = Tint(colors["CardBorder"], tone, 0.30 * k);
-        colors["PanelBorderSoft"] = Tint(colors["PanelBorderSoft"], tone, 0.30 * k);
-        colors["WindowBorder"] = Tint(colors["WindowBorder"], tone, 0.30 * k);
-        colors["BackdropVeil"] = Tint(colors["BackdropVeil"], tone, 0.20 * k);
-        colors["HoverWash"] = Tint(colors["HoverWash"], tone, 0.25 * k);
+        // 窗口 / 卡片：按底色分层
+        colors["WindowBase"] = bg;
+        colors["PaneBg"] = WithAlpha(bg, 0xF2);
+        colors["SurfacePanel"] = WithAlpha(Blend(bg, contrast, 0.06), 0xF2);
+        colors["SurfaceFloat"] = WithAlpha(Blend(bg, contrast, 0.10), 0xF7);
+        colors["SurfaceSolid"] = Blend(bg, contrast, 0.16);
+        colors["SidebarBg"] = WithAlpha(Blend(bg, contrast, 0.08), dark ? (byte)0x40 : (byte)0x66);
+        colors["AvatarCard"] = WithAlpha(Blend(bg, contrast, 0.12), 0x73);
+        colors["PillBg"] = WithAlpha(Blend(bg, contrast, 0.10), 0x80);
 
-        colors["ShadowColor"] = Blend(tone, Colors.Black, 0.72);
-        colors["ShadowColorSoft"] = Blend(tone, Colors.Black, 0.55);
-        colors["ShadowTint"] = Blend(tone, Colors.Black, 0.72);
+        // 卡片更实一点：半透明叠在背景图上会显得发灰
+        colors["Glass"] = WithAlpha(Blend(bg, contrast, 0.08), 0xB8);
+        colors["GlassMedium"] = WithAlpha(Blend(bg, contrast, 0.12), 0xD2);
+        colors["GlassStrong"] = WithAlpha(Blend(bg, contrast, 0.16), 0xEC);
+        colors["GlassHover"] = WithAlpha(Blend(bg, contrast, 0.14), 0xE0);
+        colors["GlassHoverSoft"] = WithAlpha(Blend(bg, contrast, 0.06), 0xB8);
 
-        // 指定了背景色：整窗按这个底色重算，并用它压住背景图
-        if (!string.IsNullOrWhiteSpace(backgroundHex))
+        // 背景图压到几乎没有，只留一点点纹理
+        colors["BackdropVeil"] = WithAlpha(bg, dark ? (byte)0xF7 : (byte)0xF2);
+
+        // 描边 / 分隔线：深色底用白，浅色底用黑
+        colors["GlassStroke"] = WithAlpha(contrast, 0x33);
+        colors["RingStroke"] = WithAlpha(contrast, 0x59);
+        colors["CardBorder"] = WithAlpha(contrast, 0x2A);
+        colors["PanelBorderSoft"] = WithAlpha(contrast, 0x1F);
+        colors["WindowBorder"] = WithAlpha(contrast, 0x2B);
+        colors["Divider"] = WithAlpha(contrast, 0x1F);
+        colors["HoverWash"] = WithAlpha(contrast, 0x1A);
+
+        if (dark)
         {
-            var bg = ParseColor(backgroundHex);
-            var darkBg = Luminance(bg) < 0.45;
-
-            colors["WindowBase"] = bg;
-            colors["PaneBg"] = WithAlpha(bg, 0xF2);
-            colors["SurfacePanel"] = WithAlpha(Blend(bg, darkBg ? Colors.White : Colors.White, 0.10), 0xF2);
-            colors["SurfaceFloat"] = WithAlpha(Blend(bg, Colors.White, 0.16), 0xF7);
-            colors["SurfaceSolid"] = Blend(bg, Colors.White, 0.30);
-            colors["SidebarBg"] = WithAlpha(Blend(bg, Colors.White, 0.10), 0x66);
-            colors["AvatarCard"] = WithAlpha(Blend(bg, Colors.White, 0.18), 0x73);
-            colors["PillBg"] = WithAlpha(Blend(bg, Colors.White, 0.12), 0x80);
-
-            colors["Glass"] = WithAlpha(Blend(bg, Colors.White, 0.12), 0x66);
-            colors["GlassMedium"] = WithAlpha(Blend(bg, Colors.White, 0.18), 0x8C);
-            colors["GlassStrong"] = WithAlpha(Blend(bg, Colors.White, 0.24), 0xC8);
-            colors["GlassHover"] = WithAlpha(Blend(bg, Colors.White, 0.20), 0xA6);
-            colors["GlassHoverSoft"] = WithAlpha(Blend(bg, Colors.White, 0.08), 0x66);
-
-            // 背景图几乎盖住，只留一点质感
-            colors["BackdropVeil"] = WithAlpha(bg, darkBg ? (byte)0xF0 : (byte)0xE8);
-
-            if (darkBg)
-            {
-                colors["Ink"] = Color.FromRgb(0xEC, 0xF1, 0xEE);
-                colors["InkStrong"] = Color.FromRgb(0xF8, 0xFB, 0xF9);
-                colors["InkMax"] = Colors.White;
-                colors["InkSoft"] = Color.FromRgb(0xB4, 0xC0, 0xBA);
-                colors["InkMute"] = Color.FromRgb(0x8A, 0x96, 0x90);
-                colors["InkInverse"] = Color.FromRgb(0x12, 0x18, 0x15);
-                colors["Divider"] = Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF);
-                colors["CardBorder"] = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
-                colors["PanelBorderSoft"] = Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF);
-                colors["ToastBg"] = Color.FromArgb(0xF0, 0x1A, 0x20, 0x1D);
-                colors["ModalScrim"] = Color.FromArgb(0x99, 0, 0, 0);
-                colors["HoverWash"] = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF);
-            }
+            colors["Ink"] = HslToRgb(h, 0.06, 0.92);
+            colors["InkStrong"] = HslToRgb(h, 0.04, 0.97);
+            colors["InkMax"] = Colors.White;
+            colors["InkSoft"] = HslToRgb(h, 0.08, 0.72);
+            colors["InkMute"] = HslToRgb(h, 0.08, 0.55);
+            colors["InkInverse"] = HslToRgb(h, 0.10, 0.10);
+            colors["ToastBg"] = WithAlpha(Blend(bg, Colors.White, 0.10), 0xF0);
+            colors["ModalScrim"] = WithAlpha(Colors.Black, 0x99);
         }
+        else
+        {
+            colors["Ink"] = HslToRgb(h, 0.20, 0.18);
+            colors["InkStrong"] = HslToRgb(h, 0.24, 0.12);
+            colors["InkMax"] = HslToRgb(h, 0.28, 0.08);
+            colors["InkSoft"] = HslToRgb(h, 0.12, 0.36);
+            colors["InkMute"] = HslToRgb(h, 0.10, 0.52);
+            colors["InkInverse"] = HslToRgb(h, 0.05, 0.97);
+        }
+
+        // 阴影
+        colors["ShadowColor"] = Blend(bg, Colors.Black, dark ? 0.55 : 0.75);
+        colors["ShadowColorSoft"] = Blend(bg, Colors.Black, dark ? 0.35 : 0.55);
+        colors["ShadowTint"] = Blend(bg, Colors.Black, dark ? 0.55 : 0.75);
 
         return colors;
     }
 
-    /// <summary>按色调给颜色上色，保留原有透明度。</summary>
-    private static Color Tint(Color color, Color tone, double amount)
-        => Color.FromArgb(color.A, Blend(color, tone, amount).R,
-            Blend(color, tone, amount).G, Blend(color, tone, amount).B);
+    /// <summary>供设置页画色相渐变用：HSL → RGB。</summary>
+    public static Color HslToColor(int hue, double sat, double light)
+        => HslToRgb(hue / 360.0, sat, light);
 
-    private static Color ToneColor(Color accent, string tone) => tone switch
+    /// <summary>HSL → RGB（h/s/l 均为 0-1）。</summary>
+    private static Color HslToRgb(double h, double s, double l)
     {
-        "cool" => Blend(accent, Color.FromRgb(0x5B, 0x8C, 0xBF), 0.60),
-        "warm" => Blend(accent, Color.FromRgb(0xD9, 0x8A, 0x4E), 0.60),
-        "neutral" => Blend(accent, Color.FromRgb(0x8C, 0x93, 0x99), 0.75),
-        _ => accent,
-    };
+        h = (h % 1 + 1) % 1;
+        s = Math.Clamp(s, 0, 1);
+        l = Math.Clamp(l, 0, 1);
 
-    private static double StrengthFactor(string strength) => strength switch
-    {
-        "soft" => 0.45,
-        "strong" => 1.9,
-        _ => 1.0,
-    };
+        if (s <= 0.0001)
+        {
+            var v = (byte)Math.Round(l * 255);
+            return Color.FromRgb(v, v, v);
+        }
+
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+
+        static double HueToRgb(double p, double q, double t)
+        {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0 / 6) return p + (q - p) * 6 * t;
+            if (t < 1.0 / 2) return q;
+            if (t < 2.0 / 3) return p + (q - p) * (2.0 / 3 - t) * 6;
+            return p;
+        }
+
+        return Color.FromRgb(
+            (byte)Math.Round(HueToRgb(p, q, h + 1.0 / 3) * 255),
+            (byte)Math.Round(HueToRgb(p, q, h) * 255),
+            (byte)Math.Round(HueToRgb(p, q, h - 1.0 / 3) * 255));
+    }
 
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
 
@@ -429,15 +419,15 @@ public static class ThemeService
     private static double Luminance(Color color)
         => (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
 
-    /// <summary>设置页的主题预设：一组「主色 + 色调」。</summary>
-    public static readonly (string Name, string Accent, string Tone)[] ThemePresets =
+    /// <summary>设置页的主题预设（色相 / 饱和度 / 明度）。</summary>
+    public static readonly (string Name, int Hue, int Sat, int Light)[] ThemePresets =
     [
-        ("薄荷", "#FF4E9E72", "green"),
-        ("海蓝", "#FF3F7FBF", "cool"),
-        ("暖橙", "#FFC97A33", "warm"),
-        ("玫瑰", "#FFC95F86", "warm"),
-        ("紫罗兰", "#FF7A63C9", "cool"),
-        ("石墨", "#FF5A6570", "neutral"),
+        ("猫蓝", 200, 60, 22),
+        ("天蓝", 205, 70, 62),
+        ("青蓝", 185, 55, 45),
+        ("樱粉", 330, 45, 72),
+        ("琥珀", 35, 70, 60),
+        ("石墨", 210, 10, 30),
     ];
 
     /// <summary>给设置页用的推荐主色。</summary>

@@ -241,18 +241,14 @@ public partial class SettingsPage : UserControl
         ThemeLightRadio.IsChecked = mode == AppTheme.Light;
         ThemeCustomRadio.IsChecked = mode == AppTheme.Custom;
 
-        AccentHexBox.Text = ThemeService.NormalizeHex(config.ThemeAccent);
-        AccentHint.Text = mode == AppTheme.Custom ? "已应用" : "选个色值会切到自定义";
+        HueSlider.Value = Math.Clamp(config.ThemeHue, 0, 360);
+        SatSlider.Value = Math.Clamp(config.ThemeSat, 0, 100);
+        LightSlider.Value = Math.Clamp(config.ThemeLight, 0, 100);
+
+        BuildPresetChips();
+        UpdateHslLabels();
 
         ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
-
-        BuildSwatches(ThemeService.NormalizeHex(config.ThemeAccent));
-        BuildBackgroundSwatches();
-        BuildThemeOptions();
-
-        SyncBackgroundSelection(config.ThemeBackground);
-
-        SyncToneSelection(ThemeService.Tone, ThemeService.Strength);
 
         _themeLoading = false;
     }
@@ -266,255 +262,124 @@ public partial class SettingsPage : UserControl
 
         if (_themeLoading || ThemeCustomPanel is null) return;
 
-        var mode = ThemeCustomRadio.IsChecked == true ? AppTheme.Custom : AppTheme.Light;
+        var custom = ThemeCustomRadio.IsChecked == true;
 
-        ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
-        ThemeService.SetTheme(mode, AccentHexBox.Text);
+        ThemeCustomPanel.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
 
-        AccentHint.Text = mode == AppTheme.Custom ? "已应用" : "选个色值会切到自定义";
+        if (custom)
+        {
+            ThemeService.SetTheme(AppTheme.Custom, (int)HueSlider.Value, (int)SatSlider.Value,
+                (int)LightSlider.Value);
+        }
+        else
+        {
+            ThemeService.SetTheme(AppTheme.Light);
+        }
     }
 
-    private void ApplyAccent_Click(object sender, RoutedEventArgs e)
+    /// <summary>三个 HSL 滑块的公共处理：拖动时即时套用。</summary>
+    private void HslSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        var hex = ThemeService.NormalizeHex(AccentHexBox.Text);
-        AccentHexBox.Text = hex;
+        if (ThemeCustomPanel is null) return;
 
-        ApplyCustomTheme(hex);
-    }
+        UpdateHslLabels();
 
-    /// <summary>按当前主色 / 色调 / 浓度重算自定义主题。</summary>
-    private void ApplyCustomTheme(string? hex, string? tone = null, string? strength = null,
-        string? background = null)
-    {
-        var accent = ThemeService.NormalizeHex(hex);
-        var finalTone = ThemeService.NormalizeTone(tone ?? ThemeService.Tone);
-        var finalStrength = ThemeService.NormalizeStrength(strength ?? ThemeService.Strength);
-        var finalBackground = background ?? ThemeService.Background;
+        if (_themeLoading) return;
 
-        _themeLoading = true;
         ThemeCustomRadio.IsChecked = true;
         ThemeCustomPanel.Visibility = Visibility.Visible;
-        _themeLoading = false;
 
-        ThemeService.SetTheme(AppTheme.Custom, accent, finalTone, finalStrength, finalBackground);
+        ThemeService.SetTheme(AppTheme.Custom, (int)HueSlider.Value, (int)SatSlider.Value,
+            (int)LightSlider.Value);
+    }
 
-        AccentHint.Text = "已应用";
-        UpdateSwatchSelection(accent);
-        SyncToneSelection(finalTone, finalStrength);
-        SyncBackgroundSelection(finalBackground);
+    private void UpdateHslLabels()
+    {
+        HueValueText.Text = ((int)HueSlider.Value).ToString();
+        SatValueText.Text = ((int)SatSlider.Value).ToString() + "%";
+        LightValueText.Text = ((int)LightSlider.Value).ToString() + "%";
+
+        // 滑块左端画一段当前色相的渐变，方便直接看出取值范围
+        HuePreview.Background = new LinearGradientBrush(
+            new GradientStopCollection
+            {
+                new GradientStop(HslBrush(0), 0.0),
+                new GradientStop(HslBrush(30), 0.08),
+                new GradientStop(HslBrush(60), 0.17),
+                new GradientStop(HslBrush(120), 0.33),
+                new GradientStop(HslBrush(180), 0.5),
+                new GradientStop(HslBrush(240), 0.66),
+                new GradientStop(HslBrush(300), 0.83),
+                new GradientStop(HslBrush(360), 1.0),
+            }, 0);
+    }
+
+    private static Color HslBrush(int hue)
+        => ThemeService.HslToColor(hue, 0.7, 0.55);
+
+    /// <summary>预设：点一下把三个滑块带过去。</summary>
+    private void BuildPresetChips()
+    {
+        if (PresetPanel.Children.Count > 0) return;
+
+        foreach (var (name, hue, sat, light) in ThemeService.ThemePresets)
+        {
+            var dot = new Border
+            {
+                Width = 12,
+                Height = 12,
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(ThemeService.HslToColor(hue, sat / 100.0, light / 100.0)),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            content.Children.Add(dot);
+            content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+
+            var chip = new Button
+            {
+                Style = (Style)FindResource("GhostButton"),
+                Content = content,
+                Height = 32,
+                Padding = new Thickness(12, 0, 12, 0),
+                Margin = new Thickness(0, 0, 8, 8),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+
+            chip.Click += (_, _) =>
+            {
+                _themeLoading = true;
+                HueSlider.Value = hue;
+                SatSlider.Value = sat;
+                LightSlider.Value = light;
+                _themeLoading = false;
+
+                UpdateHslLabels();
+                ThemeCustomRadio.IsChecked = true;
+                ThemeCustomPanel.Visibility = Visibility.Visible;
+                ThemeService.SetTheme(AppTheme.Custom, hue, sat, light);
+            };
+
+            PresetPanel.Children.Add(chip);
+        }
     }
 
     private void ResetTheme_Click(object sender, RoutedEventArgs e)
     {
-        ThemeLightRadio.IsChecked = true;
-        ThemeService.SetTheme(AppTheme.Light, ThemeService.DefaultAccent, "green", "normal");
-        AccentHint.Text = "已恢复默认";
-    }
-
-    /// <summary>预设 / 色调 / 浓度三组单选（代码生成，省得 XAML 里堆一堆重复标签）。</summary>
-    private void BuildThemeOptions()
-    {
-        if (PresetPanel.Children.Count == 0)
-        {
-            foreach (var (name, accent, tone) in ThemeService.ThemePresets)
-            {
-                var dot = new Border
-                {
-                    Width = 12,
-                    Height = 12,
-                    CornerRadius = new CornerRadius(6),
-                    Background = new SolidColorBrush(ThemeService.ParseColor(accent)),
-                    Margin = new Thickness(0, 0, 8, 0),
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-
-                var content = new StackPanel { Orientation = Orientation.Horizontal };
-                content.Children.Add(dot);
-                content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
-
-                var chip = new RadioButton
-                {
-                    Style = (Style)FindResource("SegmentItem"),
-                    GroupName = "ThemePreset",
-                    Content = content,
-                    Margin = new Thickness(0, 0, 8, 8),
-                    Tag = new[] { accent, tone },
-                };
-
-                chip.Checked += (_, _) =>
-                {
-                    if (_themeLoading || chip.Tag is not string[] preset) return;
-                    ApplyCustomTheme(preset[0], preset[1]);
-                };
-
-                PresetPanel.Children.Add(chip);
-            }
-        }
-
-        if (TonePanel.Children.Count == 0)
-        {
-            AddOptionChip(TonePanel, "绿色调", "green", "ThemeTone");
-            AddOptionChip(TonePanel, "冷色调", "cool", "ThemeTone");
-            AddOptionChip(TonePanel, "暖色调", "warm", "ThemeTone");
-            AddOptionChip(TonePanel, "中性", "neutral", "ThemeTone");
-        }
-
-        if (StrengthPanel.Children.Count == 0)
-        {
-            AddOptionChip(StrengthPanel, "淡", "soft", "ThemeStrength");
-            AddOptionChip(StrengthPanel, "标准", "normal", "ThemeStrength");
-            AddOptionChip(StrengthPanel, "浓", "strong", "ThemeStrength");
-        }
-    }
-
-    private void AddOptionChip(Panel host, string label, string value, string group)
-    {
-        var chip = new RadioButton
-        {
-            Style = (Style)FindResource("SegmentItem"),
-            GroupName = group,
-            Content = label,
-            Margin = new Thickness(0, 0, 8, 8),
-            Tag = value,
-        };
-
-        chip.Checked += (_, _) =>
-        {
-            if (_themeLoading) return;
-
-            ApplyCustomTheme(AccentHexBox.Text,
-                group == "ThemeTone" ? value : null,
-                group == "ThemeStrength" ? value : null);
-        };
-
-        host.Children.Add(chip);
-    }
-
-    /// <summary>把色调 / 浓度的选中态对齐到当前配置。</summary>
-    private void SyncToneSelection(string tone, string strength)
-    {
-        var wasLoading = _themeLoading;
         _themeLoading = true;
 
-        foreach (var child in TonePanel.Children)
-            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == tone;
+        HueSlider.Value = 200;
+        SatSlider.Value = 60;
+        LightSlider.Value = 62;
 
-        foreach (var child in StrengthPanel.Children)
-            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == strength;
+        _themeLoading = false;
 
-        _themeLoading = wasLoading;
-    }
+        UpdateHslLabels();
 
-    /// <summary>背景色的常用选择。</summary>
-    private static readonly (string Name, string Hex)[] BackgroundPresets =
-    [
-        ("默认", "#FFF7FBF4"),
-        ("纯白", "#FFFFFFFF"),
-        ("米色", "#FFF4F0E6"),
-        ("冷灰", "#FFE9EEF3"),
-        ("淡绿", "#FFEAF4EE"),
-        ("藕粉", "#FFF6EEF1"),
-        ("深灰", "#FF2A3034"),
-        ("夜间", "#FF12161A"),
-    ];
-
-    private void BuildBackgroundSwatches()
-    {
-        if (BackgroundSwatches.Children.Count > 0) return;
-
-        foreach (var (name, hex) in BackgroundPresets)
-        {
-            var color = ThemeService.ParseColor(hex);
-
-            var swatch = new Button
-            {
-                Width = 34,
-                Height = 34,
-                Margin = new Thickness(0, 0, 8, 8),
-                ToolTip = name,
-                Cursor = System.Windows.Input.Cursors.Hand,
-                Background = new SolidColorBrush(color),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0, 0, 0)),
-                BorderThickness = new Thickness(1),
-            };
-
-            swatch.Click += (_, _) =>
-            {
-                BackgroundHexBox.Text = hex;
-                ApplyCustomTheme(AccentHexBox.Text, background: hex);
-            };
-
-            BackgroundSwatches.Children.Add(swatch);
-        }
-    }
-
-    private void ApplyBackground_Click(object sender, RoutedEventArgs e)
-    {
-        var hex = ThemeService.NormalizeHex(BackgroundHexBox.Text);
-        BackgroundHexBox.Text = hex;
-        ApplyCustomTheme(AccentHexBox.Text, background: hex);
-    }
-
-    private void ResetBackground_Click(object sender, RoutedEventArgs e)
-    {
-        BackgroundHexBox.Text = string.Empty;
-        ApplyCustomTheme(AccentHexBox.Text, background: string.Empty);
-    }
-
-    private void SyncBackgroundSelection(string background)
-    {
-        BackgroundHexBox.Text = background;
-    }
-
-    private void BuildSwatches(string selected)
-    {
-        if (_swatches.Count == 0)
-        {
-            foreach (var (name, hex) in ThemeService.AccentPresets)
-            {
-                var brush = new SolidColorBrush(ThemeService.ParseColor(hex));
-                brush.Freeze();
-
-                var swatch = new Border
-                {
-                    Width = 34,
-                    Height = 34,
-                    CornerRadius = new CornerRadius(11),
-                    Background = brush,
-                    Margin = new Thickness(0, 0, 9, 9),
-                    Cursor = Cursors.Hand,
-                    Tag = hex,
-                    ToolTip = name,
-                    BorderThickness = new Thickness(2),
-                    BorderBrush = Brushes.Transparent,
-                };
-
-                swatch.MouseLeftButtonUp += Swatch_Click;
-                AccentSwatches.Children.Add(swatch);
-                _swatches.Add(swatch);
-            }
-        }
-
-        UpdateSwatchSelection(selected);
-    }
-
-    private void UpdateSwatchSelection(string selected)
-    {
-        foreach (var swatch in _swatches)
-        {
-            var hex = swatch.Tag as string ?? string.Empty;
-            swatch.BorderBrush = string.Equals(hex, selected, StringComparison.OrdinalIgnoreCase)
-                ? (Brush)(TryFindResource("Ink") ?? Brushes.Transparent)
-                : Brushes.Transparent;
-        }
-    }
-
-    private void Swatch_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not Border { Tag: string hex }) return;
-
-        AccentHexBox.Text = hex;
-        ApplyCustomTheme(hex);
+        ThemeLightRadio.IsChecked = true;
+        ThemeService.SetTheme(AppTheme.Light);
     }
 
     // ==================== 版本隔离 ====================

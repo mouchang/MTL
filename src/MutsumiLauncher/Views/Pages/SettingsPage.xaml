@@ -137,38 +137,39 @@
                                 <TextBlock Text="预设" Style="{StaticResource FieldLabel}" Margin="0,0,0,8" />
                                 <WrapPanel x:Name="PresetPanel" />
 
-                                <TextBlock Text="主色" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                                <WrapPanel x:Name="AccentSwatches" />
-
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <TextBox x:Name="AccentHexBox" Style="{StaticResource MtlTextBox}"
-                                             Width="130" Height="34" VerticalContentAlignment="Center" />
-                                    <Button Style="{StaticResource SecondaryButton}" Content="应用这个色值"
-                                            Height="34" Padding="16,0" Margin="10,0,0,0"
-                                            Click="ApplyAccent_Click" />
-                                    <TextBlock x:Name="AccentHint" Style="{StaticResource Caption}"
-                                               Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <StackPanel Margin="0,8,0,0">
+                                    <Grid>
+                                        <TextBlock Text="色相" Style="{StaticResource Caption}" />
+                                        <TextBlock x:Name="HueValueText" Style="{StaticResource Caption}"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="HueSlider" Minimum="0" Maximum="360"
+                                            Style="{StaticResource MtlSlider}" Margin="0,4,0,0"
+                                            ValueChanged="HslSlider_Changed" />
+                                    <Border x:Name="HuePreview" Height="6" CornerRadius="3" Margin="0,6,0,0" />
                                 </StackPanel>
 
-                                <TextBlock Text="背景色" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                                <WrapPanel x:Name="BackgroundSwatches" />
-
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <TextBox x:Name="BackgroundHexBox" Style="{StaticResource MtlTextBox}"
-                                             Width="130" Height="34" VerticalContentAlignment="Center" />
-                                    <Button Style="{StaticResource SecondaryButton}" Content="应用背景"
-                                            Height="34" Padding="16,0" Margin="10,0,0,0"
-                                            Click="ApplyBackground_Click" />
-                                    <Button Style="{StaticResource SecondaryButton}" Content="跟随主色"
-                                            Height="34" Padding="16,0" Margin="8,0,0,0"
-                                            Click="ResetBackground_Click" />
+                                <StackPanel Margin="0,14,0,0">
+                                    <Grid>
+                                        <TextBlock Text="饱和度" Style="{StaticResource Caption}" />
+                                        <TextBlock x:Name="SatValueText" Style="{StaticResource Caption}"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="SatSlider" Minimum="0" Maximum="100"
+                                            Style="{StaticResource MtlSlider}" Margin="0,4,0,0"
+                                            ValueChanged="HslSlider_Changed" />
                                 </StackPanel>
 
-                                <TextBlock Text="界面色调" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                                <WrapPanel x:Name="TonePanel" />
-
-                                <TextBlock Text="着色浓度" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
-                                <WrapPanel x:Name="StrengthPanel" />
+                                <StackPanel Margin="0,14,0,0">
+                                    <Grid>
+                                        <TextBlock Text="明度" Style="{StaticResource Caption}" />
+                                        <TextBlock x:Name="LightValueText" Style="{StaticResource Caption}"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="LightSlider" Minimum="0" Maximum="100"
+                                            Style="{StaticResource MtlSlider}" Margin="0,4,0,0"
+                                            ValueChanged="HslSlider_Changed" />
+                                </StackPanel>
 
                                 <Button Style="{StaticResource SecondaryButton}" Content="恢复默认外观"
                                         Height="32" Padding="16,0" Margin="0,18,0,0"
