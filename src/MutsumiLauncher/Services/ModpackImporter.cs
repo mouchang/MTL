@@ -88,7 +88,7 @@ public static class ModpackImporter
             var done = 0;
 
             // 整合包动辄一两百个文件，串行下载每个都要重新握手，慢得离谱。
-            // PCL2 也是并发拉，这里开 6 条，速度能翻好几倍。
+            // PCL-CE 也是并发拉，这里开 6 条，速度能翻好几倍。
             using var gate = new SemaphoreSlim(6);
 
             var tasks = list.Select(async item =>

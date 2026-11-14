@@ -150,7 +150,7 @@ public sealed class ModrinthClient
 {
     private static readonly HttpClient Http = CreateClient();
 
-    /// <summary>按源顺序请求 Modrinth API，前面的源失败时自动换下一个（PCL2 的 DlModRequest 同款）。</summary>
+    /// <summary>按源顺序请求 Modrinth API，前面的源失败时自动换下一个（PCL-CE 的 DlModRequest 同款）。</summary>
     private static async Task<string> GetStringAsync(string relativeUrl,
         CancellationToken cancellationToken = default)
     {

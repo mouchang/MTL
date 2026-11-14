@@ -14,7 +14,7 @@ namespace MutsumiLauncher.Services;
 /// 数据来自 tools/mcmod-crawler 生成的 mcmod-zh.json.gz（约 1.4 万条，
 /// 每条含 id / cn / en / abbr），打包进程序，全程离线、不调第三方接口。
 ///
-/// 匹配思路参考 PCL2：优先用 slug 精确匹配，其次用标题，最后才做包含匹配；
+/// 匹配思路参考 PCL-CE：优先用 slug 精确匹配，其次用标题，最后才做包含匹配；
 /// 命中越"精确"分越高，低于阈值就当作没有，宁可不出中文名也不硬套错条目。
 /// </summary>
 public static class McmodIndex

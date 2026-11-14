@@ -8,7 +8,7 @@ namespace MutsumiLauncher.Services;
 /// 检查更新结果的持久化缓存。
 ///
 /// 之前没存：每次刷新列表（刷新按钮、切页、重开实例）都会把 Update 丢掉，
-/// 于是「可更新」徽标消失、还得重新检查一遍。PCL2 是把每个文件的
+/// 于是「可更新」徽标消失、还得重新检查一遍。PCL-CE 是把每个文件的
 /// ProjectVersion / UpdateFile 一起写进 JSON 缓存的，
 /// 这里按同样的思路做，但只存「可更新」这一条结果。
 /// </summary>

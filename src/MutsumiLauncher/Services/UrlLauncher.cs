@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace MutsumiLauncher.Services;
 
 /// <summary>
-/// 打开网页。对齐 PCL2 的做法：只用 ShellExecute（Process.Start + url），
+/// 打开网页。对齐 PCL-CE 的做法：只用 ShellExecute（Process.Start + url），
 /// 失败再试一次 cmd start。绝不启动 explorer.exe——反复拉起/杀掉 shell 会让桌面崩溃。
 /// </summary>
 public static class UrlLauncher

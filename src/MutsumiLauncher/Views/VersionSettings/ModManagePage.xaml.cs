@@ -169,7 +169,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         var curseForge = new CurseForgeClient();
 
         // 两个平台并行查：原来是 Modrinth 等完再查 CurseForge，串行等两轮网络。
-        // PCL2 也是两个线程各查一边。
+        // PCL-CE 也是两个线程各查一边。
         var modrinthTask = Task.Run(() => modrinth.CheckUpdatesIndividualAsync(queries));
         var curseForgeTask = Task.Run(() => CheckCurseForgeAsync(curseForge, fingerprintMap, info));
 
@@ -946,14 +946,14 @@ public partial class ModManagePage : UserControl, IInstancePage
         }
     }
 
-    /// <summary>信息：按名字去 MC百科搜索（和 PCL2 的兜底一致）。</summary>
+    /// <summary>信息：按名字去 MC百科搜索（和 PCL-CE 的兜底一致）。</summary>
     private void InfoMod_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: ModFileItem item }) return;
 
         // 全名在百科上常常搜不到（比如 C2ME 的英文全名就是无结果的），
         // 优先用索引里的简称，其次中文名。
-        // 索引里能精确命中就直接进详情页（和资源模块一致，也是 PCL2 的做法），
+        // 索引里能精确命中就直接进详情页（和资源模块一致，也是 PCL-CE 的做法），
         // 命中不了才退回搜索——宁可多点一次，也别链到错误的条目上。
         var url = McmodIndex.FindExact(null, item.DisplayName) is { } match
             ? McmodService.ClassUrl(match.Id)
@@ -1116,7 +1116,7 @@ public partial class ModManagePage : UserControl, IInstancePage
     }
 
     /// <summary>
-    /// 本地哈希缓存（SHA-1 + Murmur2）。PCL2 也把 Murmur 结果写进 INI，
+    /// 本地哈希缓存（SHA-1 + Murmur2）。PCL-CE 也把 Murmur 结果写进 INI，
     /// 文件没变就不重复算——54 个 Mod 第一次约 0.3s，之后基本瞬时。
     /// </summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Sha1, uint
