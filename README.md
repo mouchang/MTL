@@ -152,3 +152,4 @@ docs/                  截图与文档
 ## 赞助
 
 - 爱发电主页：https://afdian.com/a/box_star
+<img width="750" height="1068" alt="afdian-某尝" src="https://github.com/user-attachments/assets/637b7ef1-fa23-4d3c-8293-99b9c9ecd436" />
