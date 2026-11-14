@@ -279,100 +279,134 @@ public partial class SettingsPage : UserControl
         ThemeService.SetTheme(mode, null, mode == AppTheme.Custom && CustomBaseDarkRadio.IsChecked == true);
     }
 
-    /// <summary>自定义主题：把「明亮 / 暗色」里不同的颜色逐项列出来，允许单独改。</summary>
+    /// <summary>自定义主题：按分组把「明亮 / 暗色」里不同的颜色铺成小卡片，逐项可改。</summary>
     private void BuildCustomColorRows()
     {
         if (CustomColorList is null) return;
 
         CustomColorList.Children.Clear();
 
-        foreach (var key in ThemeService.EditableKeys)
+        string[] order = ["文字", "主色", "表面与背景", "描边与分隔", "状态色", "阴影"];
+
+        var groups = ThemeService.EditableKeys
+            .GroupBy(ThemeService.KeyGroup)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var name in order.Concat(groups.Keys.Where(k => !order.Contains(k))))
         {
-            var current = ThemeService.CustomColorText(key);
-            var customized = ThemeService.IsCustomized(key);
+            if (!groups.TryGetValue(name, out var keys) || keys.Count == 0) continue;
 
-            var swatch = new Border
+            CustomColorList.Children.Add(new TextBlock
             {
-                Width = 20,
-                Height = 20,
-                CornerRadius = new CornerRadius(6),
-                Background = new SolidColorBrush(ThemeService.ParseColor(current)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)),
-                BorderThickness = new Thickness(1),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-
-            var label = new TextBlock
-            {
-                Text = ThemeService.KeyLabel(key),
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(10, 0, 0, 0),
-                FontSize = 13,
-            };
-
-            var box = new TextBox
-            {
-                Text = current,
-                Width = 104,
-                Height = 26,
+                Text = name,
                 FontSize = 12,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Style = (Style)FindResource("MtlTextBox"),
-            };
+                Foreground = (Brush)FindResource("InkMute"),
+                Margin = new Thickness(2, 10, 0, 6),
+            });
 
-            var reset = new Button
-            {
-                Content = "恢复",
-                Height = 24,
-                Padding = new Thickness(9, 0, 9, 0),
-                Margin = new Thickness(8, 0, 0, 0),
-                FontSize = 12,
-                Style = (Style)FindResource("SecondaryButton"),
-                Visibility = customized ? Visibility.Visible : Visibility.Collapsed,
-            };
-
-            // 改色值：合法就套用，色块跟着变
-            box.TextChanged += (_, _) =>
-            {
-                if (_themeLoading) return;
-                if (!IsValidHex(box.Text)) return;
-
-                ThemeService.SetCustomColor(key, box.Text);
-
-                swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
-                reset.Visibility = Visibility.Visible;
-            };
-
-            reset.Click += (_, _) =>
-            {
-                ThemeService.SetCustomColor(key, null);
-
-                _themeLoading = true;
-                box.Text = ThemeService.CustomColorText(key);
-                _themeLoading = false;
-
-                swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
-                reset.Visibility = Visibility.Collapsed;
-            };
-
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 2) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            Grid.SetColumn(swatch, 0);
-            Grid.SetColumn(label, 1);
-            Grid.SetColumn(box, 2);
-            Grid.SetColumn(reset, 3);
-
-            row.Children.Add(swatch);
-            row.Children.Add(label);
-            row.Children.Add(box);
-            row.Children.Add(reset);
-
-            CustomColorList.Children.Add(row);
+            var wrap = new WrapPanel { Margin = new Thickness(0, 0, 0, 2) };
+            foreach (var key in keys) wrap.Children.Add(BuildColorCard(key));
+            CustomColorList.Children.Add(wrap);
         }
+    }
+
+    private UIElement BuildColorCard(string key)
+    {
+        var current = ThemeService.CustomColorText(key);
+        var customized = ThemeService.IsCustomized(key);
+
+        var swatch = new Border
+        {
+            Width = 18,
+            Height = 18,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(ThemeService.ParseColor(current)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)),
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var label = new TextBlock
+        {
+            Text = ThemeService.KeyLabel(key),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 8, 0),
+            FontSize = 12.5,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+
+        var box = new TextBox
+        {
+            Text = current,
+            Width = 96,
+            Height = 24,
+            FontSize = 11,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Style = (Style)FindResource("MtlTextBox"),
+            ToolTip = "输入 #AARRGGBB 或 #RRGGBB",
+        };
+
+        var reset = new Button
+        {
+            Content = "↺",
+            Width = 24,
+            Height = 24,
+            Margin = new Thickness(6, 0, 0, 0),
+            FontSize = 12,
+            Style = (Style)FindResource("SecondaryButton"),
+            ToolTip = "恢复这一项",
+            Visibility = customized ? Visibility.Visible : Visibility.Collapsed,
+        };
+
+        box.TextChanged += (_, _) =>
+        {
+            if (_themeLoading) return;
+            if (!IsValidHex(box.Text)) return;
+
+            ThemeService.SetCustomColor(key, box.Text);
+            swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
+            reset.Visibility = Visibility.Visible;
+        };
+
+        reset.Click += (_, _) =>
+        {
+            ThemeService.SetCustomColor(key, null);
+
+            _themeLoading = true;
+            box.Text = ThemeService.CustomColorText(key);
+            _themeLoading = false;
+
+            swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
+            reset.Visibility = Visibility.Collapsed;
+        };
+
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        Grid.SetColumn(swatch, 0);
+        Grid.SetColumn(label, 1);
+        Grid.SetColumn(box, 2);
+        Grid.SetColumn(reset, 3);
+
+        row.Children.Add(swatch);
+        row.Children.Add(label);
+        row.Children.Add(box);
+        row.Children.Add(reset);
+
+        return new Border
+        {
+            Width = 258,
+            Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(0, 0, 8, 8),
+            CornerRadius = new CornerRadius(10),
+            Background = (Brush)FindResource("HoverWash"),
+            BorderBrush = (Brush)FindResource("CardBorder"),
+            BorderThickness = new Thickness(1),
+            Child = row,
+        };
     }
 
     private static bool IsValidHex(string? text)

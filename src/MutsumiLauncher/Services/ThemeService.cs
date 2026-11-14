@@ -461,34 +461,31 @@ public static class ThemeService
 
     public static string ToHex(Color color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
-    /// <summary>设置页里的中文名，没有就用键名。</summary>
+    /// <summary>设置页里的中文名。</summary>
     public static string KeyLabel(string key) => key switch
     {
+        // 文字
         "Ink" => "正文",
-        "InkStrong" => "正文（强调）",
-        "InkMax" => "正文（最重）",
+        "InkStrong" => "正文·强调",
+        "InkMax" => "正文·最重",
         "InkSoft" => "次要文字",
         "InkMute" => "弱化文字",
         "InkInverse" => "反色文字",
         "InkOnAccent" => "主色上的文字",
+
+        // 主色
         "Accent" => "主色",
-        "AccentDeep" => "主色（深）",
+        "AccentDeep" => "主色·深",
         "AccentWash" => "选中底色",
         "AccentTint" => "主色浅底",
-        "AccentTintDeep" => "主色浅底（深）",
-        "AccentTintSoft" => "主色浅底（最浅）",
+        "AccentTintDeep" => "主色浅底·深",
+        "AccentTintSoft" => "主色浅底·最浅",
         "PrimaryFill" => "主按钮",
-        "PrimaryFillHover" => "主按钮（悬停）",
-        "Glass" => "玻璃层",
-        "GlassMedium" => "玻璃层（中）",
-        "GlassStrong" => "玻璃层（强）",
-        "GlassHover" => "玻璃层（悬停）",
-        "GlassHoverSoft" => "玻璃层（轻悬停）",
-        "GlassStroke" => "玻璃描边",
-        "HoverWash" => "悬停底色",
-        "Divider" => "分隔线",
-        "RingStroke" => "描边",
+        "PrimaryFillHover" => "主按钮·悬停",
+
+        // 表面
         "WindowBase" => "窗口底色",
+        "WindowChrome" => "窗口边框色",
         "WindowBar" => "标题栏",
         "WindowBorder" => "窗口描边",
         "PaneBg" => "面板底色",
@@ -499,11 +496,56 @@ public static class ThemeService
         "AvatarCard" => "头像卡",
         "PillBg" => "胶囊底",
         "ToastBg" => "提示条",
+        "BackdropVeil" => "背景遮罩",
+        "Glass" => "玻璃层",
+        "GlassMedium" => "玻璃层·中",
+        "GlassStrong" => "玻璃层·强",
+        "GlassHover" => "玻璃层·悬停",
+        "GlassHoverSoft" => "玻璃层·轻悬停",
+        "HoverWash" => "悬停底色",
+        "OverlayWash" => "遮罩底色",
+        "TrackBg" => "轨道底色",
+        "ChipBg" => "标签底色",
+        "Scrim" => "浮层蒙版",
+        "ModalScrim" => "弹窗蒙版",
+
+        // 描边
+        "GlassStroke" => "玻璃描边",
+        "Divider" => "分隔线",
+        "RingStroke" => "焦点描边",
         "CardBorder" => "卡片描边",
         "PanelBorderSoft" => "面板描边",
-        "BackdropVeil" => "背景遮罩",
+        "DialogHairline" => "对话框细线",
+
+        // 状态色
+        "Danger" => "危险色",
+        "DangerInk" => "危险·文字",
+        "DangerDeep" => "危险·深",
+        "DangerWash" => "危险·浅底",
+        "DangerWashSoft" => "危险·浅底（淡）",
+        "DangerWashBorder" => "危险·描边",
+        "InfoTint" => "信息·浅底",
+        "InfoInk" => "信息·文字",
+        "SourceGreen" => "来源·绿",
+        "SourceOrange" => "来源·橙",
+
+        // 阴影
         "ShadowTint" => "阴影颜色",
+        "ShadowColorSoft" => "阴影·柔",
+
         _ => key,
+    };
+
+    /// <summary>分组：设置页按这个分段显示。</summary>
+    public static string KeyGroup(string key) => key switch
+    {
+        var k when k.StartsWith("Ink") => "文字",
+        var k when k.StartsWith("Accent") || k.StartsWith("Primary") => "主色",
+        var k when k.StartsWith("Danger") || k.StartsWith("Info") || k.StartsWith("Source") => "状态色",
+        var k when k.StartsWith("Shadow") => "阴影",
+        "GlassStroke" or "Divider" or "RingStroke" or "CardBorder" or "PanelBorderSoft"
+            or "DialogHairline" or "WindowBorder" => "描边与分隔",
+        _ => "表面与背景",
     };
 
     /// <summary>给设置页用的推荐主色。</summary>
