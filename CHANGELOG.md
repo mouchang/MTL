@@ -3,6 +3,21 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.14] - 2026-11-14
+
+### 更新内容
+
+- 切换社区资源分类时先清空旧结果，不再「标题变了、列表还是上一个分类」
+
+### 技术实现
+
+`Configure` 里只重置了页码就发起新搜索，`ResultsList` 仍挂着上一个分类的卡片，
+加载指示器又盖在上面，于是出现「数据包」标题下显示 Mod 结果的画面。
+
+```csharp
+ClearResults();   // ItemsSource = null，页码/总数一并归零
+_ = RunSearchAsync(0);
+```
 ## [1.1.4-beta.13] - 2026-11-14
 
 ### 更新内容
