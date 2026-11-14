@@ -3,6 +3,25 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.4] - 2026-11-14
+
+### 更新内容
+
+- 侧栏高亮改为「滑动 + 呼吸」：选中块在条目之间滑行，途中轻微收窄再回弹
+
+### 技术实现
+
+换成单块指示器 + `TransformGroup`（位移 + 缩放）：
+
+```csharp
+NavIndicatorSlide.BeginAnimation(TranslateTransform.YProperty,
+    new DoubleAnimation(y, 300ms) { EasingFunction = new QuinticEase { EasingMode = EaseOut } });
+```
+
+滑动途中用关键帧让缩放走 1 → 0.965 → 1，模拟「被拖动时略微收窄」的手感；
+因为始终是同一块元素，连续快速点击会从当前位置续着走，不会闪。
+
+上一版的「双块交叉淡化」看起来像直接跳变（高亮先消失再出现），已经去掉。
 ## [1.1.4-beta.3] - 2026-11-14
 
 ### 更新内容

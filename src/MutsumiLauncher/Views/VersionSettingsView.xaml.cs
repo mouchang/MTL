@@ -19,14 +19,11 @@ public partial class VersionSettingsView : UserControl
     // 侧栏选中块是否已经摆好位置：首次直接就位，之后才做过渡
     private bool _indicatorReady;
 
-    // 当前正在显示的那块高亮（两块交替，用来做交叉淡化）
-    private FrameworkElement? _activeIndicator;
+
 
     public VersionSettingsView()
     {
         InitializeComponent();
-
-        _activeIndicator = NavIndicator;
 
         var overview = new OverviewPage();
         overview.Renamed += OnRenamed;
@@ -303,7 +300,7 @@ public partial class VersionSettingsView : UserControl
     }
 
     /// <summary>
-    /// 侧栏选中高亮：两块圆角块交替淡入淡出，切换时不在条目之间穿行。
+    /// 侧栏选中高亮：一块圆角块滑到当前板块，滑动途中轻微收窄再回弹。
     /// 位置按实际布局量（控件相对 NavPanel 的偏移），不写死行高。
     /// </summary>
     private void MoveNavIndicator(string key)
@@ -335,48 +332,43 @@ public partial class VersionSettingsView : UserControl
             y = NavPanel.Children.IndexOf(target) * 56 + 2;
         }
 
-        var ease = new System.Windows.Media.Animation.CubicEase
+        var ease = new System.Windows.Media.Animation.QuinticEase
         {
             EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
         };
 
-        var current = _activeIndicator;
-        var next = ReferenceEquals(current, NavIndicator) ? NavIndicatorAlt : NavIndicator;
+        var duration = TimeSpan.FromMilliseconds(300);
 
-        // 新块先就位，再从透明淡入；旧块同时淡出
-        var nextTransform = (System.Windows.Media.TranslateTransform)next.RenderTransform;
-        nextTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
-        nextTransform.Y = y;
+        // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
+        NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(y, duration)
+            {
+                EasingFunction = ease,
+            });
 
-        next.BeginAnimation(OpacityProperty, null);
+        // 2) 呼吸：滑动途中横向收一点再弹回，看起来更有「液态」感
+        var squash = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+        {
+            Duration = duration,
+        };
 
+        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0)));
+        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.965,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0.45),
+            new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }));
+        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+            System.Windows.Media.Animation.KeyTime.FromPercent(1)));
+
+        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, squash);
+        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, squash);
+
+        // 3) 首次出现直接亮起，之后保持常亮
         if (!_indicatorReady)
         {
-            next.Opacity = 1;
+            NavIndicator.Opacity = 1;
             _indicatorReady = true;
         }
-        else
-        {
-            // 旧块先淡出，新块延迟一点淡入：中间不会两块同时亮着
-            next.Opacity = 0;
-            next.BeginAnimation(OpacityProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
-                {
-                    BeginTime = TimeSpan.FromMilliseconds(110),
-                    EasingFunction = ease,
-                });
-        }
-
-        if (current is not null && !ReferenceEquals(current, next))
-        {
-            current.BeginAnimation(OpacityProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(110))
-                {
-                    EasingFunction = ease,
-                });
-        }
-
-        _activeIndicator = next;
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

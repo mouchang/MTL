@@ -47,19 +47,16 @@
 
                     <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
                         <Grid>
-                            <!-- 选中高亮：两块交替淡入淡出，切换时不在项之间「穿过」 -->
+                            <!-- 选中高亮：一块圆角块在条目之间滑动，滑动时轻微「呼吸」伸缩 -->
                             <Border x:Name="NavIndicator" Height="52" Margin="4,0" VerticalAlignment="Top"
                                     CornerRadius="14" Background="{DynamicResource Accent}"
-                                    IsHitTestVisible="False" Opacity="0">
+                                    IsHitTestVisible="False" Opacity="0"
+                                    RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>
-                                    <TranslateTransform Y="0" />
-                                </Border.RenderTransform>
-                            </Border>
-                            <Border x:Name="NavIndicatorAlt" Height="52" Margin="4,0" VerticalAlignment="Top"
-                                    CornerRadius="14" Background="{DynamicResource Accent}"
-                                    IsHitTestVisible="False" Opacity="0">
-                                <Border.RenderTransform>
-                                    <TranslateTransform Y="0" />
+                                    <TransformGroup>
+                                        <TranslateTransform x:Name="NavIndicatorSlide" Y="0" />
+                                        <ScaleTransform x:Name="NavIndicatorScale" ScaleX="1" ScaleY="1" />
+                                    </TransformGroup>
                                 </Border.RenderTransform>
                             </Border>
 
