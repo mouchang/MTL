@@ -3,6 +3,29 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.21] - 2026-11-14
+
+### 更新内容
+
+- 移除暗色主题：外观只剩「明亮 / 自定义」，旧配置里的 dark 自动回落明亮
+- 自定义主题重做：主色会驱动整套路色（窗口、卡片、侧栏、描边、阴影、高亮），不再只是按钮变色
+
+### 技术实现
+
+`AppTheme` 去掉 `Dark`，`DarkPalette()`、深色底图、`IsDark` 一并删除；
+`ApplyFromConfig` 里旧的 `"dark"` 直接按明亮处理。
+
+`BuildCustom` 现在从主色推导：
+
+```csharp
+colors["WindowBase"] = Blend(light.WindowBase, accent, 0.06);
+colors["SidebarBg"]  = Blend(accent 透明底, accent, 0.12);
+colors["RingStroke"] = Blend(accent, white, 0.35);
+colors["ShadowColor"] = Blend(accent, black, 0.72);
+```
+
+外加 `Accent / AccentDeep / AccentWash / *Tint / PrimaryFill / InkOnAccent` 全部跟随主色，
+所以换成粉色/橙色时整个界面都跟着变，而不是绿按钮配灰底。
 ## [1.1.4-beta.20] - 2026-11-14
 
 ### 更新内容

@@ -37,7 +37,7 @@ public partial class SettingsPage : UserControl
             else if (MemoryManualRadio.IsChecked == true)
                 Controls.SlidingHighlight.Move(MemoryIndicator, MemoryManualRadio, MemorySegmentHost, animate: false);
 
-            foreach (var themeRadio in new[] { ThemeLightRadio, ThemeDarkRadio, ThemeCustomRadio })
+            foreach (var themeRadio in new[] { ThemeLightRadio, ThemeCustomRadio })
             {
                 if (themeRadio.IsChecked == true)
                 {
@@ -236,19 +236,10 @@ public partial class SettingsPage : UserControl
         _themeLoading = true;
 
         var config = AppConfig.Current;
-        var mode = config.ThemeMode switch
-        {
-            "dark" => AppTheme.Dark,
-            "custom" => AppTheme.Custom,
-            _ => AppTheme.Light,
-        };
+        var mode = config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light;
 
         ThemeLightRadio.IsChecked = mode == AppTheme.Light;
-        ThemeDarkRadio.IsChecked = mode == AppTheme.Dark;
         ThemeCustomRadio.IsChecked = mode == AppTheme.Custom;
-
-        ThemeBaseLightRadio.IsChecked = config.ThemeBase != "dark";
-        ThemeBaseDarkRadio.IsChecked = config.ThemeBase == "dark";
 
         AccentHexBox.Text = ThemeService.NormalizeHex(config.ThemeAccent);
         AccentHint.Text = mode == AppTheme.Custom ? "已应用" : "选个色值会切到自定义";
@@ -269,21 +260,12 @@ public partial class SettingsPage : UserControl
 
         if (_themeLoading || ThemeCustomPanel is null) return;
 
-        var mode = ThemeDarkRadio.IsChecked == true ? AppTheme.Dark
-            : ThemeCustomRadio.IsChecked == true ? AppTheme.Custom
-            : AppTheme.Light;
+        var mode = ThemeCustomRadio.IsChecked == true ? AppTheme.Custom : AppTheme.Light;
 
         ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
-        ThemeService.SetTheme(mode, AccentHexBox.Text, ThemeBaseDarkRadio.IsChecked == true);
+        ThemeService.SetTheme(mode, AccentHexBox.Text);
 
         AccentHint.Text = mode == AppTheme.Custom ? "已应用" : "选个色值会切到自定义";
-    }
-
-    private void ThemeBase_Checked(object sender, RoutedEventArgs e)
-    {
-        if (_themeLoading || ThemeCustomRadio is null) return;
-
-        ApplyCustomTheme(AccentHexBox.Text, ThemeBaseDarkRadio.IsChecked == true);
     }
 
     private void ApplyAccent_Click(object sender, RoutedEventArgs e)
@@ -291,11 +273,11 @@ public partial class SettingsPage : UserControl
         var hex = ThemeService.NormalizeHex(AccentHexBox.Text);
         AccentHexBox.Text = hex;
 
-        ApplyCustomTheme(hex, ThemeBaseDarkRadio.IsChecked == true);
+        ApplyCustomTheme(hex);
     }
 
     /// <summary>换成自定义主题（主色一律走这里，顺带把单选按钮同步过去）。</summary>
-    private void ApplyCustomTheme(string? hex, bool darkBase)
+    private void ApplyCustomTheme(string? hex)
     {
         var accent = ThemeService.NormalizeHex(hex);
 
@@ -304,7 +286,7 @@ public partial class SettingsPage : UserControl
         ThemeCustomPanel.Visibility = Visibility.Visible;
         _themeLoading = false;
 
-        ThemeService.SetTheme(AppTheme.Custom, accent, darkBase);
+        ThemeService.SetTheme(AppTheme.Custom, accent);
 
         AccentHint.Text = "已应用";
         UpdateSwatchSelection(accent);
@@ -358,7 +340,7 @@ public partial class SettingsPage : UserControl
         if (sender is not Border { Tag: string hex }) return;
 
         AccentHexBox.Text = hex;
-        ApplyCustomTheme(hex, ThemeBaseDarkRadio.IsChecked == true);
+        ApplyCustomTheme(hex);
     }
 
     // ==================== 版本隔离 ====================

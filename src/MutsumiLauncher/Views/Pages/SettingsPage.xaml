@@ -126,9 +126,6 @@
                                 <RadioButton x:Name="ThemeLightRadio" Style="{StaticResource SegmentItemOverlay}"
                                              GroupName="ThemeMode" Content="明亮"
                                              Margin="0,0,4,0" Checked="ThemeMode_Checked" />
-                                <RadioButton x:Name="ThemeDarkRadio" Style="{StaticResource SegmentItemOverlay}"
-                                             GroupName="ThemeMode" Content="暗色"
-                                             Margin="0,0,4,0" Checked="ThemeMode_Checked" />
                                 <RadioButton x:Name="ThemeCustomRadio" Style="{StaticResource SegmentItemOverlay}"
                                              GroupName="ThemeMode" Content="自定义"
                                              Checked="ThemeMode_Checked" />
@@ -137,17 +134,6 @@
 
                             <StackPanel x:Name="ThemeCustomPanel" Margin="0,16,0,0"
                                         Visibility="Collapsed">
-                                <TextBlock Text="底色" Style="{StaticResource FieldLabel}" Margin="0,0,0,8" />
-                                <WrapPanel>
-                                    <RadioButton x:Name="ThemeBaseLightRadio"
-                                                 Style="{StaticResource SegmentItem}" GroupName="ThemeBase"
-                                                 Content="浅色" Margin="0,0,8,0"
-                                                 Checked="ThemeBase_Checked" />
-                                    <RadioButton x:Name="ThemeBaseDarkRadio"
-                                                 Style="{StaticResource SegmentItem}" GroupName="ThemeBase"
-                                                 Content="深色" Checked="ThemeBase_Checked" />
-                                </WrapPanel>
-
                                 <TextBlock Text="主色" Style="{StaticResource FieldLabel}" Margin="0,16,0,8" />
                                 <WrapPanel x:Name="AccentSwatches" />
 

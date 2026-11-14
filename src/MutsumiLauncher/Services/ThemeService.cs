@@ -8,12 +8,11 @@ namespace MutsumiLauncher.Services;
 public enum AppTheme
 {
     Light,
-    Dark,
     Custom,
 }
 
 /// <summary>
-/// 主题：明亮 / 暗色 / 自定义。整套色板放在一个 ResourceDictionary 里，
+/// 主题：明亮 / 自定义。整套色板放在一个 ResourceDictionary 里，
 /// 切换时把 Themes/Palette.xaml 那一份整份换掉，界面靠 DynamicResource 自动重绘。
 /// </summary>
 public static class ThemeService
@@ -27,9 +26,6 @@ public static class ThemeService
 
     public static AppTheme Mode { get; private set; } = AppTheme.Light;
 
-    /// <summary>当前是不是深色底（自定义主题也会落在这两个之一）。</summary>
-    public static bool IsDark { get; private set; }
-
     /// <summary>自定义主题用的主色。</summary>
     public static string Accent { get; private set; } = DefaultAccent;
 
@@ -37,53 +33,30 @@ public static class ThemeService
     {
         var config = AppConfig.Current;
 
-        Apply(config.ThemeMode switch
-        {
-            "dark" => AppTheme.Dark,
-            "custom" => AppTheme.Custom,
-            _ => AppTheme.Light,
-        }, config.ThemeAccent, config.ThemeBase == "dark");
+        // 旧配置里的 "dark" 不再有对应主题，按明亮处理
+        Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light, config.ThemeAccent);
     }
 
-    public static void SetTheme(AppTheme mode, string? accent = null, bool darkBase = false)
+    public static void SetTheme(AppTheme mode, string? accent = null)
     {
         var config = AppConfig.Current;
 
-        config.ThemeMode = mode switch
-        {
-            AppTheme.Dark => "dark",
-            AppTheme.Custom => "custom",
-            _ => "light",
-        };
+        config.ThemeMode = mode == AppTheme.Custom ? "custom" : "light";
 
         if (!string.IsNullOrWhiteSpace(accent)) config.ThemeAccent = accent;
-        config.ThemeBase = darkBase ? "dark" : "light";
         config.Save();
 
-        Apply(mode, config.ThemeAccent, darkBase);
+        Apply(mode, config.ThemeAccent);
     }
 
-    public static void Apply(AppTheme mode, string? accentHex, bool darkBase)
+    public static void Apply(AppTheme mode, string? accentHex)
     {
         Mode = mode;
         Accent = NormalizeHex(accentHex);
 
-        IsDark = mode switch
-        {
-            AppTheme.Dark => true,
-            AppTheme.Custom => darkBase,
-            _ => false,
-        };
+        var colors = mode == AppTheme.Custom ? BuildCustom(Accent) : LightPalette();
 
-        var colors = mode switch
-        {
-            AppTheme.Dark => DarkPalette(),
-            AppTheme.Custom => BuildCustom(IsDark, Accent),
-            _ => LightPalette(),
-        };
-
-        Install(BuildDictionary(colors, IsDark));
-        Changed?.Invoke();
+        Install(BuildDictionary(colors));
     }
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
@@ -111,9 +84,9 @@ public static class ThemeService
         _installed = theme;
     }
 
-    private static ResourceDictionary BuildDictionary(IReadOnlyDictionary<string, Color> colors, bool dark)
+    private static ResourceDictionary BuildDictionary(IReadOnlyDictionary<string, Color> colors)
     {
-        var dictionary = new ResourceDictionary { ["BackdropImage"] = LoadBackdrop(dark) };
+        var dictionary = new ResourceDictionary { ["BackdropImage"] = LoadBackdrop() };
 
         foreach (var (key, color) in colors)
         {
@@ -136,8 +109,8 @@ public static class ThemeService
         return dictionary;
     }
 
-    /// <summary>窗口底图：深色主题换成压暗过的那张（tools/backgrounds/make-dark.py 生成）。</summary>
-    private static ImageSource LoadBackdrop(bool dark)
+    /// <summary>窗口底图。</summary>
+    private static ImageSource LoadBackdrop()
     {
         var image = new BitmapImage();
 
@@ -150,7 +123,7 @@ public static class ThemeService
             // 写全程序集名，别依赖「入口程序集就是启动器」这个前提
             image.UriSource = new Uri(
                 "pack://application:,,,/MutsumiLauncher;component/Assets/" +
-                (dark ? "background-dark.jpg" : "background.jpg"),
+                "background.jpg",
                 UriKind.Absolute);
             image.EndInit();
             image.Freeze();
@@ -163,21 +136,16 @@ public static class ThemeService
         return image;
     }
 
-    /// <summary>启动时自查一次：暗色色板少键的话，切过去会出现浅色漏底，写日志方便发现。</summary>
+    /// <summary>启动时自查：色板必填键是否齐全，缺了会漏底色。</summary>
     public static void Verify()
     {
         try
         {
             var light = LightPalette();
-            var dark = DarkPalette();
+            var required = light.Keys.Where(key => key is not "ShadowColor" and not "ShadowColorSoft").ToList();
 
-            var missing = light.Keys.Where(key => !dark.ContainsKey(key)).ToList();
-            if (missing.Count > 0)
-                AppLog.Info("theme: 暗色色板缺少 " + string.Join(", ", missing));
-
-            var extra = dark.Keys.Where(key => !light.ContainsKey(key)).ToList();
-            if (extra.Count > 0)
-                AppLog.Info("theme: 暗色色板多出 " + string.Join(", ", extra));
+            if (required.Count < 40)
+                AppLog.Info($"theme: 色板只有 {required.Count} 个键，可能不完整");
         }
         catch (Exception ex)
         {
@@ -225,6 +193,9 @@ public static class ThemeService
 
         return Color.FromRgb(0x4E, 0x9E, 0x72);
     }
+
+    private static Color Hex(string value)
+        => ColorConverter.ConvertFromString(value) is Color color ? color : Colors.Transparent;
 
     private static Dictionary<string, Color> LightPalette() => new(StringComparer.Ordinal)
     {
@@ -293,108 +264,60 @@ public static class ThemeService
         ["ShadowColorSoft"] = Hex("#2E4A38"),
     };
 
-    private static Dictionary<string, Color> DarkPalette() => new(StringComparer.Ordinal)
+    /// <summary>自定义：以主色为基调重算整套色板（不只换按钮颜色）。</summary>
+    private static Dictionary<string, Color> BuildCustom(string accentHex)
     {
-        // 文字：偏中性白，别再带绿
-        ["Ink"] = Hex("#E8ECEA"),
-        ["InkStrong"] = Hex("#F6F8F7"),
-        ["InkMax"] = Hex("#FFFFFF"),
-        ["InkSoft"] = Hex("#A6B0AD"),
-        ["InkMute"] = Hex("#79837F"),
-        ["InkInverse"] = Hex("#101513"),
-        ["InkOnAccent"] = Hex("#0B2117"),
-
-        // 主色：薄荷绿只做点缀，暗底上提亮一档
-        ["Accent"] = Hex("#7AD7A1"),
-        ["AccentDeep"] = Hex("#4FC181"),
-        ["AccentWash"] = Hex("#2B4A39"),
-        ["AccentTint"] = Hex("#16241C"),
-        ["AccentTintDeep"] = Hex("#1E3527"),
-        ["AccentTintSoft"] = Hex("#131F19"),
-        ["PrimaryFill"] = Hex("#2E9B64"),
-        ["PrimaryFillHover"] = Hex("#37B275"),
-
-        // 卡片 / 玻璃层：中性灰蓝，不再发绿
-        ["Glass"] = Hex("#1E2427"),
-        ["GlassMedium"] = Hex("#242B2F"),
-        ["GlassStrong"] = Hex("#2A3237"),
-        ["GlassHover"] = Hex("#303A40"),
-        ["GlassHoverSoft"] = Hex("#282F34"),
-        ["GlassStroke"] = Hex("#33FFFFFF"),
-        ["HoverWash"] = Hex("#1AFFFFFF"),
-        ["OverlayWash"] = Hex("#14FFFFFF"),
-        ["TrackBg"] = Hex("#24FFFFFF"),
-        ["ChipBg"] = Hex("#18FFFFFF"),
-        ["Divider"] = Hex("#1FFFFFFF"),
-        ["RingStroke"] = Hex("#59FFFFFF"),
-
-        // 窗口与浮层
-        ["WindowBase"] = Hex("#0E1113"),
-        ["WindowChrome"] = Hex("#090C0D"),
-        ["WindowBar"] = Hex("#171C1F"),
-        ["WindowBorder"] = Hex("#2BFFFFFF"),
-        ["PaneBg"] = Hex("#11161A"),
-        ["SurfacePanel"] = Hex("#171D21"),
-        ["SurfaceFloat"] = Hex("#1B2227"),
-        ["SurfaceSolid"] = Hex("#242C31"),
-        ["SidebarBg"] = Hex("#161C20"),
-        ["AvatarCard"] = Hex("#20272C"),
-        ["PillBg"] = Hex("#2A3238"),
-        ["ToastBg"] = Hex("#232B30"),
-        ["ModalScrim"] = Hex("#80000000"),
-        ["Scrim"] = Hex("#40000000"),
-        ["BackdropVeil"] = Hex("#73000000"),
-
-        ["CardBorder"] = Hex("#2AFFFFFF"),
-        ["PanelBorderSoft"] = Hex("#1FFFFFFF"),
-        ["DialogHairline"] = Hex("#1FFFFFFF"),
-
-        ["Danger"] = Hex("#FF8A7A"),
-        ["DangerInk"] = Hex("#FF9C8C"),
-        ["DangerDeep"] = Hex("#E0685A"),
-        ["DangerWash"] = Hex("#3A201C"),
-        ["DangerWashSoft"] = Hex("#33C0392B"),
-        ["DangerWashBorder"] = Hex("#80C0392B"),
-        ["InfoTint"] = Hex("#17272F"),
-        ["InfoInk"] = Hex("#9CC8DA"),
-        ["SourceGreen"] = Hex("#6FD79C"),
-        ["SourceOrange"] = Hex("#E8A45C"),
-
-        ["ShadowTint"] = Hex("#000000"),
-        ["ShadowColorSoft"] = Hex("#000000"),
-    };
-
-    /// <summary>自定义：在浅色/深色底上换一套主色，其余保持原样。</summary>
-    private static Dictionary<string, Color> BuildCustom(bool dark, string accentHex)
-    {
-        var colors = dark ? DarkPalette() : LightPalette();
+        var colors = LightPalette();
         var accent = ParseColor(accentHex);
-        var background = colors["WindowBase"];
 
-        // 和背景反差太小的话，把主色往反方向推一点，保证按钮/标题看得见
-        var luminance = Luminance(accent);
-        if (dark && luminance < 0.35) accent = Blend(accent, Colors.White, 0.45);
-        if (!dark && luminance > 0.75) accent = Blend(accent, Colors.Black, 0.35);
+        // 主色在浅底上太亮就看不清，压暗一点
+        if (Luminance(accent) > 0.72) accent = Blend(accent, Colors.Black, 0.35);
 
-        colors["AccentDeep"] = accent;
-        colors["Accent"] = Blend(accent, Colors.White, dark ? 0.22 : 0.42);
-        colors["AccentWash"] = Blend(accent, background, dark ? 0.35 : 0.45);
-        colors["AccentTint"] = Blend(accent, background, dark ? 0.80 : 0.88);
-        colors["AccentTintDeep"] = Blend(accent, background, dark ? 0.64 : 0.72);
-        colors["AccentTintSoft"] = Blend(accent, background, dark ? 0.87 : 0.93);
+        var accentDeep = accent;
+        var accentLight = Blend(accent, Colors.White, 0.42);
+        var wash = Blend(accent, Colors.White, 0.28);
+        var tint = Blend(accent, Colors.White, 0.86);
+        var tintDeep = Blend(accent, Colors.White, 0.68);
+        var tintSoft = Blend(accent, Colors.White, 0.93);
 
-        var fill = dark ? Blend(accent, Colors.Black, 0.12) : Blend(accent, Colors.Black, 0.18);
-        colors["PrimaryFill"] = fill;
-        colors["PrimaryFillHover"] = Blend(fill, Colors.White, 0.12);
+        colors["Accent"] = accentLight;
+        colors["AccentDeep"] = accentDeep;
+        colors["AccentWash"] = wash;
+        colors["AccentTint"] = tint;
+        colors["AccentTintDeep"] = tintDeep;
+        colors["AccentTintSoft"] = tintSoft;
+
+        // 主色上的文字 / 按钮
+        colors["InkOnAccent"] = Blend(accent, Colors.Black, 0.62);
+        colors["PrimaryFill"] = Blend(accent, Colors.Black, 0.16);
+        colors["PrimaryFillHover"] = Blend(accent, Colors.Black, 0.26);
+
+        // 窗口、卡片、侧栏都往主色调一点点，避免「绿按钮 + 灰界面」的割裂
+        colors["WindowBase"] = Blend(colors["WindowBase"], accent, 0.06);
+        colors["PaneBg"] = Blend(WithAlpha(colors["PaneBg"], 0xF2), accent, 0.05);
+        colors["SurfacePanel"] = Blend(WithAlpha(colors["SurfacePanel"], 0xF2), accent, 0.04);
+        colors["SurfaceFloat"] = Blend(WithAlpha(colors["SurfaceFloat"], 0xF7), accent, 0.03);
+        colors["SurfaceSolid"] = Colors.White;
+        colors["SidebarBg"] = Blend(WithAlpha(colors["SidebarBg"], 0x4D), accent, 0.12);
+        colors["Glass"] = Blend(WithAlpha(colors["Glass"], 0x66), accent, 0.10);
+        colors["GlassMedium"] = Blend(WithAlpha(colors["GlassMedium"], 0x8C), accent, 0.08);
+        colors["GlassStrong"] = Blend(WithAlpha(colors["GlassStrong"], 0xB8), accent, 0.06);
+        colors["GlassHover"] = Blend(WithAlpha(colors["GlassHover"], 0xA6), accent, 0.10);
+        colors["GlassHoverSoft"] = Blend(WithAlpha(colors["GlassHoverSoft"], 0x55), accent, 0.10);
+        colors["GlassStroke"] = Blend(WithAlpha(colors["GlassStroke"], 0x78), accent, 0.25);
+        colors["RingStroke"] = Blend(WithAlpha(colors["RingStroke"], 0x99), accent, 0.35);
+        colors["CardBorder"] = Blend(WithAlpha(colors["CardBorder"], 0x88), accent, 0.18);
+        colors["PanelBorderSoft"] = Blend(WithAlpha(colors["PanelBorderSoft"], 0x70), accent, 0.18);
+        colors["WindowBorder"] = Blend(WithAlpha(colors["WindowBorder"], 0x85), accent, 0.18);
+        colors["BackdropVeil"] = Blend(WithAlpha(colors["BackdropVeil"], 0x40), accent, 0.10);
+        colors["ShadowColor"] = Blend(accent, Colors.Black, 0.72);
+        colors["ShadowColorSoft"] = Blend(accent, Colors.Black, 0.55);
+        colors["ShadowTint"] = Blend(accent, Colors.Black, 0.72);
 
         return colors;
     }
 
-    private static Color Hex(string hex)
-    {
-        if (hex.Length == 6) return ParseColor("#FF" + hex);
-        return ParseColor(hex);
-    }
+    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
 
     private static Color Blend(Color a, Color b, double amount)
     {

@@ -80,7 +80,7 @@ public sealed class AppConfig
     /// <summary>自定义主题的主色（#AARRGGBB）。</summary>
     public string ThemeAccent { get; set; } = ThemeService.DefaultAccent;
 
-    /// <summary>自定义主题的底色：light / dark。</summary>
+    /// <summary>（已废弃）自定义主题底色，已移除暗色，仅为兼容旧配置保留。</summary>
     public string ThemeBase { get; set; } = "light";
 
     /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
