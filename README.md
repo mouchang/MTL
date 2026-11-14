@@ -143,7 +143,8 @@ docs/                  截图与文档
 
 ## 致谢
 
-- [PCL2](https://github.com/Meloong-Git/PCL)：下载引擎的分源与重试策略、MC百科条目匹配思路
+- [PCL-CE](https://github.com/PCL-Community/PCL-CE)（Apache-2.0）：下载引擎的分源与重试策略、文件校验顺序、MC百科条目匹配思路
+- [PCL](https://github.com/Meloong-Git/PCL)：PCL-CE 的上游项目
 - [OpenBMCLAPI](https://github.com/bangbang93/openbmclapi)：原版游戏文件的国内镜像
 - [MCIM](https://mcimirror.top)：CurseForge 接口的社区镜像
 - [MC百科](https://www.mcmod.cn)：Mod 中文名与缩写数据

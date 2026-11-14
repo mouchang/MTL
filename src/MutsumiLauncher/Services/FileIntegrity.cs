@@ -5,7 +5,7 @@ namespace MutsumiLauncher.Services;
 
 /// <summary>
 /// 本地文件校验：先比大小，大小对上再算 SHA-1。
-/// 参考 PCL2 的 FileChecker（先 ActualSize 后 Hash），避免每次启动都去哈希几百 MB 的资源文件。
+/// 参考 PCL-CE 的 FileChecker（先 ActualSize 后 Hash），避免每次启动都去哈希几百 MB 的资源文件。
 /// </summary>
 public static class FileIntegrity
 {

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace MutsumiLauncher.Services;
 
 /// <summary>
-/// 游戏版本标签的统一口径（参考 PCL2 的版本号处理）：
+/// 游戏版本标签的统一口径（参考 PCL-CE 的版本号处理）：
 /// 排序不再按字符串、也不再把快照当成 0 分；显示时把快照 / 预览版标出来。
 /// 这里只影响「展示顺序与文案」，筛选仍然是原始字符串精确匹配。
 /// </summary>
@@ -101,7 +101,7 @@ public static class GameVersionTags
         return basis * 10 + stage;
     }
 
-    /// <summary>按新到旧排序并去重；整合包只保留最新的一个游戏版本（PCL2 同样处理）。</summary>
+    /// <summary>按新到旧排序并去重；整合包只保留最新的一个游戏版本（PCL-CE 同样处理）。</summary>
     public static IReadOnlyList<string> Arrange(IEnumerable<string> versions, string? projectType)
     {
         var sorted = versions

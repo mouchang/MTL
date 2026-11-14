@@ -7,7 +7,7 @@ namespace MutsumiLauncher.Services;
 public sealed record DownloadEndpoint(string Url, int TimeoutSeconds = 30, bool AllowSplit = true);
 
 /// <summary>
-/// 参考 PCL2 的下载源选择：
+/// 参考 PCL-CE 的下载源选择：
 /// - 原版：官方 Mojang / BMCLAPI 自动择优，版本列表与文件下载分别有自己的偏好；
 /// - 社区：官方 Modrinth / CurseForge 优先，MCIM 兜底；
 /// - 每种资源返回有序的源列表，由下载引擎依次尝试。
@@ -50,7 +50,7 @@ public static class DownloadSources
 
     private static Task<bool>? _probe;
 
-    /// <summary>官方 Mojang 是否足够快（PCL2 的 DlPreferMojang）。</summary>
+    /// <summary>官方 Mojang 是否足够快（PCL-CE 的 DlPreferMojang）。</summary>
     public static bool PreferMojang { get; private set; }
 
     /// <summary>文件下载源偏好：auto / official / mirror。</summary>
@@ -185,7 +185,7 @@ public static class DownloadSources
 
     /// <summary>
     /// 社区文件下载源：官方 CDN 的各种变体 + MCIM 镜像。
-    /// PCL2 会为 CurseForge 地址生成 edge / mediafilez / media / overwolf 多个变体，
+    /// PCL-CE 会为 CurseForge 地址生成 edge / mediafilez / media / overwolf 多个变体，
     /// 部分地区只有其中某个能通。
     /// </summary>
     public static IReadOnlyList<DownloadEndpoint> ModFile(string officialUrl)
@@ -233,7 +233,7 @@ public static class DownloadSources
 
     /// <summary>把官方 CDN 地址换成自建 Worker 的镜像地址（mtl.dpdns.org/&lt;host&gt;/&lt;path&gt;）。</summary>
     /// <summary>
-    /// MCIM 镜像（PCL2 的 DlSourceModGet 同款）：Modrinth / CurseForge 的文件地址都能镜像，
+    /// MCIM 镜像（PCL-CE 的 DlSourceModGet 同款）：Modrinth / CurseForge 的文件地址都能镜像，
     /// 国内直连，不经过代理。
     /// </summary>
     private static IEnumerable<string> McimVariants(string url)

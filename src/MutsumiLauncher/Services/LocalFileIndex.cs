@@ -3,7 +3,7 @@ using System.IO;
 namespace MutsumiLauncher.Services;
 
 /// <summary>
-/// 本地已有文件索引（参考 PCL2 的 CheckExistingFile）：
+/// 本地已有文件索引（参考 PCL-CE 的 CheckExistingFile）：
 /// 下载前先在本地目录里找一份「大小 + SHA-1」都一致的文件直接复制，省一次网络下载。
 /// 只在明确知道 SHA-1 时才会复用，避免认错文件。
 /// </summary>

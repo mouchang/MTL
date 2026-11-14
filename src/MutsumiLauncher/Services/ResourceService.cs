@@ -28,7 +28,7 @@ public sealed record ResourceSearchPage(
     bool CurseForgePending = false);
 
 /// <summary>
-/// 资源获取统一入口（参考 PCL2 的 ResourceSearcher / ResourceProject / ResourceVersion）：
+/// 资源获取统一入口（参考 PCL-CE 的 ResourceSearcher / ResourceProject / ResourceVersion）：
 /// 搜索、项目详情、版本列表、依赖、下载都按平台路由，界面只关心统一的模型。
 /// </summary>
 public static class ResourceService

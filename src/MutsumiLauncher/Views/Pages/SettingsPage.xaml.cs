@@ -423,9 +423,9 @@ public partial class SettingsPage : UserControl
 
     private static readonly CreditEntry[] Credits =
     [
-        new("Plain Craft Launcher 2（PCL2）",
-            "下载引擎的分源与重试策略、文件校验顺序、分页缺失处理、MC百科条目匹配思路都参考了它",
-            "https://github.com/Meloong-Git/PCL"),
+        new("PCL-CE（PCL 社区版）",
+            "下载引擎的分源与重试策略、文件校验顺序、分页缺失处理、MC百科条目匹配思路都参考了它（Apache-2.0）",
+            "https://github.com/PCL-Community/PCL-CE"),
         new("OpenBMCLAPI",
             "原版游戏文件的国内加速镜像（bangbang93 维护）",
             "https://github.com/bangbang93/openbmclapi"),
