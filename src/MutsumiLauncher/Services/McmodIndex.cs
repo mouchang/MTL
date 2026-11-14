@@ -220,7 +220,7 @@ public static class McmodIndex
 
         // 按「词」比较，避免 "Fabric" 把 "Fabric API" 吃掉这类误配。
         // 注意必须用原始标题切词：规范化后的 "3dskinlayers" 已经没分隔符了。
-        var titleWords = Words(StripDecorations(title) ?? titleKey);
+        var titleWords = Words(StripDecorations(title) ?? titleKey ?? string.Empty);
 
         if (titleWords.Count < 2) titleWords = Words(slug);
 
@@ -285,7 +285,7 @@ public static class McmodIndex
     }
 
     /// <summary>把名字切成词：先按分隔符切，再把 camelCase 拆开。</summary>
-    private static List<string> Words(string text)
+    private static List<string> Words(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return [];
 

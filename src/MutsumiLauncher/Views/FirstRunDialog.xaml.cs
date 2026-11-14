@@ -18,8 +18,6 @@ public partial class FirstRunDialog : Window
 
     private int _remaining = WaitSeconds;
     private bool _unlocked;
-    private bool _coreReady;
-    private string? _coreError;
 
     public FirstRunDialog()
     {
