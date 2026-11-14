@@ -3,6 +3,29 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.3] - 2026-11-14
+
+### 更新内容
+
+- 重新设计侧栏切换效果：高亮改为淡出 / 淡入，不再在条目之间滑行
+- 悬停底色改中性灰，不再和选中态撞色
+- 选中项文字保持深色，切换时不会出现「白字悬空」的一瞬
+- 没有可用版本时不再初始化任何页面（空状态后面不再跑扫盘 / 更新检查）
+
+### 技术实现
+
+侧栏放两块等大的 `NavIndicator` / `NavIndicatorAlt` 交替使用：
+
+```csharp
+var current = _activeIndicator;
+var next = ReferenceEquals(current, NavIndicator) ? NavIndicatorAlt : NavIndicator;
+```
+
+旧块 110ms 淡出，新块延迟 110ms 后用 150ms 淡入，中间不会出现两块同时高亮。
+位置仍按 `TransformToAncestor` 取实际布局，不写死行高。
+
+空状态：`Load` 在版本为空时直接 `return`，`PageHost.Content = null`、`NavPanel` 置灰；
+首次从空状态导入版本后会自动接上新版本，不用重开浮层。
 ## [1.1.4-beta.2] - 2026-11-14
 
 ### 更新内容

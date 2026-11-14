@@ -182,11 +182,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverWash}" />
-                        </Trigger>
-                        <Trigger Property="IsChecked" Value="True">
-                            <!-- 底色交给外层指示器，这里只把文字改成白色 -->
-                            <Setter Property="Foreground" Value="White" />
+                            <!-- 中性灰：之前用白色薄雾，和选中块的浅绿几乎分不清 -->
+                            <Setter TargetName="Bd" Property="Background" Value="#0D000000" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

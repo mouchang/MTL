@@ -16,12 +16,17 @@ public partial class VersionSettingsView : UserControl
     // 关掉浮层再打开会重置（Load 里清零）。
     private bool _modsAutoChecked;
 
-    // 侧栏选中块是否已经摆好位置：首次直接就位，之后才做滑动动画
+    // 侧栏选中块是否已经摆好位置：首次直接就位，之后才做过渡
     private bool _indicatorReady;
+
+    // 当前正在显示的那块高亮（两块交替，用来做交叉淡化）
+    private FrameworkElement? _activeIndicator;
 
     public VersionSettingsView()
     {
         InitializeComponent();
+
+        _activeIndicator = NavIndicator;
 
         var overview = new OverviewPage();
         overview.Renamed += OnRenamed;
@@ -91,6 +96,13 @@ public partial class VersionSettingsView : UserControl
 
         RefreshEmptyState();
         (Window.GetWindow(this) as MainWindow)?.RefreshInstances();
+
+        // 空状态导入了第一个版本：直接把设置页接上，不用重开浮层
+        if (string.IsNullOrWhiteSpace(_version)
+            && GameLauncher.InstalledVersions().FirstOrDefault() is { } first)
+        {
+            Load(first);
+        }
     }
 
     /// <summary>引用其它启动器的 .minecraft（文件留在原处）。</summary>
@@ -170,6 +182,20 @@ public partial class VersionSettingsView : UserControl
         // 每次打开都回到「概览」，而不是停在上次关掉时的板块
         _modsAutoChecked = false;
         _loaded.Clear();
+
+        // 没有版本时不初始化任何页面：否则空状态遮罩后面还在跑扫盘 / 检查更新
+        var empty = string.IsNullOrWhiteSpace(version);
+
+        NavPanel.IsEnabled = !empty;
+        NavIndicator.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+
+        if (empty)
+        {
+            PageHost.Content = null;
+            NavOverview.IsChecked = false;
+            return;
+        }
+
         NavOverview.IsChecked = true;
         ShowPage("overview");
 
@@ -223,6 +249,9 @@ public partial class VersionSettingsView : UserControl
 
     private void ShowPage(string key)
     {
+        // 没有版本时任何页面都不跑（空状态遮罩后面不该有扫盘 / 网络请求）
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
         if (!_pages.TryGetValue(key, out var page)) return;
 
         InitializePage(key);
@@ -274,8 +303,8 @@ public partial class VersionSettingsView : UserControl
     }
 
     /// <summary>
-    /// 把侧栏的选中高亮滑到当前板块。
-    /// 位置按实际布局量（第 n 项的高度 + 间距），比硬编码 56 稳。
+    /// 侧栏选中高亮：两块圆角块交替淡入淡出，切换时不在条目之间穿行。
+    /// 位置按实际布局量（控件相对 NavPanel 的偏移），不写死行高。
     /// </summary>
     private void MoveNavIndicator(string key)
     {
@@ -294,7 +323,6 @@ public partial class VersionSettingsView : UserControl
 
         if (target is null) return;
 
-        // 指示器不带外边距，直接用控件相对 NavPanel 的偏移（已含控件自身 margin）
         double y;
 
         try
@@ -304,39 +332,51 @@ public partial class VersionSettingsView : UserControl
         catch
         {
             // 布局还没完成时退回按序号估算
-            var index = NavPanel.Children.IndexOf(target);
-            y = index * 56 + 2;
+            y = NavPanel.Children.IndexOf(target) * 56 + 2;
         }
 
-        var transform = (System.Windows.Media.TranslateTransform)NavIndicator.RenderTransform;
         var ease = new System.Windows.Media.Animation.CubicEase
         {
             EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
         };
 
+        var current = _activeIndicator;
+        var next = ReferenceEquals(current, NavIndicator) ? NavIndicatorAlt : NavIndicator;
+
+        // 新块先就位，再从透明淡入；旧块同时淡出
+        var nextTransform = (System.Windows.Media.TranslateTransform)next.RenderTransform;
+        nextTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+        nextTransform.Y = y;
+
+        next.BeginAnimation(OpacityProperty, null);
+
         if (!_indicatorReady)
         {
-            transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
-            transform.Y = y;
+            next.Opacity = 1;
             _indicatorReady = true;
         }
         else
         {
-            transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(y, TimeSpan.FromMilliseconds(220))
+            // 旧块先淡出，新块延迟一点淡入：中间不会两块同时亮着
+            next.Opacity = 0;
+            next.BeginAnimation(OpacityProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
+                {
+                    BeginTime = TimeSpan.FromMilliseconds(110),
+                    EasingFunction = ease,
+                });
+        }
+
+        if (current is not null && !ReferenceEquals(current, next))
+        {
+            current.BeginAnimation(OpacityProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(110))
                 {
                     EasingFunction = ease,
                 });
         }
 
-        if (NavIndicator.Opacity < 0.99)
-        {
-            NavIndicator.BeginAnimation(OpacityProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160))
-                {
-                    EasingFunction = ease,
-                });
-        }
+        _activeIndicator = next;
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
