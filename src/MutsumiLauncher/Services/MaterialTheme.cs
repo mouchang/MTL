@@ -37,8 +37,9 @@ public static class MaterialTheme
         _ => "balanced",
     };
 
-    /// <summary>从种子色算出整套画刷。</summary>
-    public static Dictionary<string, Color> Build(Color seed, Style style, IReadOnlyDictionary<string, Color> template)
+    /// <summary>从种子色算出整套画刷（浅色或深色）。</summary>
+    public static Dictionary<string, Color> Build(Color seed, Style style, bool dark,
+        IReadOnlyDictionary<string, Color> template, bool pureBlack = false)
     {
         var colors = new Dictionary<string, Color>(template, StringComparer.Ordinal);
 
@@ -53,6 +54,61 @@ public static class MaterialTheme
         };
 
         Color Tone(double chroma, int tone) => FromHsl(hue, chroma, tone / 100.0);
+
+        if (dark)
+        {
+            // Material 深色：主色用高 tone，容器用低 tone，表面近乎黑
+            var bgTone = pureBlack ? 0 : 6;
+
+            colors["Accent"] = Tone(primaryChroma, 80);
+            colors["AccentDeep"] = Tone(primaryChroma, 80);
+            colors["AccentWash"] = Tone(primaryChroma, 30);
+            colors["AccentTint"] = Tone(primaryChroma, 22);
+            colors["AccentTintDeep"] = Tone(primaryChroma, 28);
+            colors["AccentTintSoft"] = Tone(primaryChroma, 18);
+            colors["PrimaryFill"] = Tone(primaryChroma, 60);
+            colors["PrimaryFillHover"] = Tone(primaryChroma, 68);
+            colors["InkOnAccent"] = Tone(primaryChroma, 10);
+
+            colors["WindowBase"] = Tone(neutralChroma, bgTone);
+            colors["PaneBg"] = WithAlpha(Tone(neutralChroma, bgTone + 2), 0xF2);
+            colors["SurfacePanel"] = WithAlpha(Tone(neutralChroma, bgTone + 6), 0xF5);
+            colors["SurfaceFloat"] = WithAlpha(Tone(neutralChroma, bgTone + 9), 0xF8);
+            colors["SurfaceSolid"] = Tone(neutralChroma, bgTone + 12);
+            colors["SidebarBg"] = WithAlpha(Tone(neutralChroma, bgTone + 6), 0x73);
+            colors["AvatarCard"] = WithAlpha(Tone(neutralChroma, bgTone + 10), 0x8C);
+            colors["PillBg"] = WithAlpha(Tone(neutralChroma, bgTone + 14), 0x8C);
+            colors["ToastBg"] = WithAlpha(Tone(neutralChroma, 20), 0xF0);
+
+            colors["Glass"] = WithAlpha(Tone(neutralChroma, bgTone + 8), 0xB8);
+            colors["GlassMedium"] = WithAlpha(Tone(neutralChroma, bgTone + 12), 0xD2);
+            colors["GlassStrong"] = WithAlpha(Tone(neutralChroma, bgTone + 16), 0xEC);
+            colors["GlassHover"] = WithAlpha(Tone(neutralChroma, bgTone + 18), 0xE0);
+            colors["GlassHoverSoft"] = WithAlpha(Tone(neutralChroma, bgTone + 8), 0xB8);
+
+            colors["BackdropVeil"] = WithAlpha(Tone(neutralChroma, bgTone), 0xF5);
+
+            colors["Ink"] = Tone(neutralChroma, 90);
+            colors["InkStrong"] = Tone(neutralChroma, 96);
+            colors["InkMax"] = Tone(neutralChroma, 100);
+            colors["InkSoft"] = Tone(neutralChroma, 72);
+            colors["InkMute"] = Tone(neutralChroma, 55);
+            colors["InkInverse"] = Tone(neutralChroma, 10);
+
+            colors["GlassStroke"] = WithAlpha(Tone(neutralChroma, 100), 0x33);
+            colors["RingStroke"] = WithAlpha(Tone(primaryChroma, 80), 0x59);
+            colors["CardBorder"] = WithAlpha(Tone(neutralChroma, 100), 0x26);
+            colors["PanelBorderSoft"] = WithAlpha(Tone(neutralChroma, 100), 0x1A);
+            colors["WindowBorder"] = WithAlpha(Tone(neutralChroma, 100), 0x2B);
+            colors["Divider"] = WithAlpha(Tone(neutralChroma, 100), 0x1F);
+            colors["HoverWash"] = WithAlpha(Tone(neutralChroma, 100), 0x14);
+
+            colors["ShadowColor"] = Tone(neutralChroma, 0);
+            colors["ShadowColorSoft"] = Tone(neutralChroma, 10);
+            colors["ShadowTint"] = Tone(neutralChroma, 0);
+
+            return colors;
+        }
 
         // 主色系
         colors["Accent"] = Tone(primaryChroma, 88);

@@ -3,6 +3,25 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.27] - 2026-11-14
+
+### 更新内容
+
+- 主题模块按 FlClash 完整重构：主题模式（跟随系统 / 浅色 / 深色）、纯黑背景、种子色、配色风格、实时预览
+
+### 技术实现
+
+`ThemeService` 改成 FlClash 的四元组模型：`ColorMode + Seed + Style + PureBlack`。
+
+```csharp
+var theme = MaterialTheme.Build(ParseColor(Seed), style, IsDark, LightPalette(), PureBlack && IsDark);
+```
+
+`MaterialTheme.Build` 新增深色分支（主色 tone 80、容器 tone 30、表面 tone 6 / 纯黑 0），
+浅色仍走 tone 40/90/98。`SystemIsDark()` 读 `AppsUseLightTheme` 决定跟随系统的实际明暗。
+
+设置页顶部加了实时预览卡：侧栏条、卡片、主/次按钮、文本条都绑 `DynamicResource`，
+换模式或种子色时立刻跟着变。
 ## [1.1.4-beta.26] - 2026-11-14
 
 ### 更新内容

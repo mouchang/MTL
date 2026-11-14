@@ -104,6 +104,9 @@ public sealed class AppConfig
     /// <summary>自定义主题的种子色（#AARRGGBB）。</summary>
     public string ThemeSeed { get; set; } = ThemeService.DefaultAccent;
 
+    /// <summary>深色模式下是否使用纯黑背景。</summary>
+    public bool ThemePureBlack { get; set; }
+
     /// <summary>配色风格：soft / balanced / vibrant / mono。</summary>
     public string ThemeStyle { get; set; } = "balanced";
 

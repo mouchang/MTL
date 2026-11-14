@@ -1,74 +1,160 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace MutsumiLauncher.Services;
 
-public enum AppTheme
+/// <summary>主题模式：跟随系统 / 浅色 / 深色。</summary>
+public enum ColorMode
 {
+    System,
     Light,
-    Custom,
+    Dark,
 }
 
 /// <summary>
-/// 主题：明亮 / 自定义。整套色板放在一个 ResourceDictionary 里，
-/// 切换时把 Themes/Palette.xaml 那一份整份换掉，界面靠 DynamicResource 自动重绘。
+/// 主题：参考 FlClash 的配色模型——主题模式 + 种子色 + 配色风格（+ 纯黑）。
+/// 整套色板由 MaterialTheme 从一个种子色推导，替换掉 Palette.xaml 那一份，
+/// 界面靠 DynamicResource 自动重绘。
 /// </summary>
 public static class ThemeService
 {
-    public const string DefaultAccent = "#FF4E9E72";
+    public const string DefaultAccent = "#FF6750A4";
+    public const string DefaultStyle = "balanced";
 
     private static ResourceDictionary? _installed;
 
     /// <summary>主题变了（用于让图表、用代码画的笔刷跟着刷新）。</summary>
     public static event Action? Changed;
 
-    public static AppTheme Mode { get; private set; } = AppTheme.Light;
+    public static ColorMode Mode { get; private set; } = ColorMode.System;
 
-    /// <summary>自定义主题用的主色。</summary>
-    public static string Accent { get; private set; } = DefaultAccent;
+    /// <summary>当前实际是不是深色（跟随系统时会算系统状态）。</summary>
+    public static bool IsDark { get; private set; }
+
+    /// <summary>默认种子色。</summary>
+    public static string Seed { get; private set; } = DefaultAccent;
+
+    /// <summary>配色风格：soft / balanced / vibrant / mono。</summary>
+    public static string Style { get; private set; } = DefaultStyle;
+
+    /// <summary>深色下是否使用纯黑底。</summary>
+    public static bool PureBlack { get; private set; }
+
+    /// <summary>设置页可选的种子色。</summary>
+    public static readonly (string Name, string Hex)[] ThemeSeeds =
+    [
+        ("紫罗兰", "#FF6750A4"),
+        ("薄荷", "#FF2E9E6B"),
+        ("海蓝", "#FF00658B"),
+        ("青碧", "#FF006A6A"),
+        ("玫瑰", "#FF8C4A60"),
+        ("琥珀", "#FF7D5700"),
+        ("橄榄", "#FF4F6354"),
+        ("珊瑚", "#FFB3261E"),
+        ("靛蓝", "#FF4355B9"),
+        ("灰蓝", "#FF47617A"),
+    ];
 
     public static void ApplyFromConfig()
     {
         var config = AppConfig.Current;
 
-        Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light,
-            config.ThemeSeed, config.ThemeStyle);
+        Apply(ParseMode(config.ThemeMode), config.ThemeSeed, config.ThemeStyle, config.ThemePureBlack);
     }
 
-    public static void SetTheme(AppTheme mode, string? seed = null, string? style = null)
+    public static void SetTheme(ColorMode mode, string? seed = null, string? style = null,
+        bool? pureBlack = null)
     {
         var config = AppConfig.Current;
 
-        config.ThemeMode = mode == AppTheme.Custom ? "custom" : "light";
+        config.ThemeMode = ModeName(mode);
 
         if (!string.IsNullOrWhiteSpace(seed)) config.ThemeSeed = NormalizeHex(seed);
         if (!string.IsNullOrWhiteSpace(style)) config.ThemeStyle = style;
+        if (pureBlack is not null) config.ThemePureBlack = pureBlack.Value;
 
         config.Save();
 
-        Apply(mode, config.ThemeSeed, config.ThemeStyle);
+        Apply(mode, config.ThemeSeed, config.ThemeStyle, config.ThemePureBlack);
     }
 
-    public static void Apply(AppTheme mode, string? seedHex = null, string? style = null)
+    public static void Apply(ColorMode mode, string? seedHex = null, string? style = null,
+        bool? pureBlack = null)
     {
         Mode = mode;
         Seed = NormalizeHex(seedHex);
         Style = MaterialTheme.StyleName(MaterialTheme.ParseStyle(style));
+        PureBlack = pureBlack ?? PureBlack;
 
-        var colors = mode == AppTheme.Custom
-            ? MaterialTheme.Build(ParseColor(Seed), MaterialTheme.ParseStyle(Style), LightPalette())
-            : LightPalette();
+        IsDark = mode switch
+        {
+            ColorMode.Dark => true,
+            ColorMode.Light => false,
+            _ => SystemIsDark(),
+        };
 
-        Install(BuildDictionary(colors));
+        var theme = MaterialTheme.Build(ParseColor(Seed), MaterialTheme.ParseStyle(Style), IsDark,
+            LightPalette(), PureBlack && IsDark);
+
+        Install(BuildDictionary(theme));
+        Changed?.Invoke();
     }
 
-    /// <summary>自定义主题的种子色。</summary>
-    public static string Seed { get; private set; } = DefaultAccent;
+    public static string ModeName(ColorMode mode) => mode switch
+    {
+        ColorMode.Dark => "dark",
+        ColorMode.Light => "light",
+        _ => "system",
+    };
 
-    /// <summary>自定义主题的配色风格（soft / balanced / vibrant / mono）。</summary>
-    public static string Style { get; private set; } = "balanced";
+    public static ColorMode ParseMode(string? value) => value switch
+    {
+        "dark" => ColorMode.Dark,
+        "light" or "custom" => ColorMode.Light,
+        _ => ColorMode.System,
+    };
+
+    /// <summary>系统是否处于深色模式（读注册表，读不到按浅色）。</summary>
+    public static bool SystemIsDark()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+
+            return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>读 Windows 个性化里的主题色（DWM ColorizationColor）。</summary>
+    public static Color? ReadSystemAccent()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\DWM");
+
+            if (key?.GetValue("ColorizationColor") is not int value) return null;
+
+            return Color.FromRgb(
+                (byte)((value >> 16) & 0xFF),
+                (byte)((value >> 8) & 0xFF),
+                (byte)(value & 0xFF));
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
     private static void Install(ResourceDictionary theme)
@@ -78,7 +164,6 @@ public static class ThemeService
 
         var merged = app.Resources.MergedDictionaries;
 
-        // 第一次进来时把设计时用的 Palette.xaml 摘掉，之后每次换掉上一次装的那份
         var source = merged.FirstOrDefault(dictionary =>
             dictionary.Source?.OriginalString?.Contains("Palette.xaml", StringComparison.OrdinalIgnoreCase) == true);
 
@@ -101,12 +186,9 @@ public static class ThemeService
 
         foreach (var (key, color) in colors)
         {
-            // 阴影的 Color 属性要的是 Color，不是 Brush
             if (key is "ShadowColor" or "ShadowColorSoft")
             {
-                dictionary[key] = key == "ShadowColor"
-                    ? color
-                    : colors.TryGetValue("ShadowColorSoft", out var soft) ? soft : color;
+                dictionary[key] = color;
                 continue;
             }
 
@@ -128,13 +210,10 @@ public static class ThemeService
         try
         {
             image.BeginInit();
-            // OnLoad + Freeze：读进内存后不再占文件句柄，可以安全共用
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-            // 写全程序集名，别依赖「入口程序集就是启动器」这个前提
             image.UriSource = new Uri(
-                "pack://application:,,,/MutsumiLauncher;component/Assets/" +
-                "background.jpg",
+                "pack://application:,,,/MutsumiLauncher;component/Assets/background.jpg",
                 UriKind.Absolute);
             image.EndInit();
             image.Freeze();
@@ -147,43 +226,19 @@ public static class ThemeService
         return image;
     }
 
-    /// <summary>启动时自查：色板必填键是否齐全，缺了会漏底色。</summary>
+    /// <summary>启动时自查：色板必填键是否齐全。</summary>
     public static void Verify()
     {
         try
         {
             var light = LightPalette();
-            var required = light.Keys.Where(key => key is not "ShadowColor" and not "ShadowColorSoft").ToList();
 
-            if (required.Count < 40)
-                AppLog.Info($"theme: 色板只有 {required.Count} 个键，可能不完整");
+            if (light.Count < 40)
+                AppLog.Info($"theme: 色板只有 {light.Count} 个键，可能不完整");
         }
         catch (Exception ex)
         {
             AppLog.Error(ex, "verify theme");
-        }
-    }
-
-    /// <summary>
-    /// 读 Windows 个性化里的主题色（DWM ColorizationColor），失败返回 null。
-    /// </summary>
-    public static Color? ReadSystemAccent()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\DWM");
-
-            if (key?.GetValue("ColorizationColor") is not int value) return null;
-
-            return Color.FromRgb(
-                (byte)((value >> 16) & 0xFF),
-                (byte)((value >> 8) & 0xFF),
-                (byte)(value & 0xFF));
-        }
-        catch
-        {
-            return null;
         }
     }
 
@@ -196,8 +251,8 @@ public static class ThemeService
 
         value = value.Length switch
         {
-            7 => "#FF" + value[1..],   // #RRGGBB
-            9 => value,                // #AARRGGBB
+            7 => "#FF" + value[1..],
+            9 => value,
             _ => string.Empty,
         };
 
@@ -239,11 +294,11 @@ public static class ThemeService
         ["InkSoft"] = Hex("#5C6F63"),
         ["InkMute"] = Hex("#86988C"),
         ["InkInverse"] = Hex("#F7FBF4"),
-        ["InkOnAccent"] = Hex("#27452F"),
+        ["InkOnAccent"] = Hex("#FFFFFF"),
 
-        ["Accent"] = Hex("#8FD8A8"),
+        ["Accent"] = Hex("#B8E9C6"),
         ["AccentDeep"] = Hex("#4E9E72"),
-        ["AccentWash"] = Hex("#B8E9C6"),
+        ["AccentWash"] = Hex("#C9EDD5"),
         ["AccentTint"] = Hex("#E6F2E8"),
         ["AccentTintDeep"] = Hex("#C9EDD5"),
         ["AccentTintSoft"] = Hex("#DCEFE0"),
@@ -297,46 +352,4 @@ public static class ThemeService
         ["ShadowTint"] = Hex("#1B2B22"),
         ["ShadowColorSoft"] = Hex("#2E4A38"),
     };
-
-    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
-
-    private static Color Blend(Color a, Color b, double amount)
-    {
-        amount = Math.Clamp(amount, 0, 1);
-
-        byte Mix(byte x, byte y) => (byte)Math.Clamp(Math.Round(x + (y - x) * amount), 0, 255);
-
-        return Color.FromArgb(Mix(a.A, b.A), Mix(a.R, b.R), Mix(a.G, b.G), Mix(a.B, b.B));
-    }
-
-    private static double Luminance(Color color)
-        => (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
-
-    /// <summary>设置页的主题种子色（Material 3 常用主色）。</summary>
-    public static readonly (string Name, string Hex)[] ThemeSeeds =
-    [
-        ("紫罗兰", "#FF6750A4"),
-        ("薄荷", "#FF2E9E6B"),
-        ("海蓝", "#FF00658B"),
-        ("青碧", "#FF006A6A"),
-        ("玫瑰", "#FF8C4A60"),
-        ("琥珀", "#FF7D5700"),
-        ("橄榄", "#FF4F6354"),
-        ("珊瑚", "#FFB3261E"),
-        ("靛蓝", "#FF4355B9"),
-        ("灰蓝", "#FF47617A"),
-    ];
-
-    /// <summary>给设置页用的推荐主色。</summary>
-    public static readonly (string Name, string Hex)[] AccentPresets =
-    [
-        ("薄荷", "#FF4E9E72"),
-        ("松林", "#FF3F8E8A"),
-        ("湖蓝", "#FF3F7FBF"),
-        ("靛蓝", "#FF5A5FCB"),
-        ("紫藤", "#FF8A63C9"),
-        ("玫瑰", "#FFC95F86"),
-        ("落日", "#FFD07A3C"),
-        ("琥珀", "#FFC9A227"),
-    ];
 }
