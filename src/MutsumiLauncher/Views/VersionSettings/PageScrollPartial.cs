@@ -30,7 +30,29 @@ public partial class ModManagePage
 {
     public void ScrollToTop()
     {
-        if (FindScrollViewer(ModList) is { } viewer) viewer.ScrollToTop();
+        Apply();
+
+        // 列表刚换过 ItemsSource 时，可视树可能还没重建完：布局完成后再补一次
+        Dispatcher.BeginInvoke(new Action(Apply),
+            System.Windows.Threading.DispatcherPriority.Loaded);
+
+        void Apply()
+        {
+            ModList.ApplyTemplate();
+
+            // 直接问模板要 PART_Scroll：比遍历可视树可靠，列表刚换数据时也不会扑空
+            if (ModList.Template?.FindName("PART_Scroll", ModList) is not ScrollViewer viewer)
+            {
+                Services.AppLog.Info("mods scroll top: PART_Scroll not found");
+                return;
+            }
+
+            var before = viewer.VerticalOffset;
+            viewer.ScrollToTop();
+            viewer.UpdateLayout();
+
+            Services.AppLog.Info($"mods scroll top: {before:0.#} -> {viewer.VerticalOffset:0.#}");
+        }
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject root)

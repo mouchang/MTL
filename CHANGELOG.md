@@ -3,6 +3,36 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.7] - 2026-11-14
+
+### 更新内容
+
+- 侧栏切换完成后加一个轻微回弹，作为「已切好」的反馈
+- 修复 Mod 更新完成后列表不回到顶部
+
+### 技术实现
+
+#### 1. 落定回弹
+
+滑动动画的 `Completed` 里给胶囊做一次 1 → 1.045 → 1 的缩放（220ms）。
+连点会叠加动画，所以用序号丢弃过期的回调：
+
+```csharp
+var sequence = ++_indicatorSequence;
+slide.Completed += (_, _) => { if (sequence == _indicatorSequence) PlayIndicatorSettle(); };
+```
+
+#### 2. 回顶失效
+
+原来靠遍历 `ModList` 的可视树找 `ScrollViewer`，列表刚换 `ItemsSource` 时可能还没建好，
+于是静默什么都不做。改成直接向模板要具名部件，并在布局完成后再补一次：
+
+```csharp
+ModList.ApplyTemplate();
+var viewer = ModList.Template?.FindName("PART_Scroll", ModList) as ScrollViewer;
+```
+
+同时记一行日志（`mods scroll top: 30 -> 0`），以后再失效可以直接从日志判断是没找到还是没生效。
 ## [1.1.4-beta.6] - 2026-11-14
 
 ### 更新内容

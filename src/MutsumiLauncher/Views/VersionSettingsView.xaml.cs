@@ -310,6 +310,9 @@ public partial class VersionSettingsView : UserControl
     /// 侧栏选中高亮：一块圆角块滑到当前板块，滑动途中轻微收窄再回弹。
     /// 位置按实际布局量（控件相对 NavPanel 的偏移），不写死行高。
     /// </summary>
+    // 连点时会叠加：用序号丢弃过期的 Completed 回调
+    private int _indicatorSequence;
+
     private void MoveNavIndicator(string key)
     {
         if (NavIndicator is null || NavPanel is null) return;
@@ -351,11 +354,20 @@ public partial class VersionSettingsView : UserControl
         var duration = TimeSpan.FromMilliseconds(380);
 
         // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
-        NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(y, duration)
-            {
-                EasingFunction = ease,
-            });
+        var sequence = ++_indicatorSequence;
+
+        var slide = new System.Windows.Media.Animation.DoubleAnimation(y, duration)
+        {
+            EasingFunction = ease,
+        };
+
+        // 落定后轻轻回弹一下，作为「切换完成」的反馈
+        slide.Completed += (_, _) =>
+        {
+            if (sequence == _indicatorSequence) PlayIndicatorSettle();
+        };
+
+        NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slide);
 
         // 首次出现直接亮起，之后保持常亮
         if (!_indicatorReady)
@@ -363,6 +375,37 @@ public partial class VersionSettingsView : UserControl
             NavIndicator.Opacity = 1;
             _indicatorReady = true;
         }
+    }
+
+    /// <summary>切换完成时的落定反馈：轻微放大再收回。</summary>
+    private void PlayIndicatorSettle()
+    {
+        if (NavIndicatorScale is null) return;
+
+        var settle = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromMilliseconds(220),
+        };
+
+        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0)));
+
+        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1.045,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0.45),
+            new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+            }));
+
+        settle.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
+            System.Windows.Media.Animation.KeyTime.FromPercent(1),
+            new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
+            }));
+
+        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, settle);
+        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, settle);
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
