@@ -34,44 +34,41 @@ public static class ThemeService
         var config = AppConfig.Current;
 
         Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light,
-            config.ThemeHue, config.ThemeSat, config.ThemeLight);
+            config.ThemeSeed, config.ThemeStyle);
     }
 
-    public static void SetTheme(AppTheme mode, int? hue = null, int? sat = null, int? light = null)
+    public static void SetTheme(AppTheme mode, string? seed = null, string? style = null)
     {
         var config = AppConfig.Current;
 
         config.ThemeMode = mode == AppTheme.Custom ? "custom" : "light";
 
-        if (hue is not null) config.ThemeHue = hue.Value;
-        if (sat is not null) config.ThemeSat = sat.Value;
-        if (light is not null) config.ThemeLight = light.Value;
+        if (!string.IsNullOrWhiteSpace(seed)) config.ThemeSeed = NormalizeHex(seed);
+        if (!string.IsNullOrWhiteSpace(style)) config.ThemeStyle = style;
 
         config.Save();
 
-        Apply(mode, config.ThemeHue, config.ThemeSat, config.ThemeLight);
+        Apply(mode, config.ThemeSeed, config.ThemeStyle);
     }
 
-    public static void Apply(AppTheme mode, int? hue = null, int? sat = null, int? light = null)
+    public static void Apply(AppTheme mode, string? seedHex = null, string? style = null)
     {
         Mode = mode;
-        Hue = Math.Clamp(hue ?? 200, 0, 360);
-        Sat = Math.Clamp(sat ?? 60, 0, 100);
-        Light = Math.Clamp(light ?? 62, 0, 100);
+        Seed = NormalizeHex(seedHex);
+        Style = MaterialTheme.StyleName(MaterialTheme.ParseStyle(style));
 
-        var colors = mode == AppTheme.Custom ? BuildCustom(Hue, Sat, Light) : LightPalette();
+        var colors = mode == AppTheme.Custom
+            ? MaterialTheme.Build(ParseColor(Seed), MaterialTheme.ParseStyle(Style), LightPalette())
+            : LightPalette();
 
         Install(BuildDictionary(colors));
     }
 
-    /// <summary>自定义主题：色相 0-360。</summary>
-    public static int Hue { get; private set; } = 200;
+    /// <summary>自定义主题的种子色。</summary>
+    public static string Seed { get; private set; } = DefaultAccent;
 
-    /// <summary>自定义主题：饱和度 0-100。</summary>
-    public static int Sat { get; private set; } = 60;
-
-    /// <summary>自定义主题：明度 0-100（决定窗口底色深浅）。</summary>
-    public static int Light { get; private set; } = 62;
+    /// <summary>自定义主题的配色风格（soft / balanced / vibrant / mono）。</summary>
+    public static string Style { get; private set; } = "balanced";
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
     private static void Install(ResourceDictionary theme)
@@ -278,133 +275,6 @@ public static class ThemeService
         ["ShadowColorSoft"] = Hex("#2E4A38"),
     };
 
-    /// <summary>
-    /// 自定义主题：按 PCL-CE 的思路用 HSL 生成整套色板——
-    /// 色相决定整体色系，饱和度决定鲜艳程度，明度决定窗口底色深浅（低明度自动转深色文字）。
-    /// </summary>
-    private static Dictionary<string, Color> BuildCustom(int hue, int sat, int light)
-    {
-        var colors = LightPalette();
-
-        var h = hue % 360 / 360.0;
-        var s = sat / 100.0;
-        var l = light / 100.0;
-        var dark = l < 0.52;
-
-        // 窗口底色：用用户选的明度，饱和度压低一点，避免刺眼
-        var bg = HslToRgb(h, s * 0.45, l);
-
-        // 主色：同色相，明度往反方向拉开，保证和背景有对比
-        var accentLight = HslToRgb(h, Math.Min(1, s * 1.15), dark ? 0.70 : 0.46);
-        var accentDeep = HslToRgb(h, Math.Min(1, s * 1.05), dark ? 0.55 : 0.36);
-
-        var contrast = dark ? Colors.White : Colors.Black;
-
-        colors["Accent"] = Blend(accentLight, contrast, 0.22);
-        colors["AccentDeep"] = accentDeep;
-        colors["AccentWash"] = Blend(accentLight, bg, 0.45);
-        colors["AccentTint"] = Blend(accentDeep, bg, 0.85);
-        colors["AccentTintDeep"] = Blend(accentDeep, bg, 0.70);
-        colors["AccentTintSoft"] = Blend(accentDeep, bg, 0.92);
-
-        colors["PrimaryFill"] = accentDeep;
-        colors["PrimaryFillHover"] = Blend(accentDeep, contrast, 0.12);
-        colors["InkOnAccent"] = dark ? Blend(accentLight, Colors.Black, 0.75) : Colors.White;
-
-        // 窗口 / 卡片：按底色分层
-        colors["WindowBase"] = bg;
-        colors["PaneBg"] = WithAlpha(bg, 0xF2);
-        colors["SurfacePanel"] = WithAlpha(Blend(bg, contrast, 0.06), 0xF2);
-        colors["SurfaceFloat"] = WithAlpha(Blend(bg, contrast, 0.10), 0xF7);
-        colors["SurfaceSolid"] = Blend(bg, contrast, 0.16);
-        colors["SidebarBg"] = WithAlpha(Blend(bg, contrast, 0.08), dark ? (byte)0x40 : (byte)0x66);
-        colors["AvatarCard"] = WithAlpha(Blend(bg, contrast, 0.12), 0x73);
-        colors["PillBg"] = WithAlpha(Blend(bg, contrast, 0.10), 0x80);
-
-        // 卡片更实一点：半透明叠在背景图上会显得发灰
-        colors["Glass"] = WithAlpha(Blend(bg, contrast, 0.08), 0xB8);
-        colors["GlassMedium"] = WithAlpha(Blend(bg, contrast, 0.12), 0xD2);
-        colors["GlassStrong"] = WithAlpha(Blend(bg, contrast, 0.16), 0xEC);
-        colors["GlassHover"] = WithAlpha(Blend(bg, contrast, 0.14), 0xE0);
-        colors["GlassHoverSoft"] = WithAlpha(Blend(bg, contrast, 0.06), 0xB8);
-
-        // 背景图压到几乎没有，只留一点点纹理
-        colors["BackdropVeil"] = WithAlpha(bg, dark ? (byte)0xF7 : (byte)0xF2);
-
-        // 描边 / 分隔线：深色底用白，浅色底用黑
-        colors["GlassStroke"] = WithAlpha(contrast, 0x33);
-        colors["RingStroke"] = WithAlpha(contrast, 0x59);
-        colors["CardBorder"] = WithAlpha(contrast, 0x2A);
-        colors["PanelBorderSoft"] = WithAlpha(contrast, 0x1F);
-        colors["WindowBorder"] = WithAlpha(contrast, 0x2B);
-        colors["Divider"] = WithAlpha(contrast, 0x1F);
-        colors["HoverWash"] = WithAlpha(contrast, 0x1A);
-
-        if (dark)
-        {
-            colors["Ink"] = HslToRgb(h, 0.06, 0.92);
-            colors["InkStrong"] = HslToRgb(h, 0.04, 0.97);
-            colors["InkMax"] = Colors.White;
-            colors["InkSoft"] = HslToRgb(h, 0.08, 0.72);
-            colors["InkMute"] = HslToRgb(h, 0.08, 0.55);
-            colors["InkInverse"] = HslToRgb(h, 0.10, 0.10);
-            colors["ToastBg"] = WithAlpha(Blend(bg, Colors.White, 0.10), 0xF0);
-            colors["ModalScrim"] = WithAlpha(Colors.Black, 0x99);
-        }
-        else
-        {
-            colors["Ink"] = HslToRgb(h, 0.20, 0.18);
-            colors["InkStrong"] = HslToRgb(h, 0.24, 0.12);
-            colors["InkMax"] = HslToRgb(h, 0.28, 0.08);
-            colors["InkSoft"] = HslToRgb(h, 0.12, 0.36);
-            colors["InkMute"] = HslToRgb(h, 0.10, 0.52);
-            colors["InkInverse"] = HslToRgb(h, 0.05, 0.97);
-        }
-
-        // 阴影
-        colors["ShadowColor"] = Blend(bg, Colors.Black, dark ? 0.55 : 0.75);
-        colors["ShadowColorSoft"] = Blend(bg, Colors.Black, dark ? 0.35 : 0.55);
-        colors["ShadowTint"] = Blend(bg, Colors.Black, dark ? 0.55 : 0.75);
-
-        return colors;
-    }
-
-    /// <summary>供设置页画色相渐变用：HSL → RGB。</summary>
-    public static Color HslToColor(int hue, double sat, double light)
-        => HslToRgb(hue / 360.0, sat, light);
-
-    /// <summary>HSL → RGB（h/s/l 均为 0-1）。</summary>
-    private static Color HslToRgb(double h, double s, double l)
-    {
-        h = (h % 1 + 1) % 1;
-        s = Math.Clamp(s, 0, 1);
-        l = Math.Clamp(l, 0, 1);
-
-        if (s <= 0.0001)
-        {
-            var v = (byte)Math.Round(l * 255);
-            return Color.FromRgb(v, v, v);
-        }
-
-        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        var p = 2 * l - q;
-
-        static double HueToRgb(double p, double q, double t)
-        {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1.0 / 6) return p + (q - p) * 6 * t;
-            if (t < 1.0 / 2) return q;
-            if (t < 2.0 / 3) return p + (q - p) * (2.0 / 3 - t) * 6;
-            return p;
-        }
-
-        return Color.FromRgb(
-            (byte)Math.Round(HueToRgb(p, q, h + 1.0 / 3) * 255),
-            (byte)Math.Round(HueToRgb(p, q, h) * 255),
-            (byte)Math.Round(HueToRgb(p, q, h - 1.0 / 3) * 255));
-    }
-
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
 
     private static Color Blend(Color a, Color b, double amount)
@@ -419,15 +289,19 @@ public static class ThemeService
     private static double Luminance(Color color)
         => (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
 
-    /// <summary>设置页的主题预设（色相 / 饱和度 / 明度）。</summary>
-    public static readonly (string Name, int Hue, int Sat, int Light)[] ThemePresets =
+    /// <summary>设置页的主题种子色（Material 3 常用主色）。</summary>
+    public static readonly (string Name, string Hex)[] ThemeSeeds =
     [
-        ("猫蓝", 200, 60, 22),
-        ("天蓝", 205, 70, 62),
-        ("青蓝", 185, 55, 45),
-        ("樱粉", 330, 45, 72),
-        ("琥珀", 35, 70, 60),
-        ("石墨", 210, 10, 30),
+        ("紫罗兰", "#FF6750A4"),
+        ("薄荷", "#FF2E9E6B"),
+        ("海蓝", "#FF00658B"),
+        ("青碧", "#FF006A6A"),
+        ("玫瑰", "#FF8C4A60"),
+        ("琥珀", "#FF7D5700"),
+        ("橄榄", "#FF4F6354"),
+        ("珊瑚", "#FFB3261E"),
+        ("靛蓝", "#FF4355B9"),
+        ("灰蓝", "#FF47617A"),
     ];
 
     /// <summary>给设置页用的推荐主色。</summary>

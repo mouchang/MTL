@@ -3,6 +3,30 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.25] - 2026-11-14
+
+### 更新内容
+
+- 主题参考 FlClash 改成「种子色 + 配色风格」：10 个预设色、任意色值、柔和/平衡/鲜艳/单色
+
+### 技术实现
+
+新增 `Services/MaterialTheme.cs`：把一个种子色展开成一组色调（tone 0-100），
+再映射到启动器的画刷，等价于 Material 3 的 `seededColorScheme`：
+
+```csharp
+var (hue, _, _) = ToHsl(seed);
+Color Tone(double chroma, int tone) => FromHsl(hue, chroma, tone / 100.0);
+colors["AccentDeep"]  = Tone(primaryChroma, 40);
+colors["AccentWash"]  = Tone(primaryChroma, 84);
+colors["WindowBase"]  = Tone(neutralChroma, 98);
+colors["Ink"]         = Tone(neutralChroma, 12);
+```
+
+四种风格只改彩度：柔和 0.30 / 平衡 0.45 / 鲜艳 0.62 / 单色 0.05，中性色同步收缩。
+这样同一颗种子色在不同风格下，主色深浅和界面冷暖都是成套的，不再出现「彩色按钮配灰底」。
+
+按 FlClash 的取向，只取颜色部分——液态玻璃、模糊、动画等一概不引入。
 ## [1.1.4-beta.24] - 2026-11-14
 
 ### 更新内容

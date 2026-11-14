@@ -241,12 +241,11 @@ public partial class SettingsPage : UserControl
         ThemeLightRadio.IsChecked = mode == AppTheme.Light;
         ThemeCustomRadio.IsChecked = mode == AppTheme.Custom;
 
-        HueSlider.Value = Math.Clamp(config.ThemeHue, 0, 360);
-        SatSlider.Value = Math.Clamp(config.ThemeSat, 0, 100);
-        LightSlider.Value = Math.Clamp(config.ThemeLight, 0, 100);
+        SeedHexBox.Text = ThemeService.NormalizeHex(config.ThemeSeed);
+        SeedHint.Text = mode == AppTheme.Custom ? "已应用" : "选个颜色会切到自定义";
 
-        BuildPresetChips();
-        UpdateHslLabels();
+        BuildThemeOptions();
+        SyncStyleSelection(ThemeService.Style);
 
         ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
 
@@ -268,8 +267,8 @@ public partial class SettingsPage : UserControl
 
         if (custom)
         {
-            ThemeService.SetTheme(AppTheme.Custom, (int)HueSlider.Value, (int)SatSlider.Value,
-                (int)LightSlider.Value);
+            ThemeService.SetTheme(AppTheme.Custom, SeedHexBox.Text, ThemeService.Style);
+            SeedHint.Text = "已应用";
         }
         else
         {
@@ -277,109 +276,106 @@ public partial class SettingsPage : UserControl
         }
     }
 
-    /// <summary>三个 HSL 滑块的公共处理：拖动时即时套用。</summary>
-    private void HslSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    /// <summary>主题色预设 + 风格选项（代码生成，省得 XAML 重复）。</summary>
+    private void BuildThemeOptions()
     {
-        if (ThemeCustomPanel is null) return;
+        if (SeedPanel.Children.Count == 0)
+        {
+            foreach (var (name, hex) in ThemeService.ThemeSeeds)
+            {
+                var swatch = new Button
+                {
+                    Width = 36,
+                    Height = 36,
+                    Margin = new Thickness(0, 0, 8, 8),
+                    ToolTip = name,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Background = new SolidColorBrush(ThemeService.ParseColor(hex)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)),
+                    BorderThickness = new Thickness(1),
+                };
 
-        UpdateHslLabels();
+                swatch.Click += (_, _) =>
+                {
+                    SeedHexBox.Text = hex;
+                    ApplySeed(hex);
+                };
 
-        if (_themeLoading) return;
+                SeedPanel.Children.Add(swatch);
+            }
+        }
 
+        if (StylePanel.Children.Count == 0)
+        {
+            AddStyleChip("柔和", "soft");
+            AddStyleChip("平衡", "balanced");
+            AddStyleChip("鲜艳", "vibrant");
+            AddStyleChip("单色", "mono");
+        }
+    }
+
+    private void AddStyleChip(string label, string value)
+    {
+        var chip = new RadioButton
+        {
+            Style = (Style)FindResource("SegmentItem"),
+            GroupName = "ThemeStyle",
+            Content = label,
+            Margin = new Thickness(0, 0, 8, 8),
+            Tag = value,
+        };
+
+        chip.Checked += (_, _) =>
+        {
+            if (_themeLoading) return;
+
+            ThemeCustomRadio.IsChecked = true;
+            ThemeCustomPanel.Visibility = Visibility.Visible;
+            ThemeService.SetTheme(AppTheme.Custom, SeedHexBox.Text, value);
+            SeedHint.Text = "已应用";
+        };
+
+        StylePanel.Children.Add(chip);
+    }
+
+    private void SyncStyleSelection(string style)
+    {
+        var loading = _themeLoading;
+        _themeLoading = true;
+
+        foreach (var child in StylePanel.Children)
+            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == style;
+
+        _themeLoading = loading;
+    }
+
+    private void ApplySeed_Click(object sender, RoutedEventArgs e) => ApplySeed(SeedHexBox.Text);
+
+    private void ApplySeed(string? hex)
+    {
+        var normalized = ThemeService.NormalizeHex(hex);
+        SeedHexBox.Text = normalized;
+
+        _themeLoading = true;
         ThemeCustomRadio.IsChecked = true;
         ThemeCustomPanel.Visibility = Visibility.Visible;
+        _themeLoading = false;
 
-        ThemeService.SetTheme(AppTheme.Custom, (int)HueSlider.Value, (int)SatSlider.Value,
-            (int)LightSlider.Value);
-    }
-
-    private void UpdateHslLabels()
-    {
-        HueValueText.Text = ((int)HueSlider.Value).ToString();
-        SatValueText.Text = ((int)SatSlider.Value).ToString() + "%";
-        LightValueText.Text = ((int)LightSlider.Value).ToString() + "%";
-
-        // 滑块左端画一段当前色相的渐变，方便直接看出取值范围
-        HuePreview.Background = new LinearGradientBrush(
-            new GradientStopCollection
-            {
-                new GradientStop(HslBrush(0), 0.0),
-                new GradientStop(HslBrush(30), 0.08),
-                new GradientStop(HslBrush(60), 0.17),
-                new GradientStop(HslBrush(120), 0.33),
-                new GradientStop(HslBrush(180), 0.5),
-                new GradientStop(HslBrush(240), 0.66),
-                new GradientStop(HslBrush(300), 0.83),
-                new GradientStop(HslBrush(360), 1.0),
-            }, 0);
-    }
-
-    private static Color HslBrush(int hue)
-        => ThemeService.HslToColor(hue, 0.7, 0.55);
-
-    /// <summary>预设：点一下把三个滑块带过去。</summary>
-    private void BuildPresetChips()
-    {
-        if (PresetPanel.Children.Count > 0) return;
-
-        foreach (var (name, hue, sat, light) in ThemeService.ThemePresets)
-        {
-            var dot = new Border
-            {
-                Width = 12,
-                Height = 12,
-                CornerRadius = new CornerRadius(6),
-                Background = new SolidColorBrush(ThemeService.HslToColor(hue, sat / 100.0, light / 100.0)),
-                Margin = new Thickness(0, 0, 8, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-
-            var content = new StackPanel { Orientation = Orientation.Horizontal };
-            content.Children.Add(dot);
-            content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
-
-            var chip = new Button
-            {
-                Style = (Style)FindResource("GhostButton"),
-                Content = content,
-                Height = 32,
-                Padding = new Thickness(12, 0, 12, 0),
-                Margin = new Thickness(0, 0, 8, 8),
-                Cursor = System.Windows.Input.Cursors.Hand,
-            };
-
-            chip.Click += (_, _) =>
-            {
-                _themeLoading = true;
-                HueSlider.Value = hue;
-                SatSlider.Value = sat;
-                LightSlider.Value = light;
-                _themeLoading = false;
-
-                UpdateHslLabels();
-                ThemeCustomRadio.IsChecked = true;
-                ThemeCustomPanel.Visibility = Visibility.Visible;
-                ThemeService.SetTheme(AppTheme.Custom, hue, sat, light);
-            };
-
-            PresetPanel.Children.Add(chip);
-        }
+        ThemeService.SetTheme(AppTheme.Custom, normalized, ThemeService.Style);
+        SeedHint.Text = "已应用";
     }
 
     private void ResetTheme_Click(object sender, RoutedEventArgs e)
     {
         _themeLoading = true;
-
-        HueSlider.Value = 200;
-        SatSlider.Value = 60;
-        LightSlider.Value = 62;
-
+        SeedHexBox.Text = ThemeService.DefaultAccent;
         _themeLoading = false;
 
-        UpdateHslLabels();
+        SyncStyleSelection("balanced");
 
         ThemeLightRadio.IsChecked = true;
-        ThemeService.SetTheme(AppTheme.Light);
+        ThemeService.SetTheme(AppTheme.Light, ThemeService.DefaultAccent, "balanced");
+        SeedHint.Text = "已恢复默认";
     }
 
     // ==================== 版本隔离 ====================
