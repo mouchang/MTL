@@ -3,6 +3,24 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.16] - 2026-11-14
+
+### 更新内容
+
+- 设置页的两组分段按钮（内存模式、外观主题）加入滑动高亮
+- 下载页「正在搜索」的蒙层改成圆角，不再露出直角
+- 修复设置页首次打开时导航高亮不出现
+
+### 技术实现
+
+分段控件新增 `SegmentItemOverlay` 样式（不画选中底色），高亮由独立 `Border` 承担，
+复用 `SlidingHighlight`，位置与宽度按实际布局量。
+
+首次不出现的原因是 `Loaded` 时控件还没参与布局，`ActualWidth` 为 0——
+`SlidingHighlight` 现在对 `animate: false` 也允许重试一次。
+
+`LoadingOverlay` 原来直接把 `SidebarBg` 铺在 `UserControl` 上（矩形），
+改为内部 `Border CornerRadius="18"`。
 ## [1.1.4-beta.15] - 2026-11-14
 
 ### 更新内容

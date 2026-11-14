@@ -16,16 +16,17 @@ public static class SlidingHighlight
 {
     /// <summary>把高亮块移到目标控件的位置，并让它和目标同高同宽。</summary>
     public static void Move(Border indicator, FrameworkElement target, FrameworkElement container,
-        bool animate, double heightInset = 0)
+        bool animate, double heightInset = 0, bool allowRetry = true)
     {
         if (!target.IsArrangeValid || target.ActualWidth <= 0)
         {
-            // 布局还没完成：只重试一次，避免无效目标导致死循环
-            if (!animate) return;
+            // 布局还没完成：等一轮再放（只重试一次，避免无效目标导致死循环）
+            if (!allowRetry) return;
 
             container.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (target.ActualWidth > 0) Move(indicator, target, container, false, heightInset);
+                if (target.ActualWidth > 0)
+                    Move(indicator, target, container, false, heightInset, allowRetry: false);
             }), System.Windows.Threading.DispatcherPriority.Loaded);
 
             return;

@@ -32,6 +32,20 @@ public partial class SettingsPage : UserControl
         // 首次显示时把高亮直接放到当前分类（XAML 加载阶段布局还没算好）
         Loaded += (_, _) =>
         {
+            if (MemoryAutoRadio is { IsChecked: true } memoryAuto)
+                Controls.SlidingHighlight.Move(MemoryIndicator, memoryAuto, MemorySegmentHost, animate: false);
+            else if (MemoryManualRadio.IsChecked == true)
+                Controls.SlidingHighlight.Move(MemoryIndicator, MemoryManualRadio, MemorySegmentHost, animate: false);
+
+            foreach (var themeRadio in new[] { ThemeLightRadio, ThemeDarkRadio, ThemeCustomRadio })
+            {
+                if (themeRadio.IsChecked == true)
+                {
+                    Controls.SlidingHighlight.Move(ThemeIndicator, themeRadio, ThemeSegmentHost, animate: false);
+                    break;
+                }
+            }
+
             foreach (var child in NavPanel.Children)
             {
                 if (child is RadioButton { IsChecked: true } radio)
@@ -157,6 +171,11 @@ public partial class SettingsPage : UserControl
 
     private void MemoryMode_Checked(object sender, RoutedEventArgs e)
     {
+        if (sender is RadioButton memoryRadio && MemoryIndicator is not null && MemorySegmentHost is not null)
+        {
+            Controls.SlidingHighlight.Move(MemoryIndicator, memoryRadio, MemorySegmentHost, animate: true);
+        }
+
         if (_memoryLoading || MemorySlider is null) return;
 
         var manual = MemoryManualRadio.IsChecked == true;
@@ -243,6 +262,11 @@ public partial class SettingsPage : UserControl
 
     private void ThemeMode_Checked(object sender, RoutedEventArgs e)
     {
+        if (sender is RadioButton themeRadio && ThemeIndicator is not null && ThemeSegmentHost is not null)
+        {
+            Controls.SlidingHighlight.Move(ThemeIndicator, themeRadio, ThemeSegmentHost, animate: true);
+        }
+
         if (_themeLoading || ThemeCustomPanel is null) return;
 
         var mode = ThemeDarkRadio.IsChecked == true ? AppTheme.Dark
