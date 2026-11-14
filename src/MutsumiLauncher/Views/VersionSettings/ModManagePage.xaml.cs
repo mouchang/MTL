@@ -24,6 +24,9 @@ public partial class ModManagePage : UserControl, IInstancePage
     /// <summary>更新进行中：此时不再让监听器插进来刷新，避免打断选中状态。</summary>
     private bool _updating;
 
+    /// <summary>下次重建列表后回到第 1 行（更新完成时置位）。</summary>
+    private bool _scrollTopPending;
+
     public ModManagePage()
     {
         InitializeComponent();
@@ -652,8 +655,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             _updating = false;
 
             // 单条更新后也回到顶部，和批量保持一致
+            _scrollTopPending = true;
             Refresh();
-            ScrollToTop();
         }
     }
 
@@ -686,8 +689,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             ? $"已更新全部 {done} 个 Mod。"
             : $"更新完成 {done}/{targets.Count}，其余失败（详见日志）。");
 
+        _scrollTopPending = true;
         Refresh();
-        ScrollToTop();
     }
 
     /// <summary>批量更新：在下载面板里显示总体进度（第几个 / 百分比）。</summary>
@@ -979,8 +982,8 @@ public partial class ModManagePage : UserControl, IInstancePage
             SelectUpdateButton.IsEnabled = true;
         }
 
+        _scrollTopPending = true;
         Refresh();
-        ScrollToTop();
     }
 
     private void BatchDelete_Click(object sender, RoutedEventArgs e)
@@ -1081,6 +1084,13 @@ public partial class ModManagePage : UserControl, IInstancePage
         ModList.ItemsSource = list;
         _ = LoadMetadataAsync(list);
         _ = LoadIconsAsync(list);
+
+        // 更新完成后回到第 1 行：在这里做，列表数据是刚换上的，一定滚得动
+        if (_scrollTopPending)
+        {
+            _scrollTopPending = false;
+            ScrollToTop();
+        }
         EmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Text = _items.Count == 0
             ? "这个实例还没有安装 Mod。"

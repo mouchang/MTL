@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace MutsumiLauncher.Views.VersionSettings;
 
@@ -28,45 +27,23 @@ public partial class SavesPage
 
 public partial class ModManagePage
 {
+    /// <summary>
+    /// 回到第 1 行。列表的模板里那个 ScrollViewer 名叫 PART_Scroll，
+    /// 直接拿它滚到顶即可；首行已经实例化时用 BringIntoView 更稳。
+    /// </summary>
     public void ScrollToTop()
     {
-        Apply();
-
-        // 列表刚换过 ItemsSource 时，可视树可能还没重建完：布局完成后再补一次
-        Dispatcher.BeginInvoke(new Action(Apply),
-            System.Windows.Threading.DispatcherPriority.Loaded);
-
-        void Apply()
+        if (ModList.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement first)
         {
-            ModList.ApplyTemplate();
+            first.BringIntoView();
+            return;
+        }
 
-            // 直接问模板要 PART_Scroll：比遍历可视树可靠，列表刚换数据时也不会扑空
-            if (ModList.Template?.FindName("PART_Scroll", ModList) is not ScrollViewer viewer)
-            {
-                Services.AppLog.Info("mods scroll top: PART_Scroll not found");
-                return;
-            }
+        ModList.ApplyTemplate();
 
-            var before = viewer.VerticalOffset;
+        if (ModList.Template?.FindName("PART_Scroll", ModList) is ScrollViewer viewer)
+        {
             viewer.ScrollToTop();
-            viewer.UpdateLayout();
-
-            Services.AppLog.Info($"mods scroll top: {before:0.#} -> {viewer.VerticalOffset:0.#}");
         }
-    }
-
-    private static ScrollViewer? FindScrollViewer(DependencyObject root)
-    {
-        if (root is ScrollViewer viewer) return viewer;
-
-        var count = VisualTreeHelper.GetChildrenCount(root);
-
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (FindScrollViewer(child) is { } found) return found;
-        }
-
-        return null;
     }
 }

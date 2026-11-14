@@ -3,6 +3,24 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.8] - 2026-11-14
+
+### 更新内容
+
+- 更新完成后回到第 1 行：改成在列表数据换上之后再滚，不再依赖时机
+
+### 技术实现
+
+之前的做法是更新完立刻 `Refresh(); ScrollToTop();`，滚动可能发生在列表重建之前。
+现在只置一个标记，由 `ApplyFilter` 在换完 `ItemsSource` 后执行：
+
+```csharp
+ModList.ItemsSource = list;
+…
+if (_scrollTopPending) { _scrollTopPending = false; ScrollToTop(); }
+```
+
+`ScrollToTop` 也简化成「让第一行进入视野」，容器未实例化时退回 `PART_Scroll` 滚到顶。
 ## [1.1.4-beta.7] - 2026-11-14
 
 ### 更新内容
