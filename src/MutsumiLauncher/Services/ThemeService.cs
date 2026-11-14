@@ -34,30 +34,56 @@ public static class ThemeService
         var config = AppConfig.Current;
 
         // 旧配置里的 "dark" 不再有对应主题，按明亮处理
-        Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light, config.ThemeAccent);
+        Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light,
+            config.ThemeAccent, config.ThemeTone, config.ThemeStrength);
     }
 
-    public static void SetTheme(AppTheme mode, string? accent = null)
+    public static void SetTheme(AppTheme mode, string? accent = null, string? tone = null, string? strength = null)
     {
         var config = AppConfig.Current;
 
         config.ThemeMode = mode == AppTheme.Custom ? "custom" : "light";
 
         if (!string.IsNullOrWhiteSpace(accent)) config.ThemeAccent = accent;
+        if (!string.IsNullOrWhiteSpace(tone)) config.ThemeTone = tone;
+        if (!string.IsNullOrWhiteSpace(strength)) config.ThemeStrength = strength;
+
         config.Save();
 
-        Apply(mode, config.ThemeAccent);
+        Apply(mode, config.ThemeAccent, config.ThemeTone, config.ThemeStrength);
     }
 
-    public static void Apply(AppTheme mode, string? accentHex)
+    public static void Apply(AppTheme mode, string? accentHex, string? tone = null, string? strength = null)
     {
         Mode = mode;
         Accent = NormalizeHex(accentHex);
+        Tone = NormalizeTone(tone);
+        Strength = NormalizeStrength(strength);
 
-        var colors = mode == AppTheme.Custom ? BuildCustom(Accent) : LightPalette();
+        var colors = mode == AppTheme.Custom
+            ? BuildCustom(Accent, Tone, Strength)
+            : LightPalette();
 
         Install(BuildDictionary(colors));
     }
+
+    /// <summary>当前自定义色调（neutral / cool / warm / green）。</summary>
+    public static string Tone { get; private set; } = "green";
+
+    /// <summary>当前着色浓度（soft / normal / strong）。</summary>
+    public static string Strength { get; private set; } = "normal";
+
+    public static string NormalizeTone(string? tone) => tone switch
+    {
+        "neutral" or "cool" or "warm" or "green" => tone,
+        _ => "green",
+    };
+
+    public static string NormalizeStrength(string? strength) => strength switch
+    {
+        "soft" or "strong" => strength,
+        _ => "normal",
+    };
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
     private static void Install(ResourceDictionary theme)
@@ -264,58 +290,82 @@ public static class ThemeService
         ["ShadowColorSoft"] = Hex("#2E4A38"),
     };
 
-    /// <summary>自定义：以主色为基调重算整套色板（不只换按钮颜色）。</summary>
-    private static Dictionary<string, Color> BuildCustom(string accentHex)
+    /// <summary>
+    /// 自定义主题：主色 + 色调 + 浓度，重算整套色板。
+    /// 主色决定按钮/高亮，色调决定窗口卡片的冷暖，浓度决定着色轻重。
+    /// </summary>
+    private static Dictionary<string, Color> BuildCustom(string accentHex, string toneName, string strength)
     {
         var colors = LightPalette();
         var accent = ParseColor(accentHex);
 
-        // 主色在浅底上太亮就看不清，压暗一点
+        // 主色在浅底上太亮会看不清，压暗一点
         if (Luminance(accent) > 0.72) accent = Blend(accent, Colors.Black, 0.35);
 
-        var accentDeep = accent;
-        var accentLight = Blend(accent, Colors.White, 0.42);
-        var wash = Blend(accent, Colors.White, 0.28);
-        var tint = Blend(accent, Colors.White, 0.86);
-        var tintDeep = Blend(accent, Colors.White, 0.68);
-        var tintSoft = Blend(accent, Colors.White, 0.93);
+        var tone = ToneColor(accent, toneName);
+        var k = StrengthFactor(strength);
 
-        colors["Accent"] = accentLight;
-        colors["AccentDeep"] = accentDeep;
-        colors["AccentWash"] = wash;
-        colors["AccentTint"] = tint;
-        colors["AccentTintDeep"] = tintDeep;
-        colors["AccentTintSoft"] = tintSoft;
+        // 主色系
+        colors["Accent"] = Blend(accent, Colors.White, 0.42);
+        colors["AccentDeep"] = accent;
+        colors["AccentWash"] = Blend(accent, Colors.White, 0.28);
+        colors["AccentTint"] = Blend(accent, Colors.White, 0.86);
+        colors["AccentTintDeep"] = Blend(accent, Colors.White, 0.68);
+        colors["AccentTintSoft"] = Blend(accent, Colors.White, 0.93);
 
-        // 主色上的文字 / 按钮
         colors["InkOnAccent"] = Blend(accent, Colors.Black, 0.62);
         colors["PrimaryFill"] = Blend(accent, Colors.Black, 0.16);
         colors["PrimaryFillHover"] = Blend(accent, Colors.Black, 0.26);
 
-        // 窗口、卡片、侧栏都往主色调一点点，避免「绿按钮 + 灰界面」的割裂
-        colors["WindowBase"] = Blend(colors["WindowBase"], accent, 0.06);
-        colors["PaneBg"] = Blend(WithAlpha(colors["PaneBg"], 0xF2), accent, 0.05);
-        colors["SurfacePanel"] = Blend(WithAlpha(colors["SurfacePanel"], 0xF2), accent, 0.04);
-        colors["SurfaceFloat"] = Blend(WithAlpha(colors["SurfaceFloat"], 0xF7), accent, 0.03);
-        colors["SurfaceSolid"] = Colors.White;
-        colors["SidebarBg"] = Blend(WithAlpha(colors["SidebarBg"], 0x4D), accent, 0.12);
-        colors["Glass"] = Blend(WithAlpha(colors["Glass"], 0x66), accent, 0.10);
-        colors["GlassMedium"] = Blend(WithAlpha(colors["GlassMedium"], 0x8C), accent, 0.08);
-        colors["GlassStrong"] = Blend(WithAlpha(colors["GlassStrong"], 0xB8), accent, 0.06);
-        colors["GlassHover"] = Blend(WithAlpha(colors["GlassHover"], 0xA6), accent, 0.10);
-        colors["GlassHoverSoft"] = Blend(WithAlpha(colors["GlassHoverSoft"], 0x55), accent, 0.10);
-        colors["GlassStroke"] = Blend(WithAlpha(colors["GlassStroke"], 0x78), accent, 0.25);
-        colors["RingStroke"] = Blend(WithAlpha(colors["RingStroke"], 0x99), accent, 0.35);
-        colors["CardBorder"] = Blend(WithAlpha(colors["CardBorder"], 0x88), accent, 0.18);
-        colors["PanelBorderSoft"] = Blend(WithAlpha(colors["PanelBorderSoft"], 0x70), accent, 0.18);
-        colors["WindowBorder"] = Blend(WithAlpha(colors["WindowBorder"], 0x85), accent, 0.18);
-        colors["BackdropVeil"] = Blend(WithAlpha(colors["BackdropVeil"], 0x40), accent, 0.10);
-        colors["ShadowColor"] = Blend(accent, Colors.Black, 0.72);
-        colors["ShadowColorSoft"] = Blend(accent, Colors.Black, 0.55);
-        colors["ShadowTint"] = Blend(accent, Colors.Black, 0.72);
+        // 窗口 / 卡片 / 侧栏：按色调和浓度微微着色，避免「彩色按钮 + 灰界面」
+        colors["WindowBase"] = Tint(colors["WindowBase"], tone, 0.10 * k);
+        colors["PaneBg"] = Tint(colors["PaneBg"], tone, 0.08 * k);
+        colors["SurfacePanel"] = Tint(colors["SurfacePanel"], tone, 0.05 * k);
+        colors["SurfaceFloat"] = Tint(colors["SurfaceFloat"], tone, 0.04 * k);
+        colors["SidebarBg"] = Tint(colors["SidebarBg"], tone, 0.20 * k);
+        colors["AvatarCard"] = Tint(colors["AvatarCard"], tone, 0.10 * k);
+        colors["PillBg"] = Tint(colors["PillBg"], tone, 0.10 * k);
+
+        colors["Glass"] = Tint(colors["Glass"], tone, 0.16 * k);
+        colors["GlassMedium"] = Tint(colors["GlassMedium"], tone, 0.14 * k);
+        colors["GlassStrong"] = Tint(colors["GlassStrong"], tone, 0.10 * k);
+        colors["GlassHover"] = Tint(colors["GlassHover"], tone, 0.16 * k);
+        colors["GlassHoverSoft"] = Tint(colors["GlassHoverSoft"], tone, 0.16 * k);
+
+        colors["GlassStroke"] = Tint(colors["GlassStroke"], tone, 0.35 * k);
+        colors["RingStroke"] = Tint(colors["RingStroke"], tone, 0.45 * k);
+        colors["CardBorder"] = Tint(colors["CardBorder"], tone, 0.30 * k);
+        colors["PanelBorderSoft"] = Tint(colors["PanelBorderSoft"], tone, 0.30 * k);
+        colors["WindowBorder"] = Tint(colors["WindowBorder"], tone, 0.30 * k);
+        colors["BackdropVeil"] = Tint(colors["BackdropVeil"], tone, 0.20 * k);
+        colors["HoverWash"] = Tint(colors["HoverWash"], tone, 0.25 * k);
+
+        colors["ShadowColor"] = Blend(tone, Colors.Black, 0.72);
+        colors["ShadowColorSoft"] = Blend(tone, Colors.Black, 0.55);
+        colors["ShadowTint"] = Blend(tone, Colors.Black, 0.72);
 
         return colors;
     }
+
+    /// <summary>按色调给颜色上色，保留原有透明度。</summary>
+    private static Color Tint(Color color, Color tone, double amount)
+        => Color.FromArgb(color.A, Blend(color, tone, amount).R,
+            Blend(color, tone, amount).G, Blend(color, tone, amount).B);
+
+    private static Color ToneColor(Color accent, string tone) => tone switch
+    {
+        "cool" => Blend(accent, Color.FromRgb(0x5B, 0x8C, 0xBF), 0.60),
+        "warm" => Blend(accent, Color.FromRgb(0xD9, 0x8A, 0x4E), 0.60),
+        "neutral" => Blend(accent, Color.FromRgb(0x8C, 0x93, 0x99), 0.75),
+        _ => accent,
+    };
+
+    private static double StrengthFactor(string strength) => strength switch
+    {
+        "soft" => 0.45,
+        "strong" => 1.9,
+        _ => 1.0,
+    };
 
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
 
@@ -330,6 +380,17 @@ public static class ThemeService
 
     private static double Luminance(Color color)
         => (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
+
+    /// <summary>设置页的主题预设：一组「主色 + 色调」。</summary>
+    public static readonly (string Name, string Accent, string Tone)[] ThemePresets =
+    [
+        ("薄荷", "#FF4E9E72", "green"),
+        ("海蓝", "#FF3F7FBF", "cool"),
+        ("暖橙", "#FFC97A33", "warm"),
+        ("玫瑰", "#FFC95F86", "warm"),
+        ("紫罗兰", "#FF7A63C9", "cool"),
+        ("石墨", "#FF5A6570", "neutral"),
+    ];
 
     /// <summary>给设置页用的推荐主色。</summary>
     public static readonly (string Name, string Hex)[] AccentPresets =

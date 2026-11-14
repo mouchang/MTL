@@ -3,6 +3,27 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.22] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题面板重做：预设、主色、界面色调、着色浓度、恢复默认
+- 自定义主题从「只换主色」升级为「主色 + 色调 + 浓度」三维调节
+
+### 技术实现
+
+新增 `ThemeTone`（green / cool / warm / neutral）与 `ThemeStrength`（soft / normal / strong）两项配置，
+`BuildCustom` 据此推导整套色板：
+
+```csharp
+var tone = ToneColor(accent, toneName);      // 冷暖倾向
+var k = StrengthFactor(strength);            // 0.45 / 1.0 / 1.9
+colors["WindowBase"] = Tint(base, tone, 0.10 * k);
+colors["SidebarBg"]  = Tint(base, tone, 0.20 * k);
+```
+
+面板里的预设 / 色调 / 浓度都是代码生成的单选组（避免 XAML 重复），
+切换时直接落到 `ThemeService.SetTheme`，配置持久化后下次启动复原。
 ## [1.1.4-beta.21] - 2026-11-14
 
 ### 更新内容

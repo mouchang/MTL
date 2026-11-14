@@ -83,6 +83,12 @@ public sealed class AppConfig
     /// <summary>（已废弃）自定义主题底色，已移除暗色，仅为兼容旧配置保留。</summary>
     public string ThemeBase { get; set; } = "light";
 
+    /// <summary>自定义主题的界面色调：green（默认）/ cool / warm / neutral。</summary>
+    public string ThemeTone { get; set; } = "green";
+
+    /// <summary>自定义主题的着色浓度：soft / normal（默认）/ strong。</summary>
+    public string ThemeStrength { get; set; } = "normal";
+
     /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;
 

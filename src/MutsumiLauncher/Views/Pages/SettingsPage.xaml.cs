@@ -247,6 +247,9 @@ public partial class SettingsPage : UserControl
         ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
 
         BuildSwatches(ThemeService.NormalizeHex(config.ThemeAccent));
+        BuildThemeOptions();
+
+        SyncToneSelection(ThemeService.Tone, ThemeService.Strength);
 
         _themeLoading = false;
     }
@@ -276,20 +279,124 @@ public partial class SettingsPage : UserControl
         ApplyCustomTheme(hex);
     }
 
-    /// <summary>换成自定义主题（主色一律走这里，顺带把单选按钮同步过去）。</summary>
-    private void ApplyCustomTheme(string? hex)
+    /// <summary>按当前主色 / 色调 / 浓度重算自定义主题。</summary>
+    private void ApplyCustomTheme(string? hex, string? tone = null, string? strength = null)
     {
         var accent = ThemeService.NormalizeHex(hex);
+        var finalTone = ThemeService.NormalizeTone(tone ?? ThemeService.Tone);
+        var finalStrength = ThemeService.NormalizeStrength(strength ?? ThemeService.Strength);
 
         _themeLoading = true;
         ThemeCustomRadio.IsChecked = true;
         ThemeCustomPanel.Visibility = Visibility.Visible;
         _themeLoading = false;
 
-        ThemeService.SetTheme(AppTheme.Custom, accent);
+        ThemeService.SetTheme(AppTheme.Custom, accent, finalTone, finalStrength);
 
         AccentHint.Text = "已应用";
         UpdateSwatchSelection(accent);
+        SyncToneSelection(finalTone, finalStrength);
+    }
+
+    private void ResetTheme_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeLightRadio.IsChecked = true;
+        ThemeService.SetTheme(AppTheme.Light, ThemeService.DefaultAccent, "green", "normal");
+        AccentHint.Text = "已恢复默认";
+    }
+
+    /// <summary>预设 / 色调 / 浓度三组单选（代码生成，省得 XAML 里堆一堆重复标签）。</summary>
+    private void BuildThemeOptions()
+    {
+        if (PresetPanel.Children.Count == 0)
+        {
+            foreach (var (name, accent, tone) in ThemeService.ThemePresets)
+            {
+                var dot = new Border
+                {
+                    Width = 12,
+                    Height = 12,
+                    CornerRadius = new CornerRadius(6),
+                    Background = new SolidColorBrush(ThemeService.ParseColor(accent)),
+                    Margin = new Thickness(0, 0, 8, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+
+                var content = new StackPanel { Orientation = Orientation.Horizontal };
+                content.Children.Add(dot);
+                content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+
+                var chip = new RadioButton
+                {
+                    Style = (Style)FindResource("SegmentItem"),
+                    GroupName = "ThemePreset",
+                    Content = content,
+                    Margin = new Thickness(0, 0, 8, 8),
+                    Tag = new[] { accent, tone },
+                };
+
+                chip.Checked += (_, _) =>
+                {
+                    if (_themeLoading || chip.Tag is not string[] preset) return;
+                    ApplyCustomTheme(preset[0], preset[1]);
+                };
+
+                PresetPanel.Children.Add(chip);
+            }
+        }
+
+        if (TonePanel.Children.Count == 0)
+        {
+            AddOptionChip(TonePanel, "绿色调", "green", "ThemeTone");
+            AddOptionChip(TonePanel, "冷色调", "cool", "ThemeTone");
+            AddOptionChip(TonePanel, "暖色调", "warm", "ThemeTone");
+            AddOptionChip(TonePanel, "中性", "neutral", "ThemeTone");
+        }
+
+        if (StrengthPanel.Children.Count == 0)
+        {
+            AddOptionChip(StrengthPanel, "淡", "soft", "ThemeStrength");
+            AddOptionChip(StrengthPanel, "标准", "normal", "ThemeStrength");
+            AddOptionChip(StrengthPanel, "浓", "strong", "ThemeStrength");
+        }
+    }
+
+    private void AddOptionChip(Panel host, string label, string value, string group)
+    {
+        var chip = new RadioButton
+        {
+            Style = (Style)FindResource("SegmentItem"),
+            GroupName = group,
+            Content = label,
+            Margin = new Thickness(0, 0, 8, 8),
+            Tag = value,
+        };
+
+        chip.Checked += (_, _) =>
+        {
+            if (_themeLoading) return;
+
+            ApplyCustomTheme(AccentHexBox.Text,
+                group == "ThemeTone" ? value : null,
+                group == "ThemeStrength" ? value : null);
+        };
+
+        host.Children.Add(chip);
+    }
+
+    /// <summary>把色调 / 浓度的选中态对齐到当前配置。</summary>
+    private void SyncToneSelection(string tone, string strength)
+    {
+        var wasLoading = _themeLoading;
+        _themeLoading = true;
+
+        foreach (var child in TonePanel.Children)
+            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == tone;
+
+        foreach (var child in StrengthPanel.Children)
+            if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == strength;
+
+        _themeLoading = wasLoading;
     }
 
     private void BuildSwatches(string selected)
