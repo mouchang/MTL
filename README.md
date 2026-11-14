@@ -70,6 +70,8 @@
 - 三个主题：明亮 / 暗色 / 自定义；自定义可逐项修改两套主题里不同的 57 个颜色（起始配色可选明亮或暗色）
 - 导航与侧栏的选中态是滑动胶囊，切换板块时跟随移动
 - 列表虚拟化，几百个 Mod 也能流畅滚动
+
+![外观主题](docs/screenshots/settings-custom.png)
 - 下载任务面板显示进度、速度与剩余任务，可取消与重试
 
 ## 网络
@@ -105,7 +107,7 @@ dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 
   --self-contained true -o dist/publish
 
 # 可选：打安装包（需要 Inno Setup 6.7+）
-ISCC.exe /DAPP_VERSION=1.0.0 installer/MutsumiLauncher.iss
+ISCC.exe /DAPP_VERSION=1.1.4 installer/MutsumiLauncher.iss
 ```
 
 仓库结构：

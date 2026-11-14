@@ -10,8 +10,8 @@
 4. 创建 GitHub Release，上传 `Setup.exe` 与 `portable.zip`。
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.4
+git push origin v1.1.4
 ```
 
 也可以在 Actions → Release → Run workflow 手动输入 tag。Release 标题由 tag 自动生成：
@@ -27,10 +27,10 @@ git push origin v1.0.0
 # 1. 自包含发布
 dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj `
   -c Release -r win-x64 --self-contained true `
-  -p:Version=1.0.0 -p:DebugType=None -o dist\publish
+  -p:Version=1.1.4 -p:DebugType=None -o dist\publish
 
-# 2. 编译安装器（输出 dist\MutsumiLauncher-1.0.0-Setup.exe）
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPP_VERSION=1.0.0 installer\MutsumiLauncher.iss
+# 2. 编译安装器（输出 dist\MutsumiLauncher-1.1.4-Setup.exe）
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPP_VERSION=1.1.4 installer\MutsumiLauncher.iss
 ```
 
 安装器行为：
