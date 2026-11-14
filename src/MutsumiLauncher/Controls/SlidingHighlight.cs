@@ -45,8 +45,12 @@ public static class SlidingHighlight
             return;
         }
 
-        var width = target.ActualWidth;
-        var height = Math.Max(8, target.ActualHeight - heightInset);
+        // 取整并限制在容器内：半像素或量偏的宽度会让高亮块越出分组边框
+        var width = Math.Round(target.ActualWidth);
+        var maxWidth = Math.Round(Math.Max(8, container.ActualWidth - x));
+        if (maxWidth > 8) width = Math.Min(width, maxWidth);
+
+        var height = Math.Round(Math.Max(8, target.ActualHeight - heightInset));
         var duration = animate ? TimeSpan.FromMilliseconds(230) : TimeSpan.Zero;
 
         var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
@@ -62,14 +66,15 @@ public static class SlidingHighlight
             indicator.RenderTransform = translate;
         }
 
-        translate.BeginAnimation(TranslateTransform.XProperty, Animate(x, duration, ease));
+        translate.BeginAnimation(TranslateTransform.XProperty, Animate(Math.Round(x), duration, ease));
         translate.BeginAnimation(TranslateTransform.YProperty,
             Animate(y + heightInset / 2, duration, ease));
 
         if (indicator.Opacity < 0.99) indicator.Opacity = 1;
 
-        // 首次摆放时控件可能还没完成布局，量到的宽度偏小：等这一轮布局结束再校一次
-        if (allowRetry && !animate)
+        // 摆放当下量到的尺寸可能是旧的（比如分组刚展开、内边距还没应用）：
+        // 等这一轮布局结束再校一次，保证最终和高亮目标完全重合
+        if (allowRetry)
         {
             container.Dispatcher.BeginInvoke(new Action(() =>
             {

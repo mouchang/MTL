@@ -3,6 +3,24 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.18] - 2026-11-14
+
+### 更新内容
+
+- 修复下载页「社区资源」子项高亮比悬浮框宽一截、越出分组边框
+
+### 技术实现
+
+高亮块是在分组展开的同一帧里量的尺寸，内边距还没应用，于是宽了约 8px。
+现在做了两道保险：
+
+```csharp
+var width = Math.Round(target.ActualWidth);
+var maxWidth = Math.Round(Math.Max(8, container.ActualWidth - x));
+if (maxWidth > 8) width = Math.Min(width, maxWidth);
+```
+
+再加上每次摆放后都等布局完成再校一次（之前只在首次、非动画时校正）。
 ## [1.1.4-beta.17] - 2026-11-14
 
 ### 更新内容
