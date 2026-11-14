@@ -7,19 +7,19 @@
 
 ### 更新内容
 
-- 安装器从 NSIS 换成 Inno Setup：按用户安装、系统主题化向导、任务选择与就绪页，全程不弹 UAC
-- 启动器不再要求管理员权限（清单改为 asInvoker），安装到 `%LOCALAPPDATA%\Programs` 即可运行
+- 安装器从 NSIS 换成 Inno Setup：启动时申请管理员权限，安装位置由用户在向导里选择，带就绪摘要页与任务选择
 - 自定义主题：明亮 / 暗色两套里不同的 57 项颜色都能单独改，全中文、分组卡片
 - 主题保持「明亮 / 暗色 / 自定义」，移除了实验性的种子色、液态玻璃等方案
 
 ### 技术实现
 
-安装器：`installer/MutsumiLauncher.iss`，`PrivilegesRequired=lowest` + `{localappdata}`；
+安装器：`installer/MutsumiLauncher.iss`，`PrivilegesRequired=admin`（启动即提升），
+`DefaultDirName={autopf}\Mutsumi Launcher` 但保留目录选择页；`UsePreviousAppDir=no` 避免沿用过期的旧路径。
 卸载前先跑 `--cleanup-references` 断开实例联接，避免误删玩家的游戏目录；
 `InitializeSetup` 检测旧 NSIS 安装并提示。
 
-启动器：`app.manifest` 的 `requestedExecutionLevel` 从 `requireAdministrator` 改为 `asInvoker`，
-之前安装完成点“运行”报 740 就是权限不匹配导致的；游戏目录、配置都写在用户区，不需要提权。
+启动器：数据（`data/`、`game/`）存放在安装目录下，所以程序仍以 `requireAdministrator` 运行，
+和安装器权限保持一致——之前安装完成点“运行”报 740 是权限不匹配导致的。
 
 自定义主题：`EditableKeys` 由两套色板逐键比对得到，
 覆盖值存在 `ThemeCustomColors`，`BuildCustomPalette` 以选定底色为底再套覆盖。
@@ -1141,7 +1141,3 @@ private List<string> VersionLoaders(ModrinthVersion version)
 
 ### 社区搜索：CurseForge 不再被超时丢掉
 - **修**：Mod / 整合包等类目的聚合结果里只有 Modrinth，看不到 CurseForge。
-  原因是 CurseForge 走第三方镜像，实测一次搜索要 **19 秒**（mod 类目 50 条响应 1.4 MB），
-  而之前给它设的是 6 秒上限 —— 每次都超时，CF 结果被整块丢弃
-- 现在前台只等 3 秒（且整页只等一次），Modrinth 先出；CurseForge 丢后台抓，
-  抓到后界面 22 秒自动补刷一次，翻到下一页也能看到
