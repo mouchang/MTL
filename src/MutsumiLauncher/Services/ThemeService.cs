@@ -78,7 +78,7 @@ public static class ThemeService
         var colors = mode switch
         {
             AppTheme.Dark => DarkPalette(),
-            AppTheme.Custom => BuildCustom(IsDark, Accent),
+            AppTheme.Custom => BuildCustomPalette(IsDark),
             _ => LightPalette(),
         };
 
@@ -226,6 +226,9 @@ public static class ThemeService
         return Color.FromRgb(0x4E, 0x9E, 0x72);
     }
 
+    private static Color Hex(string value)
+        => ColorConverter.ConvertFromString(value) is Color color ? color : Colors.Transparent;
+
     private static Dictionary<string, Color> LightPalette() => new(StringComparer.Ordinal)
     {
         ["Ink"] = Hex("#2E3E35"),
@@ -365,48 +368,143 @@ public static class ThemeService
     };
 
     /// <summary>自定义：在浅色/深色底上换一套主色，其余保持原样。</summary>
-    private static Dictionary<string, Color> BuildCustom(bool dark, string accentHex)
+    /// <summary>
+    /// 自定义主题：以明亮/暗色其中一套为底，再套上用户改过的那几项。
+    /// 可改的键 = 两套色板里不一致的键（也就是切主题时实际会变的部分）。
+    /// </summary>
+    private static Dictionary<string, Color> BuildCustomPalette(bool dark)
     {
         var colors = dark ? DarkPalette() : LightPalette();
-        var accent = ParseColor(accentHex);
-        var background = colors["WindowBase"];
+        var overrides = AppConfig.Current.ThemeCustomColors;
 
-        // 和背景反差太小的话，把主色往反方向推一点，保证按钮/标题看得见
-        var luminance = Luminance(accent);
-        if (dark && luminance < 0.35) accent = Blend(accent, Colors.White, 0.45);
-        if (!dark && luminance > 0.75) accent = Blend(accent, Colors.Black, 0.35);
+        if (overrides is null || overrides.Count == 0) return colors;
 
-        colors["AccentDeep"] = accent;
-        colors["Accent"] = Blend(accent, Colors.White, dark ? 0.22 : 0.42);
-        colors["AccentWash"] = Blend(accent, background, dark ? 0.35 : 0.45);
-        colors["AccentTint"] = Blend(accent, background, dark ? 0.80 : 0.88);
-        colors["AccentTintDeep"] = Blend(accent, background, dark ? 0.64 : 0.72);
-        colors["AccentTintSoft"] = Blend(accent, background, dark ? 0.87 : 0.93);
+        foreach (var (key, hex) in overrides)
+        {
+            if (!colors.ContainsKey(key) || string.IsNullOrWhiteSpace(hex)) continue;
 
-        var fill = dark ? Blend(accent, Colors.Black, 0.12) : Blend(accent, Colors.Black, 0.18);
-        colors["PrimaryFill"] = fill;
-        colors["PrimaryFillHover"] = Blend(fill, Colors.White, 0.12);
+            try
+            {
+                if (ColorConverter.ConvertFromString(NormalizeHex(hex)) is Color color) colors[key] = color;
+            }
+            catch
+            {
+                // 无效色值直接用底色
+            }
+        }
 
         return colors;
     }
 
-    private static Color Hex(string hex)
+    /// <summary>可自定义的键：明亮 / 暗色两套色板里不一致的那些。</summary>
+    public static IReadOnlyList<string> EditableKeys { get; } = ComputeEditableKeys();
+
+    private static List<string> ComputeEditableKeys()
     {
-        if (hex.Length == 6) return ParseColor("#FF" + hex);
-        return ParseColor(hex);
+        var light = LightPalette();
+        var dark = DarkPalette();
+
+        var keys = new List<string>();
+
+        foreach (var (key, color) in light)
+        {
+            if (!dark.TryGetValue(key, out var other) || other != color) keys.Add(key);
+        }
+
+        foreach (var (key, _) in dark)
+        {
+            if (!light.ContainsKey(key)) keys.Add(key);
+        }
+
+        return keys;
     }
 
-    private static Color Blend(Color a, Color b, double amount)
+    /// <summary>某一项当前的值（用户改过就是改过的，否则是当前底的默认值）。</summary>
+    public static string CustomColorText(string key)
     {
-        amount = Math.Clamp(amount, 0, 1);
+        var overrides = AppConfig.Current.ThemeCustomColors;
 
-        byte Mix(byte x, byte y) => (byte)Math.Clamp(Math.Round(x + (y - x) * amount), 0, 255);
+        if (overrides is not null && overrides.TryGetValue(key, out var hex)
+            && !string.IsNullOrWhiteSpace(hex))
+            return NormalizeHex(hex);
 
-        return Color.FromArgb(Mix(a.A, b.A), Mix(a.R, b.R), Mix(a.G, b.G), Mix(a.B, b.B));
+        var colors = IsDark ? DarkPalette() : LightPalette();
+        return colors.TryGetValue(key, out var color) ? ToHex(color) : "#FF000000";
     }
 
-    private static double Luminance(Color color)
-        => (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
+    public static bool IsCustomized(string key)
+        => AppConfig.Current.ThemeCustomColors?.ContainsKey(key) == true;
+
+    /// <summary>改某一项；传空表示恢复默认（跟随当前底的色板）。</summary>
+    public static void SetCustomColor(string key, string? hex)
+    {
+        var config = AppConfig.Current;
+        config.ThemeCustomColors ??= [];
+
+        if (string.IsNullOrWhiteSpace(hex))
+            config.ThemeCustomColors.Remove(key);
+        else
+            config.ThemeCustomColors[key] = NormalizeHex(hex);
+
+        config.Save();
+        Apply(AppTheme.Custom, config.ThemeAccent, config.ThemeBase == "dark");
+    }
+
+    public static void ResetCustomColors()
+    {
+        var config = AppConfig.Current;
+        config.ThemeCustomColors = [];
+        config.Save();
+
+        Apply(AppTheme.Custom, config.ThemeAccent, config.ThemeBase == "dark");
+    }
+
+    public static string ToHex(Color color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+
+    /// <summary>设置页里的中文名，没有就用键名。</summary>
+    public static string KeyLabel(string key) => key switch
+    {
+        "Ink" => "正文",
+        "InkStrong" => "正文（强调）",
+        "InkMax" => "正文（最重）",
+        "InkSoft" => "次要文字",
+        "InkMute" => "弱化文字",
+        "InkInverse" => "反色文字",
+        "InkOnAccent" => "主色上的文字",
+        "Accent" => "主色",
+        "AccentDeep" => "主色（深）",
+        "AccentWash" => "选中底色",
+        "AccentTint" => "主色浅底",
+        "AccentTintDeep" => "主色浅底（深）",
+        "AccentTintSoft" => "主色浅底（最浅）",
+        "PrimaryFill" => "主按钮",
+        "PrimaryFillHover" => "主按钮（悬停）",
+        "Glass" => "玻璃层",
+        "GlassMedium" => "玻璃层（中）",
+        "GlassStrong" => "玻璃层（强）",
+        "GlassHover" => "玻璃层（悬停）",
+        "GlassHoverSoft" => "玻璃层（轻悬停）",
+        "GlassStroke" => "玻璃描边",
+        "HoverWash" => "悬停底色",
+        "Divider" => "分隔线",
+        "RingStroke" => "描边",
+        "WindowBase" => "窗口底色",
+        "WindowBar" => "标题栏",
+        "WindowBorder" => "窗口描边",
+        "PaneBg" => "面板底色",
+        "SurfacePanel" => "卡片",
+        "SurfaceFloat" => "浮层",
+        "SurfaceSolid" => "实心卡片",
+        "SidebarBg" => "侧栏",
+        "AvatarCard" => "头像卡",
+        "PillBg" => "胶囊底",
+        "ToastBg" => "提示条",
+        "CardBorder" => "卡片描边",
+        "PanelBorderSoft" => "面板描边",
+        "BackdropVeil" => "背景遮罩",
+        "ShadowTint" => "阴影颜色",
+        _ => key,
+    };
 
     /// <summary>给设置页用的推荐主色。</summary>
     public static readonly (string Name, string Hex)[] AccentPresets =

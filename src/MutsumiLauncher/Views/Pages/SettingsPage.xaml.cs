@@ -235,10 +235,25 @@ public partial class SettingsPage : UserControl
     {
         _themeLoading = true;
 
-        var mode = AppConfig.Current.ThemeMode == "dark" ? AppTheme.Dark : AppTheme.Light;
+        var config = AppConfig.Current;
+        var mode = config.ThemeMode switch
+        {
+            "dark" => AppTheme.Dark,
+            "custom" => AppTheme.Custom,
+            _ => AppTheme.Light,
+        };
 
         ThemeLightRadio.IsChecked = mode == AppTheme.Light;
         ThemeDarkRadio.IsChecked = mode == AppTheme.Dark;
+        ThemeCustomRadio.IsChecked = mode == AppTheme.Custom;
+
+        var darkBase = config.ThemeBase == "dark";
+        CustomBaseLightRadio.IsChecked = !darkBase;
+        CustomBaseDarkRadio.IsChecked = darkBase;
+
+        ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
+
+        BuildCustomColorRows();
 
         _themeLoading = false;
     }
@@ -250,9 +265,153 @@ public partial class SettingsPage : UserControl
             Controls.SlidingHighlight.Move(ThemeIndicator, themeRadio, ThemeSegmentHost, animate: true);
         }
 
-        if (_themeLoading) return;
+        if (_themeLoading || ThemeCustomPanel is null) return;
 
-        ThemeService.SetTheme(ThemeDarkRadio.IsChecked == true ? AppTheme.Dark : AppTheme.Light);
+        var mode = ThemeDarkRadio.IsChecked == true ? AppTheme.Dark
+            : ThemeCustomRadio.IsChecked == true ? AppTheme.Custom
+            : AppTheme.Light;
+
+        ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
+
+        if (mode == AppTheme.Custom) BuildCustomColorRows();
+
+        // 切到自定义时要带上当前的起始配色，别被 SetTheme 的默认值重置成明亮
+        ThemeService.SetTheme(mode, null, mode == AppTheme.Custom && CustomBaseDarkRadio.IsChecked == true);
+    }
+
+    /// <summary>自定义主题：把「明亮 / 暗色」里不同的颜色逐项列出来，允许单独改。</summary>
+    private void BuildCustomColorRows()
+    {
+        if (CustomColorList is null) return;
+
+        CustomColorList.Children.Clear();
+
+        foreach (var key in ThemeService.EditableKeys)
+        {
+            var current = ThemeService.CustomColorText(key);
+            var customized = ThemeService.IsCustomized(key);
+
+            var swatch = new Border
+            {
+                Width = 20,
+                Height = 20,
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(ThemeService.ParseColor(current)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)),
+                BorderThickness = new Thickness(1),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            var label = new TextBlock
+            {
+                Text = ThemeService.KeyLabel(key),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0),
+                FontSize = 13,
+            };
+
+            var box = new TextBox
+            {
+                Text = current,
+                Width = 104,
+                Height = 26,
+                FontSize = 12,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Style = (Style)FindResource("MtlTextBox"),
+            };
+
+            var reset = new Button
+            {
+                Content = "恢复",
+                Height = 24,
+                Padding = new Thickness(9, 0, 9, 0),
+                Margin = new Thickness(8, 0, 0, 0),
+                FontSize = 12,
+                Style = (Style)FindResource("SecondaryButton"),
+                Visibility = customized ? Visibility.Visible : Visibility.Collapsed,
+            };
+
+            // 改色值：合法就套用，色块跟着变
+            box.TextChanged += (_, _) =>
+            {
+                if (_themeLoading) return;
+                if (!IsValidHex(box.Text)) return;
+
+                ThemeService.SetCustomColor(key, box.Text);
+
+                swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
+                reset.Visibility = Visibility.Visible;
+            };
+
+            reset.Click += (_, _) =>
+            {
+                ThemeService.SetCustomColor(key, null);
+
+                _themeLoading = true;
+                box.Text = ThemeService.CustomColorText(key);
+                _themeLoading = false;
+
+                swatch.Background = new SolidColorBrush(ThemeService.ParseColor(box.Text));
+                reset.Visibility = Visibility.Collapsed;
+            };
+
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 2) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            Grid.SetColumn(swatch, 0);
+            Grid.SetColumn(label, 1);
+            Grid.SetColumn(box, 2);
+            Grid.SetColumn(reset, 3);
+
+            row.Children.Add(swatch);
+            row.Children.Add(label);
+            row.Children.Add(box);
+            row.Children.Add(reset);
+
+            CustomColorList.Children.Add(row);
+        }
+    }
+
+    private static bool IsValidHex(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        var value = text.Trim();
+        if (!value.StartsWith('#')) value = "#" + value;
+
+        if (value.Length is not (7 or 9)) return false;
+
+        try
+        {
+            _ = ColorConverter.ConvertFromString(value);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void CustomBase_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_themeLoading || ThemeCustomRadio is null) return;
+
+        var darkBase = CustomBaseDarkRadio.IsChecked == true;
+
+        ThemeCustomRadio.IsChecked = true;
+        ThemeCustomPanel.Visibility = Visibility.Visible;
+
+        ThemeService.SetTheme(AppTheme.Custom, null, darkBase);
+        BuildCustomColorRows();
+    }
+
+    private void ResetCustom_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeService.ResetCustomColors();
+        BuildCustomColorRows();
     }
 
     // ==================== 版本隔离 ====================

@@ -83,6 +83,9 @@ public sealed class AppConfig
     /// <summary>自定义主题的底色：light / dark。</summary>
     public string ThemeBase { get; set; } = "light";
 
+    /// <summary>自定义主题里逐项改过的颜色（键 → #AARRGGBB），未改的项留空。</summary>
+    public Dictionary<string, string> ThemeCustomColors { get; set; } = [];
+
     /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;
 

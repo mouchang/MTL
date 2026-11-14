@@ -3,6 +3,31 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.30] - 2026-11-15
+
+### 更新内容
+
+- 全新自定义主题：明亮 / 暗色两套主题里不一致的颜色（共 57 项）都能单独改
+
+### 技术实现
+
+可改的键由两套色板直接比对得出，不再手写列表：
+
+```csharp
+public static IReadOnlyList<string> EditableKeys { get; } = ComputeEditableKeys();
+
+// 明亮/暗色里值不同的键，就是切主题时实际会变的部分
+if (!dark.TryGetValue(key, out var other) || other != color) keys.Add(key);
+```
+
+自定义主题以「起始配色（明亮 / 暗色）」为底，逐项覆盖：
+
+```csharp
+var colors = dark ? DarkPalette() : LightPalette();
+foreach (var (key, hex) in config.ThemeCustomColors) colors[key] = ParseColor(hex);
+```
+
+设置页每行一个色块 + 中文名 + 色值输入，改完立即生效，"恢复"按钮清掉单项覆盖。
 ## [1.1.4-beta.29] - 2026-11-15
 
 ### 更新内容
