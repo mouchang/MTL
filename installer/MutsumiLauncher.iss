@@ -20,12 +20,12 @@ AppName={#APP_NAME}
 AppVersion={#APP_VERSION}
 AppVerName={#APP_DISPLAY} {#APP_VERSION}
 AppPublisher={#APP_PUBLISHER}
-DefaultDirName={localappdata}\Programs\Mutsumi Launcher
+DefaultDirName={autopf}\Mutsumi Launcher
 DefaultGroupName={#APP_DISPLAY}
 DisableProgramGroupPage=yes
-; 启动器本身以普通权限运行（asInvoker），安装器同样按用户安装，全程不弹 UAC
-PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=commandline
+; 启动器清单要求管理员权限（requireAdministrator），数据也存在安装目录下，
+; 所以安装器启动时就申请提升，由用户决定装到哪里
+PrivilegesRequired=admin
 ; 不继承旧安装目录：之前手工装到 Program Files 的记录会把新装也带过去
 UsePreviousAppDir=no
 OutputDir=..\dist
