@@ -186,7 +186,7 @@
 
         <!-- 检查更新时盖住整页：也挡住上面的按钮，避免重复触发 -->
         <Border x:Name="CheckingOverlay" Grid.Row="0" Grid.RowSpan="5"
-                Background="{DynamicResource GlassStrong}" Visibility="Collapsed">
+                Background="#59FFFFFF" Opacity="0" Visibility="Collapsed">
             <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
                     Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>

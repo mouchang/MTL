@@ -48,8 +48,9 @@
                     <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
                         <Grid>
                             <!-- 选中高亮：一块圆角块在条目之间滑动，滑动时轻微「呼吸」伸缩 -->
-                            <Border x:Name="NavIndicator" Height="52" Margin="4,0" VerticalAlignment="Top"
-                                    CornerRadius="14" Background="{DynamicResource Accent}"
+                            <Border x:Name="NavIndicator" Height="44" Margin="6,0" VerticalAlignment="Top"
+                                    CornerRadius="12" Background="{DynamicResource AccentTintDeep}"
+                                    BorderBrush="{DynamicResource Accent}" BorderThickness="1"
                                     IsHitTestVisible="False" Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>

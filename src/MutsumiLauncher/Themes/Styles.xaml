@@ -185,6 +185,10 @@
                             <!-- 中性灰：之前用白色薄雾，和选中块的浅绿几乎分不清 -->
                             <Setter TargetName="Bd" Property="Background" Value="#0D000000" />
                         </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <!-- 用字重和底色一起表达选中，不靠高对比白字 -->
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.5] - 2026-11-14
+
+### 更新内容
+
+- 侧栏高亮改为更小的胶囊，缓动换成对称 `CubicEase`，切换过程看得见「走」
+- 引用版本对话框的「开始引用」按钮不再被裁切
+- 检查更新的提示改为「其余 N 个未找到新版」
+- 检查更新的遮罩更淡，并加了淡入淡出
+- 没有版本时彻底卸下设置页（不再在空状态后面跑页面）
+
+### 技术实现
+
+- 指示器：高 44、圆角 12、1px 主色描边，垂直居中于 52 高的条目；240ms `CubicEase.EaseInOut`
+- 对话框按钮：去掉固定 `Width=88`，改 `MinWidth=88` + `Padding=18,0`，文案再长也不会截断
+- 遮罩：`#59FFFFFF` + 180ms 淡入 / 140ms 淡出，`Completed` 后再 `Collapsed`
+- 空状态：`RefreshEmptyState` 在无版本时 `PageHost.Content = null`、侧栏置灰、隐藏指示器
 ## [1.1.4-beta.4] - 2026-11-14
 
 ### 更新内容

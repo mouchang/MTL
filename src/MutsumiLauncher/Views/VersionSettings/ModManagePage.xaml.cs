@@ -287,9 +287,9 @@ public partial class ModManagePage : UserControl, IInstancePage
         var unknown = Math.Max(0, total - matchedFiles);
 
         var message = found == 0
-            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（{unknown} 个未找到来源）。" : "所有 Mod 都是最新的。")
+            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（其余 {unknown} 个未找到新版）。" : "所有 Mod 都是最新的。")
             : unknown > 0
-                ? $"发现 {found} 个可更新的 Mod（{unknown} 个未找到来源）。"
+                ? $"发现 {found} 个可更新的 Mod（其余 {unknown} 个未找到新版）。"
                 : $"发现 {found} 个可更新的 Mod。";
 
         owner?.ShowToast(message);
@@ -1098,6 +1098,13 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         CheckingOverlay.Visibility = Visibility.Visible;
 
+        // 遮罩淡入，别一下子糊上来
+        CheckingOverlay.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+
         var animation = new DoubleAnimation(-64, 220, TimeSpan.FromSeconds(1.1))
         {
             RepeatBehavior = RepeatBehavior.Forever,
@@ -1110,7 +1117,14 @@ public partial class ModManagePage : UserControl, IInstancePage
     private void StopBusy()
     {
         BusyTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        CheckingOverlay.Visibility = Visibility.Collapsed;
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+
+        fade.Completed += (_, _) => CheckingOverlay.Visibility = Visibility.Collapsed;
+        CheckingOverlay.BeginAnimation(OpacityProperty, fade);
     }
 
     private void Filter_Checked(object sender, RoutedEventArgs e)

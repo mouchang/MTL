@@ -49,6 +49,13 @@ public partial class VersionSettingsView : UserControl
         var any = GameLauncher.InstalledVersions().Count > 0;
 
         EmptyState.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
+
+        // 没有版本时把页面整个卸掉：否则空状态遮罩后面还在跑扫盘 / 更新检查
+        if (any) return;
+
+        PageHost.Content = null;
+        NavPanel.IsEnabled = false;
+        NavIndicator.Visibility = Visibility.Collapsed;
     }
 
     private void GoDownload_Click(object sender, RoutedEventArgs e)
@@ -181,7 +188,7 @@ public partial class VersionSettingsView : UserControl
         _loaded.Clear();
 
         // 没有版本时不初始化任何页面：否则空状态遮罩后面还在跑扫盘 / 检查更新
-        var empty = string.IsNullOrWhiteSpace(version);
+        var empty = string.IsNullOrWhiteSpace(version) || GameLauncher.InstalledVersions().Count == 0;
 
         NavPanel.IsEnabled = !empty;
         NavIndicator.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
@@ -332,12 +339,16 @@ public partial class VersionSettingsView : UserControl
             y = NavPanel.Children.IndexOf(target) * 56 + 2;
         }
 
-        var ease = new System.Windows.Media.Animation.QuinticEase
+        // 指示器比条目矮 8px，垂直居中
+        y += 4;
+
+        // 用对称缓动：两端都慢，中途能看到它确实在「走」
+        var ease = new System.Windows.Media.Animation.CubicEase
         {
-            EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
         };
 
-        var duration = TimeSpan.FromMilliseconds(300);
+        var duration = TimeSpan.FromMilliseconds(240);
 
         // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
         NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
@@ -346,24 +357,7 @@ public partial class VersionSettingsView : UserControl
                 EasingFunction = ease,
             });
 
-        // 2) 呼吸：滑动途中横向收一点再弹回，看起来更有「液态」感
-        var squash = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
-        {
-            Duration = duration,
-        };
-
-        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
-            System.Windows.Media.Animation.KeyTime.FromPercent(0)));
-        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.965,
-            System.Windows.Media.Animation.KeyTime.FromPercent(0.45),
-            new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }));
-        squash.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(1,
-            System.Windows.Media.Animation.KeyTime.FromPercent(1)));
-
-        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, squash);
-        NavIndicatorScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, squash);
-
-        // 3) 首次出现直接亮起，之后保持常亮
+        // 首次出现直接亮起，之后保持常亮
         if (!_indicatorReady)
         {
             NavIndicator.Opacity = 1;
