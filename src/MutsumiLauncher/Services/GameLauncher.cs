@@ -154,7 +154,11 @@ public sealed class GameLauncher
 
         var classpath = BuildClasspath(detail, jarPath, id, out var missing);
 
+<<<<<<< HEAD
         // 缺库先尝试自动补齐（PCL-CE 也是启动前拉齐依赖，不让用户去重装版本）
+=======
+        // 缺库先尝试自动补齐（参考 PCL-CE：启动前拉齐依赖，不让用户去重装版本）
+>>>>>>> main
         if (missing.Count > 0)
         {
             progress?.Report(new LaunchProgress(12, $"补齐 {missing.Count} 个缺失文件…"));

@@ -894,7 +894,11 @@ public partial class ModrinthDetailView : UserControl
     }
 
     /// <summary>
+<<<<<<< HEAD
     /// 下载文件名：有 MC百科中文名就加个前缀（PCL-CE 的做法，如「[3D 皮肤层] skinlayers3d-….jar」），
+=======
+    /// 下载文件名：有 MC百科中文名就加个前缀（参考 PCL-CE，如「[3D 皮肤层] skinlayers3d-….jar」），
+>>>>>>> main
     /// 没有中文名就保持原文件名。整包文件也照样处理。
     /// </summary>
     private string DownloadFileName(ModrinthFileRow row)

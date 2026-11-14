@@ -57,7 +57,11 @@ public partial class MicrosoftLoginDialog : Window
             CodePanel.Visibility = Visibility.Visible;
             HintText.Text = "在浏览器里输入设备码并授权，完成后本窗口会自动关闭。";
 
+<<<<<<< HEAD
             // 与 PCL-CE 一致：先复制设备码，等窗口稳定后再打开网页
+=======
+            // 参考 PCL-CE：先复制设备码，等窗口稳定后再打开网页
+>>>>>>> main
             var copied = TrySetClipboard(code.UserCode);
             StatusText.Text = copied ? "设备码已复制，正在打开浏览器…" : "设备码复制失败，请手动复制。";
 

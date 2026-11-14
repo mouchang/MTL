@@ -4,7 +4,11 @@ namespace MutsumiLauncher.Services;
 
 /// <summary>
 /// CurseForge 文件指纹：先去掉空白字节（0x9 / 0xA / 0xB / 0xC / 0xD / 0x20），
+<<<<<<< HEAD
 /// 再对剩下的字节做 murmur2（seed = 1）。和 CurseForge 客户端、PCL-CE 的算法一致。
+=======
+/// 再对剩下的字节做 murmur2（seed = 1），算法参考 PCL-CE 的实现。
+>>>>>>> main
 /// </summary>
 public static class CurseForgeFingerprint
 {

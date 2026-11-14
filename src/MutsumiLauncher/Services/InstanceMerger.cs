@@ -5,7 +5,11 @@ using System.Text.Json.Nodes;
 namespace MutsumiLauncher.Services;
 
 /// <summary>
+<<<<<<< HEAD
 /// 按 PCL-CE 的方式合并版本：把原版 JSON 和加载器 JSON 合成一个独立的版本 JSON，
+=======
+/// 合并版本的方式参考 PCL-CE：把原版 JSON 和加载器 JSON 合成一个独立的版本 JSON，
+>>>>>>> main
 /// 去掉 inheritsFrom / jar，复制原版 jar 到实例目录，这样实例就是一个完整文件夹，
 /// 不再依赖 versions/&lt;原版&gt; 是否存在。
 /// </summary>
@@ -107,7 +111,11 @@ public static class InstanceMerger
         return instanceName;
     }
 
+<<<<<<< HEAD
     /// <summary>PCL-CE 的合并规则：对象递归合并（加载器覆盖原版），数组以原版在前、加载器在后拼接。</summary>
+=======
+    /// <summary>合并规则参考 PCL-CE：对象递归合并（加载器覆盖原版），数组以原版在前、加载器在后拼接。</summary>
+>>>>>>> main
     private static void MergeObject(JsonObject target, JsonObject source)
     {
         foreach (var (key, value) in source.ToList())
