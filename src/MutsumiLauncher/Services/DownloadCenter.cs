@@ -143,11 +143,7 @@ public static class DownloadCenter
     /// <summary>
     /// 全局速度采样：保留最近 3 秒的 (时间, 累计字节)，
     /// 用窗口两端的差值算速度——比「每次 Report 各算一段再相加」稳得多。
-<<<<<<< HEAD
-    /// 这个做法和 PCL-CE 的 RefreshStat 一致（它保留 30 个样本做加权平均）。
-=======
     /// 这个做法参考 PCL-CE 的 RefreshStat（它保留 30 个样本做加权平均）。
->>>>>>> main
     /// </summary>
     private static readonly List<(DateTime At, long Bytes)> GlobalSamples = [];
 
