@@ -10,8 +10,7 @@
 - 安装器从 NSIS 换成 Inno Setup：启动时申请管理员权限，安装位置由用户在向导里选择，带就绪摘要页与任务选择
 - 版本下载页在内容超出窗口时自动出现滚动条，可用滚轮整页滑动（之前展开加载器列表会挤掉底部按钮）
 - 自定义主题：明亮 / 暗色两套里不同的 57 项颜色都能单独改，全中文、分组卡片
-- 主题保持「明亮 / 暗色 / 自定义」，移除了实验性的种子色、液态玻璃等方案
-
+- 
 ### 技术实现
 
 安装器：`installer/MutsumiLauncher.iss`，`PrivilegesRequired=admin`（启动即提升），
@@ -20,8 +19,7 @@
 `InitializeSetup` 检测旧 NSIS 安装并提示。
 
 启动器：数据（`data/`、`game/`）存放在安装目录下，所以程序仍以 `requireAdministrator` 运行，
-和安装器权限保持一致——之前安装完成点“运行”报 740 是权限不匹配导致的。
-
+和安装器权限保持一致。
 自定义主题：`EditableKeys` 由两套色板逐键比对得到，
 覆盖值存在 `ThemeCustomColors`，`BuildCustomPalette` 以选定底色为底再套覆盖。
 
