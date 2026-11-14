@@ -67,6 +67,16 @@ public static class SlidingHighlight
             Animate(y + heightInset / 2, duration, ease));
 
         if (indicator.Opacity < 0.99) indicator.Opacity = 1;
+
+        // 首次摆放时控件可能还没完成布局，量到的宽度偏小：等这一轮布局结束再校一次
+        if (allowRetry && !animate)
+        {
+            container.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (target.ActualWidth > 0)
+                    Move(indicator, target, container, false, heightInset, allowRetry: false);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
     }
 
     private static DoubleAnimation Animate(double to, TimeSpan duration, IEasingFunction ease)

@@ -1,4 +1,4 @@
-<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
+﻿<UserControl x:Class="MutsumiLauncher.Views.Pages.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FontFamily="{StaticResource UiFont}">
@@ -16,7 +16,7 @@
                 <!-- 选中高亮：和版本设置侧栏同款 -->
                 <Border x:Name="NavIndicator" Height="52" Width="164"
                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                        CornerRadius="14" Background="#F28FD8A8"
+                        CornerRadius="14" Background="{DynamicResource AccentWash}"
                         IsHitTestVisible="False" Opacity="0">
                     <Border.RenderTransform>
                         <TranslateTransform X="0" Y="0" />
@@ -76,7 +76,7 @@
                                 <Grid x:Name="MemorySegmentHost">
                                     <Border x:Name="MemoryIndicator" Height="32" Width="88"
                                             HorizontalAlignment="Left" VerticalAlignment="Top"
-                                            CornerRadius="16" Background="#F28FD8A8"
+                                            CornerRadius="16" Background="{DynamicResource AccentWash}"
                                             IsHitTestVisible="False" Opacity="0">
                                         <Border.RenderTransform>
                                             <TranslateTransform X="0" Y="0" />
@@ -115,7 +115,7 @@
                             <Grid x:Name="ThemeSegmentHost" HorizontalAlignment="Left">
                                 <Border x:Name="ThemeIndicator" Height="32" Width="64"
                                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                                        CornerRadius="16" Background="#F28FD8A8"
+                                        CornerRadius="16" Background="{DynamicResource AccentWash}"
                                         IsHitTestVisible="False" Opacity="0">
                                     <Border.RenderTransform>
                                         <TranslateTransform X="0" Y="0" />

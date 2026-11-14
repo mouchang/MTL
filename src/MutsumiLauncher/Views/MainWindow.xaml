@@ -52,7 +52,7 @@
 
                                 <Border x:Name="NavTabIndicator" Height="44" Width="72"
                                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                                        CornerRadius="12" Background="#F28FD8A8"
+                                        CornerRadius="12" Background="{DynamicResource AccentWash}"
                                         IsHitTestVisible="False" Opacity="0">
                                     <Border.RenderTransform>
                                         <TranslateTransform X="0" Y="0" />

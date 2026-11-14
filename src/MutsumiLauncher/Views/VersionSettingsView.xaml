@@ -49,7 +49,7 @@
                         <Grid>
                             <!-- 选中高亮：一块圆角块在条目之间滑动，滑动时轻微「呼吸」伸缩 -->
                             <Border x:Name="NavIndicator" Height="44" Margin="6,0" VerticalAlignment="Top"
-                                    CornerRadius="12" Background="#F28FD8A8"
+                                    CornerRadius="12" Background="{DynamicResource AccentWash}"
                                     IsHitTestVisible="False" Opacity="0"
                                     RenderTransformOrigin="0.5,0.5">
                                 <Border.RenderTransform>
