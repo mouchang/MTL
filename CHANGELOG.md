@@ -3,6 +3,25 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.23] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题支持改背景色（8 个预设 + 任意色值，可切回「跟随主色」）
+- 选深色背景时自动切换为浅色文字，不会出现黑底黑字
+
+### 技术实现
+
+`ThemeBackground` 存背景色；`BuildCustom` 里若指定了背景：
+
+```csharp
+colors["WindowBase"]   = bg;
+colors["SurfacePanel"] = Blend(bg, white, 0.10) 带 F2 透明度;
+colors["BackdropVeil"] = WithAlpha(bg, 0xE8);   // 压住背景图，只留一点质感
+```
+
+同时按背景亮度（`Luminance(bg) < 0.45`）把 Ink 系列换成浅色、
+描边/分隔线换成白色低透明度，保证深色背景下的可读性。
 ## [1.1.4-beta.22] - 2026-11-14
 
 ### 更新内容

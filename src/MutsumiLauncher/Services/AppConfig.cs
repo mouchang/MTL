@@ -89,6 +89,9 @@ public sealed class AppConfig
     /// <summary>自定义主题的着色浓度：soft / normal（默认）/ strong。</summary>
     public string ThemeStrength { get; set; } = "normal";
 
+    /// <summary>自定义背景色（#AARRGGBB）；空表示跟随主色。</summary>
+    public string ThemeBackground { get; set; } = string.Empty;
+
     /// <summary>（已废弃）内置代理开关，仅为兼容旧配置保留，不再生效。</summary>
     public bool BuiltInProxyEnabled { get; set; } = true;
 

@@ -35,10 +35,10 @@ public static class ThemeService
 
         // 旧配置里的 "dark" 不再有对应主题，按明亮处理
         Apply(config.ThemeMode == "custom" ? AppTheme.Custom : AppTheme.Light,
-            config.ThemeAccent, config.ThemeTone, config.ThemeStrength);
+            config.ThemeAccent, config.ThemeTone, config.ThemeStrength, config.ThemeBackground);
     }
 
-    public static void SetTheme(AppTheme mode, string? accent = null, string? tone = null, string? strength = null)
+    public static void SetTheme(AppTheme mode, string? accent = null, string? tone = null, string? strength = null, string? background = null)
     {
         var config = AppConfig.Current;
 
@@ -48,20 +48,24 @@ public static class ThemeService
         if (!string.IsNullOrWhiteSpace(tone)) config.ThemeTone = tone;
         if (!string.IsNullOrWhiteSpace(strength)) config.ThemeStrength = strength;
 
+        // background 传 null 表示「保持不变」，传空串才是「跟随主色」
+        if (background is not null) config.ThemeBackground = background.Trim();
+
         config.Save();
 
-        Apply(mode, config.ThemeAccent, config.ThemeTone, config.ThemeStrength);
+        Apply(mode, config.ThemeAccent, config.ThemeTone, config.ThemeStrength, config.ThemeBackground);
     }
 
-    public static void Apply(AppTheme mode, string? accentHex, string? tone = null, string? strength = null)
+    public static void Apply(AppTheme mode, string? accentHex, string? tone = null, string? strength = null, string? backgroundHex = null)
     {
         Mode = mode;
         Accent = NormalizeHex(accentHex);
         Tone = NormalizeTone(tone);
         Strength = NormalizeStrength(strength);
+        Background = string.IsNullOrWhiteSpace(backgroundHex) ? string.Empty : NormalizeHex(backgroundHex);
 
         var colors = mode == AppTheme.Custom
-            ? BuildCustom(Accent, Tone, Strength)
+            ? BuildCustom(Accent, Tone, Strength, Background)
             : LightPalette();
 
         Install(BuildDictionary(colors));
@@ -72,6 +76,9 @@ public static class ThemeService
 
     /// <summary>当前着色浓度（soft / normal / strong）。</summary>
     public static string Strength { get; private set; } = "normal";
+
+    /// <summary>自定义背景色；空表示跟随主色。</summary>
+    public static string Background { get; private set; } = string.Empty;
 
     public static string NormalizeTone(string? tone) => tone switch
     {
@@ -294,7 +301,7 @@ public static class ThemeService
     /// 自定义主题：主色 + 色调 + 浓度，重算整套色板。
     /// 主色决定按钮/高亮，色调决定窗口卡片的冷暖，浓度决定着色轻重。
     /// </summary>
-    private static Dictionary<string, Color> BuildCustom(string accentHex, string toneName, string strength)
+    private static Dictionary<string, Color> BuildCustom(string accentHex, string toneName, string strength, string backgroundHex)
     {
         var colors = LightPalette();
         var accent = ParseColor(accentHex);
@@ -343,6 +350,47 @@ public static class ThemeService
         colors["ShadowColor"] = Blend(tone, Colors.Black, 0.72);
         colors["ShadowColorSoft"] = Blend(tone, Colors.Black, 0.55);
         colors["ShadowTint"] = Blend(tone, Colors.Black, 0.72);
+
+        // 指定了背景色：整窗按这个底色重算，并用它压住背景图
+        if (!string.IsNullOrWhiteSpace(backgroundHex))
+        {
+            var bg = ParseColor(backgroundHex);
+            var darkBg = Luminance(bg) < 0.45;
+
+            colors["WindowBase"] = bg;
+            colors["PaneBg"] = WithAlpha(bg, 0xF2);
+            colors["SurfacePanel"] = WithAlpha(Blend(bg, darkBg ? Colors.White : Colors.White, 0.10), 0xF2);
+            colors["SurfaceFloat"] = WithAlpha(Blend(bg, Colors.White, 0.16), 0xF7);
+            colors["SurfaceSolid"] = Blend(bg, Colors.White, 0.30);
+            colors["SidebarBg"] = WithAlpha(Blend(bg, Colors.White, 0.10), 0x66);
+            colors["AvatarCard"] = WithAlpha(Blend(bg, Colors.White, 0.18), 0x73);
+            colors["PillBg"] = WithAlpha(Blend(bg, Colors.White, 0.12), 0x80);
+
+            colors["Glass"] = WithAlpha(Blend(bg, Colors.White, 0.12), 0x66);
+            colors["GlassMedium"] = WithAlpha(Blend(bg, Colors.White, 0.18), 0x8C);
+            colors["GlassStrong"] = WithAlpha(Blend(bg, Colors.White, 0.24), 0xC8);
+            colors["GlassHover"] = WithAlpha(Blend(bg, Colors.White, 0.20), 0xA6);
+            colors["GlassHoverSoft"] = WithAlpha(Blend(bg, Colors.White, 0.08), 0x66);
+
+            // 背景图几乎盖住，只留一点质感
+            colors["BackdropVeil"] = WithAlpha(bg, darkBg ? (byte)0xF0 : (byte)0xE8);
+
+            if (darkBg)
+            {
+                colors["Ink"] = Color.FromRgb(0xEC, 0xF1, 0xEE);
+                colors["InkStrong"] = Color.FromRgb(0xF8, 0xFB, 0xF9);
+                colors["InkMax"] = Colors.White;
+                colors["InkSoft"] = Color.FromRgb(0xB4, 0xC0, 0xBA);
+                colors["InkMute"] = Color.FromRgb(0x8A, 0x96, 0x90);
+                colors["InkInverse"] = Color.FromRgb(0x12, 0x18, 0x15);
+                colors["Divider"] = Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF);
+                colors["CardBorder"] = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
+                colors["PanelBorderSoft"] = Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF);
+                colors["ToastBg"] = Color.FromArgb(0xF0, 0x1A, 0x20, 0x1D);
+                colors["ModalScrim"] = Color.FromArgb(0x99, 0, 0, 0);
+                colors["HoverWash"] = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF);
+            }
+        }
 
         return colors;
     }

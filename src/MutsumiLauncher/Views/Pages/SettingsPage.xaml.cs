@@ -247,7 +247,10 @@ public partial class SettingsPage : UserControl
         ThemeCustomPanel.Visibility = mode == AppTheme.Custom ? Visibility.Visible : Visibility.Collapsed;
 
         BuildSwatches(ThemeService.NormalizeHex(config.ThemeAccent));
+        BuildBackgroundSwatches();
         BuildThemeOptions();
+
+        SyncBackgroundSelection(config.ThemeBackground);
 
         SyncToneSelection(ThemeService.Tone, ThemeService.Strength);
 
@@ -280,22 +283,25 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>按当前主色 / 色调 / 浓度重算自定义主题。</summary>
-    private void ApplyCustomTheme(string? hex, string? tone = null, string? strength = null)
+    private void ApplyCustomTheme(string? hex, string? tone = null, string? strength = null,
+        string? background = null)
     {
         var accent = ThemeService.NormalizeHex(hex);
         var finalTone = ThemeService.NormalizeTone(tone ?? ThemeService.Tone);
         var finalStrength = ThemeService.NormalizeStrength(strength ?? ThemeService.Strength);
+        var finalBackground = background ?? ThemeService.Background;
 
         _themeLoading = true;
         ThemeCustomRadio.IsChecked = true;
         ThemeCustomPanel.Visibility = Visibility.Visible;
         _themeLoading = false;
 
-        ThemeService.SetTheme(AppTheme.Custom, accent, finalTone, finalStrength);
+        ThemeService.SetTheme(AppTheme.Custom, accent, finalTone, finalStrength, finalBackground);
 
         AccentHint.Text = "已应用";
         UpdateSwatchSelection(accent);
         SyncToneSelection(finalTone, finalStrength);
+        SyncBackgroundSelection(finalBackground);
     }
 
     private void ResetTheme_Click(object sender, RoutedEventArgs e)
@@ -397,6 +403,67 @@ public partial class SettingsPage : UserControl
             if (child is RadioButton { Tag: string value } chip) chip.IsChecked = value == strength;
 
         _themeLoading = wasLoading;
+    }
+
+    /// <summary>背景色的常用选择。</summary>
+    private static readonly (string Name, string Hex)[] BackgroundPresets =
+    [
+        ("默认", "#FFF7FBF4"),
+        ("纯白", "#FFFFFFFF"),
+        ("米色", "#FFF4F0E6"),
+        ("冷灰", "#FFE9EEF3"),
+        ("淡绿", "#FFEAF4EE"),
+        ("藕粉", "#FFF6EEF1"),
+        ("深灰", "#FF2A3034"),
+        ("夜间", "#FF12161A"),
+    ];
+
+    private void BuildBackgroundSwatches()
+    {
+        if (BackgroundSwatches.Children.Count > 0) return;
+
+        foreach (var (name, hex) in BackgroundPresets)
+        {
+            var color = ThemeService.ParseColor(hex);
+
+            var swatch = new Button
+            {
+                Width = 34,
+                Height = 34,
+                Margin = new Thickness(0, 0, 8, 8),
+                ToolTip = name,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Background = new SolidColorBrush(color),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0, 0, 0)),
+                BorderThickness = new Thickness(1),
+            };
+
+            swatch.Click += (_, _) =>
+            {
+                BackgroundHexBox.Text = hex;
+                ApplyCustomTheme(AccentHexBox.Text, background: hex);
+            };
+
+            BackgroundSwatches.Children.Add(swatch);
+        }
+    }
+
+    private void ApplyBackground_Click(object sender, RoutedEventArgs e)
+    {
+        var hex = ThemeService.NormalizeHex(BackgroundHexBox.Text);
+        BackgroundHexBox.Text = hex;
+        ApplyCustomTheme(AccentHexBox.Text, background: hex);
+    }
+
+    private void ResetBackground_Click(object sender, RoutedEventArgs e)
+    {
+        BackgroundHexBox.Text = string.Empty;
+        ApplyCustomTheme(AccentHexBox.Text, background: string.Empty);
+    }
+
+    private void SyncBackgroundSelection(string background)
+    {
+        BackgroundHexBox.Text = background;
     }
 
     private void BuildSwatches(string selected)
