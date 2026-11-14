@@ -3,6 +3,23 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.15] - 2026-11-14
+
+### 更新内容
+
+- 修复下载页「社区资源」收起后，高亮块还留在空白处
+
+### 技术实现
+
+折叠只是把子项 `Visibility` 关掉，高亮块是同一层里的独立元素，不会跟着消失。
+于是记住当前选中的单选项，折叠时判断它是否还可见：
+
+```csharp
+if (_currentSource is null || !_currentSource.IsVisible) SourceIndicator.Opacity = 0;
+else { SourceIndicator.Opacity = 1; SlidingHighlight.Move(...); }
+```
+
+展开分组时再放回去，位置按实际布局重新量。
 ## [1.1.4-beta.14] - 2026-11-14
 
 ### 更新内容
