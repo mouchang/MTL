@@ -17,9 +17,21 @@ public partial class ModManagePage : UserControl, IInstancePage
     private string _query = string.Empty;
     private List<ModFileItem> _items = [];
 
+    // MODS 目录实时监听：外部增删文件、我们自己改扩展名都会触发刷新
+    private FileSystemWatcher? _modsWatcher;
+    private System.Windows.Threading.DispatcherTimer? _refreshDebounce;
+
+    /// <summary>更新进行中：此时不再让监听器插进来刷新，避免打断选中状态。</summary>
+    private bool _updating;
+
+    /// <summary>下次重建列表后回到第 1 行（更新完成时置位）。</summary>
+    private bool _scrollTopPending;
+
     public ModManagePage()
     {
         InitializeComponent();
+
+        Loaded += (_, _) => PlaceFilterIndicator(animate: false);
     }
 
     public void SetInstance(string version)
@@ -33,10 +45,73 @@ public partial class ModManagePage : UserControl, IInstancePage
         InstallNewModButton.IsEnabled = supported;
         InstallNewModButton.ToolTip = supported ? null : "原版没有加载器，无法安装 Mod";
 
+        StartWatching(ModsDir);
         Refresh();
     }
 
     private string ModsDir => InstanceService.ModsDirFor(_version);
+
+    /// <summary>
+    /// 监听 mods 目录，文件增删 / 改名（启用禁用）后自动刷新列表。
+    /// 用 400ms 防抖：一次下载完成会连着抛出好几个事件。
+    /// </summary>
+    private void StartWatching(string dir)
+    {
+        _modsWatcher?.Dispose();
+        _modsWatcher = null;
+
+        try
+        {
+            Directory.CreateDirectory(dir);
+
+            _refreshDebounce ??= CreateDebounceTimer();
+
+            var watcher = new FileSystemWatcher(dir)
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true,
+            };
+
+            watcher.Created += (_, _) => ScheduleRefresh();
+            watcher.Deleted += (_, _) => ScheduleRefresh();
+            watcher.Renamed += (_, _) => ScheduleRefresh();
+            watcher.Changed += (_, _) => ScheduleRefresh();
+
+            _modsWatcher = watcher;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, "watch mods " + dir);
+        }
+    }
+
+    private System.Windows.Threading.DispatcherTimer CreateDebounceTimer()
+    {
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(400),
+        };
+
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (!_updating) Refresh();
+        };
+
+        return timer;
+    }
+
+    private void ScheduleRefresh()
+    {
+        if (_updating || _refreshDebounce is null) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            _refreshDebounce.Stop();
+            _refreshDebounce.Start();
+        });
+    }
 
     public void Refresh()
     {
@@ -113,11 +188,25 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         ApplyFilter();
 
+        // 计数文字变了宽度就变，高亮块要跟着重新量一次
+        PlaceFilterIndicator(animate: false);
+
         // 界面已经出来了，大小和元数据在后台补
         _ = FillSizesAsync(_items);
     }
 
-    private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync();
+
+    /// <summary>打开 Mod 板块时自动跑一次（每个版本设置会话只跑一次，由外层控制）。</summary>
+    public void AutoCheckUpdates()
+    {
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
+        AppLog.Info($"mod auto check: version={_version}");
+        _ = CheckUpdatesAsync();
+    }
+
+    private async Task CheckUpdatesAsync()
     {
         var owner = Window.GetWindow(this) as MainWindow;
 
@@ -195,6 +284,9 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         SaveUpdateCache();
 
+        // 检查完也回到第 1 行（用户预期和更新后一致）
+        _scrollTopPending = true;
+
         // 有更新才显示筛选标签
         SyncUpdateFilter();
 
@@ -206,10 +298,10 @@ public partial class ModManagePage : UserControl, IInstancePage
         var unknown = Math.Max(0, total - matchedFiles);
 
         var message = found == 0
-            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（{unknown} 个未找到来源）。" : "所有 Mod 都是最新的。")
+            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（其余 {unknown} 个未找到新版）" : "所有 Mod 都是最新的")
             : unknown > 0
-                ? $"发现 {found} 个可更新的 Mod（{unknown} 个未找到来源）。"
-                : $"发现 {found} 个可更新的 Mod。";
+                ? $"发现 {found} 个可更新的 Mod（其余 {unknown} 个未找到新版）"
+                : $"发现 {found} 个可更新的 Mod";
 
         owner?.ShowToast(message);
     }
@@ -410,6 +502,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         UpdatesFilter.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         ApplyFilter();
+        PlaceFilterIndicator(animate: false);
     }
 
     private void SaveUpdateCache()
@@ -536,6 +629,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin($"更新 {item.DisplayName}");
         var versionNumber = item.Update!.VersionNumber;
 
+        _updating = true;
         ShowUpdateProgress($"正在更新 {item.DisplayName}");
 
         var progress = new Progress<DownloadProgress>(p =>
@@ -567,6 +661,11 @@ public partial class ModManagePage : UserControl, IInstancePage
         finally
         {
             HideUpdateProgress();
+            _updating = false;
+
+            // 单条更新后也回到顶部，和批量保持一致
+            _scrollTopPending = true;
+            Refresh();
         }
     }
 
@@ -599,6 +698,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             ? $"已更新全部 {done} 个 Mod。"
             : $"更新完成 {done}/{targets.Count}，其余失败（详见日志）。");
 
+        _scrollTopPending = true;
         Refresh();
     }
 
@@ -610,6 +710,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         var task = DownloadCenter.Begin(title);
         var done = 0;
 
+        _updating = true;
         ShowUpdateProgress(title);
 
         try
@@ -643,6 +744,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         {
             DownloadCenter.Complete(task, "更新完成 " + done + "/" + targets.Count);
             HideUpdateProgress();
+            _updating = false;
         }
 
         return done;
@@ -889,6 +991,7 @@ public partial class ModManagePage : UserControl, IInstancePage
             SelectUpdateButton.IsEnabled = true;
         }
 
+        _scrollTopPending = true;
         Refresh();
     }
 
@@ -990,6 +1093,13 @@ public partial class ModManagePage : UserControl, IInstancePage
         ModList.ItemsSource = list;
         _ = LoadMetadataAsync(list);
         _ = LoadIconsAsync(list);
+
+        // 更新完成后回到第 1 行：在这里做，列表数据是刚换上的，一定滚得动
+        if (_scrollTopPending)
+        {
+            _scrollTopPending = false;
+            ScrollToTop();
+        }
         EmptyText.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Text = _items.Count == 0
             ? "这个实例还没有安装 Mod。"
@@ -1007,6 +1117,13 @@ public partial class ModManagePage : UserControl, IInstancePage
     {
         CheckingOverlay.Visibility = Visibility.Visible;
 
+        // 遮罩淡入，别一下子糊上来
+        CheckingOverlay.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+
         var animation = new DoubleAnimation(-64, 220, TimeSpan.FromSeconds(1.1))
         {
             RepeatBehavior = RepeatBehavior.Forever,
@@ -1019,7 +1136,14 @@ public partial class ModManagePage : UserControl, IInstancePage
     private void StopBusy()
     {
         BusyTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        CheckingOverlay.Visibility = Visibility.Collapsed;
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+
+        fade.Completed += (_, _) => CheckingOverlay.Visibility = Visibility.Collapsed;
+        CheckingOverlay.BeginAnimation(OpacityProperty, fade);
     }
 
     private void Filter_Checked(object sender, RoutedEventArgs e)
@@ -1027,6 +1151,34 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (sender is not RadioButton { Tag: string filter }) return;
         _filter = filter;
         ApplyFilter();
+
+        PlaceFilterIndicator(animate: true);
+    }
+
+    /// <summary>筛选项的高亮：跟到当前选中的那一项；选中项被数据隐藏时收起来。</summary>
+    private void PlaceFilterIndicator(bool animate)
+    {
+        if (FilterIndicator is null || FilterHost is null) return;
+
+        RadioButton? target = null;
+
+        foreach (var chip in new[] { AllFilter, EnabledFilter, DisabledFilter, UpdatesFilter })
+        {
+            if (chip is { IsChecked: true } && chip.IsVisible)
+            {
+                target = chip;
+                break;
+            }
+        }
+
+        if (target is null)
+        {
+            FilterIndicator.Opacity = 0;
+            return;
+        }
+
+        FilterIndicator.Opacity = 1;
+        Controls.SlidingHighlight.Move(FilterIndicator, target, FilterHost, animate);
     }
 
     /// <summary>「[中文名] 原文件名」，没有中文名就用原名。</summary>
@@ -1045,8 +1197,6 @@ public partial class ModManagePage : UserControl, IInstancePage
 
         return $"[{display}] {fileName}";
     }
-
-    private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
 
     private void InstallNewMod_Click(object sender, RoutedEventArgs e)
     {

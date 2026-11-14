@@ -61,9 +61,22 @@ public partial class CommunitySearchView : UserControl
 
         SearchNameBox.Text = string.Empty;
         _page = 0;
+
+        // 换分类先清空旧结果：否则新分类的标题下面会先显示上一个分类的卡片
+        ClearResults();
+
         _ = LoadVersionsAsync();
         _ = LoadCategoriesAsync();
         _ = RunSearchAsync(0);
+    }
+
+    /// <summary>清空结果区，只留加载指示。</summary>
+    private void ClearResults()
+    {
+        _totalHits = 0;
+        _pageCount = 0;
+        ResultsList.ItemsSource = null;
+        ResultsList.RenderTransform = null;
     }
 
     /// <summary>译名表只覆盖 Mod，其它资源类型不套中文名。</summary>

@@ -58,17 +58,15 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }}
           -p:DebugType=None -o dist/publish
 
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
 
       - name: Build installer
         shell: pwsh
         run: |
-          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DAPP_VERSION=${{ steps.version.outputs.version }}" "/DAPP_CHANNEL=${{ steps.version.outputs.channel }}" installer/MutsumiLauncher.nsi
-          $source = Get-ChildItem dist -Filter "MutsumiLauncher-*-setup.exe" | Select-Object -First 1
-          if (-not $source) { throw "NSIS 没有产出安装包" }
-          $target = "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe"
-          Move-Item $source.FullName $target -Force
+          $display = if ('${{ steps.version.outputs.channel }}' -eq 'beta') { 'Mutsumi Launcher beta' } else { 'Mutsumi Launcher' }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" '/DAPP_VERSION=${{ steps.version.outputs.version }}' "/DAPP_DISPLAY=$display" installer/MutsumiLauncher.iss
+          if (-not (Test-Path "dist/MutsumiLauncher-${{ steps.version.outputs.version }}-Setup.exe")) { throw 'Inno Setup 没有产出安装包' }
 
       - name: Build portable zip
         shell: pwsh

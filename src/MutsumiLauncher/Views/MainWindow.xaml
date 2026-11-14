@@ -1,4 +1,4 @@
-<Window x:Class="MutsumiLauncher.Views.MainWindow"
+﻿<Window x:Class="MutsumiLauncher.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Mutsumi Launcher"
@@ -43,12 +43,24 @@
                                     Background="{DynamicResource WindowBar}" BorderBrush="{DynamicResource WindowBorder}" BorderThickness="1"
                                     IsHitTestVisible="False" />
 
-                            <StackPanel x:Name="NavTabs" Orientation="Horizontal"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        Opacity="0" IsHitTestVisible="False">
-                                <StackPanel.RenderTransform>
+                            <!-- 页签层：高亮块和页签同层，位移/淡入挂在整层上，位置才和页签一致 -->
+                            <Grid x:Name="NavTabLayer" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Opacity="0" IsHitTestVisible="False">
+                                <Grid.RenderTransform>
                                     <TranslateTransform Y="-6" />
-                                </StackPanel.RenderTransform>
+                                </Grid.RenderTransform>
+
+                                <Border x:Name="NavTabIndicator" Height="44" Width="72"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        CornerRadius="12" Background="{DynamicResource AccentWash}"
+                                        IsHitTestVisible="False" Opacity="0">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" Y="0" />
+                                    </Border.RenderTransform>
+                                </Border>
+
+                            <StackPanel x:Name="NavTabs" Orientation="Horizontal"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
 
                                 <RadioButton x:Name="NavLaunch" Style="{StaticResource NavTab}"
                                              GroupName="MainNav" Tag="launch" Checked="Nav_Checked">
@@ -72,6 +84,7 @@
                                     </StackPanel>
                                 </RadioButton>
                             </StackPanel>
+                            </Grid>
 
                             <Button x:Name="MenuButton" Style="{StaticResource IconButton}"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"

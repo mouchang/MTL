@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -25,9 +26,47 @@ public partial class DownloadPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // 首次显示时把高亮放进当前来源
+        foreach (var child in SourcePanel.Children)
+        {
+            if (FindChecked(child) is { } radio)
+            {
+                _currentSource = radio;
+                Controls.SlidingHighlight.Move(SourceIndicator, radio, SourcePanel, animate: false);
+                break;
+            }
+        }
+
         if (_versionsRequested) return;
         _versionsRequested = true;
         _ = _viewModel?.LoadAsync();
+    }
+
+    /// <summary>在容器里找第一个被选中的单选项（子项可能嵌在社区分组里）。</summary>
+    private static RadioButton? FindChecked(object? node)
+    {
+        switch (node)
+        {
+            case RadioButton { IsChecked: true } radio:
+                return radio;
+
+            case Panel panel:
+                foreach (var child in panel.Children)
+                {
+                    if (FindChecked(child) is { } hit) return hit;
+                }
+
+                return null;
+
+            case Border { Child: { } inner }:
+                return FindChecked(inner);
+
+            case ToggleButton { Content: { } content }:
+                return FindChecked(content);
+
+            default:
+                return null;
+        }
     }
 
     /// <summary>从版本设置跳转到「社区资源 → Mod」，并预选版本与加载器。</summary>
@@ -73,12 +112,46 @@ public partial class DownloadPage : UserControl
         CommunityItems.Visibility = CommunityToggle.IsChecked == true
             ? Visibility.Visible
             : Visibility.Collapsed;
+
+        // 分组收起时选中的子项跟着消失，高亮块不能留在原地
+        SyncSourceIndicator();
+    }
+
+    /// <summary>选中的来源被折叠时藏起高亮；重新展开后放回去。</summary>
+    private void SyncSourceIndicator()
+    {
+        if (SourceIndicator is null) return;
+
+        if (_currentSource is null || !_currentSource.IsVisible)
+        {
+            SourceIndicator.Opacity = 0;
+            return;
+        }
+
+        SourceIndicator.Opacity = 1;
+        Controls.SlidingHighlight.Move(SourceIndicator, _currentSource, SourcePanel, animate: false);
+    }
+
+    /// <summary>当前选中的来源（折叠分组时要用它判断高亮是否该隐藏）。</summary>
+    private RadioButton? _currentSource;
+
+    /// <summary>把左侧导航的高亮块移到当前来源（顶层项 52 高、子项 38 高）。</summary>
+    private void MoveSourceIndicator(RadioButton? target)
+    {
+        _currentSource = target;
+
+        if (target is null || SourceIndicator is null || SourcePanel is null) return;
+
+        var inset = Math.Abs(target.ActualHeight - 52) < 0.5 ? 0 : 0;
+        Controls.SlidingHighlight.Move(SourceIndicator, target, SourcePanel, animate: true, inset);
     }
 
     private void Source_Checked(object sender, RoutedEventArgs e)
     {
         if (OriginalPanel is null || CommunityHost is null) return;
         if (sender is not RadioButton { Tag: string kind }) return;
+
+        MoveSourceIndicator(sender as RadioButton);
 
         CloseDetail(animated: false);
 

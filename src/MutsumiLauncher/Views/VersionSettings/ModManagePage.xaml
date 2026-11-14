@@ -1,4 +1,4 @@
-<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.ModManagePage"
+﻿<UserControl x:Class="MutsumiLauncher.Views.VersionSettings.ModManagePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:MutsumiLauncher.Controls"
@@ -23,8 +23,6 @@
                     Margin="0,0,10,0" Click="OpenFolder_Click" />
             <Button Style="{StaticResource SecondaryButton}" Content="从文件安装" Width="130"
                     Margin="0,0,10,0" Click="InstallFromFile_Click" />
-            <Button Style="{StaticResource SecondaryButton}" Content="刷新" Width="110"
-                    Margin="0,0,10,0" Click="Refresh_Click" />
             <Button Style="{StaticResource SecondaryButton}" Content="检查更新" Width="120"
                     Margin="0,0,10,0" Click="CheckUpdates_Click" />
             <Button x:Name="UpdateAllButton" Style="{StaticResource SecondaryButton}" Content="全部更新"
@@ -46,25 +44,37 @@
                                TextWrapping="Wrap" />
                 </Border>
 
-                <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
-                    <RadioButton x:Name="AllFilter" Style="{StaticResource SegmentItem}" GroupName="ModFilter"
-                                 Tag="all" IsChecked="True" Checked="Filter_Checked" Margin="0,0,4,0">
-                        <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="EnabledFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="enabled" Checked="Filter_Checked" Margin="4,0,0,0">
-                        <TextBlock x:Name="EnabledFilterText" Text="启用 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="DisabledFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="disabled" Checked="Filter_Checked" Margin="4,0,0,0">
-                        <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="UpdatesFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="updates" Checked="Filter_Checked"
-                                 Margin="4,0,0,0" Visibility="Collapsed">
-                        <TextBlock x:Name="UpdatesFilterText" Text="可更新 (0)" />
-                    </RadioButton>
-                </StackPanel>
+                <Grid x:Name="FilterHost" HorizontalAlignment="Left" Margin="2,0,0,6">
+                    <Border x:Name="FilterIndicator" Height="32" Width="96"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            CornerRadius="16" Background="{DynamicResource AccentDeep}"
+                            IsHitTestVisible="False" Opacity="0">
+                        <Border.RenderTransform>
+                            <TranslateTransform X="0" Y="0" />
+                        </Border.RenderTransform>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="AllFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="all" IsChecked="True" Checked="Filter_Checked"
+                                     Margin="0,0,4,0">
+                            <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="EnabledFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="enabled" Checked="Filter_Checked" Margin="4,0,0,0">
+                            <TextBlock x:Name="EnabledFilterText" Text="启用 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="DisabledFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="disabled" Checked="Filter_Checked" Margin="4,0,0,0">
+                            <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="UpdatesFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="updates" Checked="Filter_Checked"
+                                     Margin="4,0,0,0" Visibility="Collapsed">
+                            <TextBlock x:Name="UpdatesFilterText" Text="可更新 (0)" />
+                        </RadioButton>
+                    </StackPanel>
+                </Grid>
 
 
                 <!-- 虚拟化：Mod 多的时候只创建可见行 -->
@@ -188,28 +198,33 @@
 
         <!-- 检查更新时盖住整页：也挡住上面的按钮，避免重复触发 -->
         <Border x:Name="CheckingOverlay" Grid.Row="0" Grid.RowSpan="5"
-                Background="{DynamicResource GlassStrong}" Visibility="Collapsed">
-            <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
-                    Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
-                                      Opacity="0.15" Color="{DynamicResource ShadowColor}" />
-                </Border.Effect>
-                <StackPanel Width="220">
-                    <Grid Height="6" ClipToBounds="True">
-                        <Border Background="{DynamicResource Divider}" CornerRadius="3" />
-                        <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
-                                Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
-                            <Border.RenderTransform>
-                                <TranslateTransform x:Name="BusyTranslate" X="-64" />
-                            </Border.RenderTransform>
-                        </Border>
-                    </Grid>
-                    <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
-                               HorizontalAlignment="Center"
-                               Foreground="{DynamicResource InkSoft}" FontSize="13" />
-                </StackPanel>
-            </Border>
+                Background="Transparent" Opacity="0" Visibility="Collapsed">
+            <Grid>
+                <!-- 蒙层做成和页面同圆角的卡片，别露出四个直角 -->
+                <Border Background="#66FFFFFF" CornerRadius="18" />
+
+                <Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16"
+                        Padding="30,24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
+                                          Opacity="0.15" Color="{DynamicResource ShadowColor}" />
+                    </Border.Effect>
+                    <StackPanel Width="220">
+                        <Grid Height="6" ClipToBounds="True">
+                            <Border Background="{DynamicResource Divider}" CornerRadius="3" />
+                            <Border x:Name="BusyBar" Width="64" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource AccentDeep}" HorizontalAlignment="Left">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="BusyTranslate" X="-64" />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="检查更新中，请稍后…" Margin="0,14,0,0"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource InkSoft}" FontSize="13" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

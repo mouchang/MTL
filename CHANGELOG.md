@@ -3,6 +3,637 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4] - 2026-11-15
+
+### 更新内容
+
+- 安装器从 NSIS 换成 Inno Setup：按用户安装、系统主题化向导、任务选择与就绪页，兼容旧版提示
+- 自定义主题：明亮 / 暗色两套里不同的 57 项颜色都能单独改，全中文、分组卡片
+- 主题保持「明亮 / 暗色 / 自定义」，移除了实验性的种子色、液态玻璃等方案
+
+### 技术实现
+
+安装器：`installer/MutsumiLauncher.iss`，`PrivilegesRequired=lowest` + `{autopf}`，
+卸载前先跑 `--cleanup-references` 断开实例联接，避免误删玩家的游戏目录；
+`InitializeSetup` 检测旧 NSIS 安装并提示。
+
+自定义主题：`EditableKeys` 由两套色板逐键比对得到，
+覆盖值存在 `ThemeCustomColors`，`BuildCustomPalette` 以选定底色为底再套覆盖。
+## [1.1.4-beta.31] - 2026-11-15
+
+### 更新内容
+
+- 自定义主题：全部颜色项改成中文名
+- 自定义主题重新排版：按「文字 / 主色 / 表面与背景 / 描边与分隔 / 状态色 / 阴影」分组，两列卡片
+
+### 技术实现
+
+`KeyLabel` 补全 57 个键的中文名，`KeyGroup` 负责分组；
+设置页按固定顺序铺组，每项是一张小卡片：
+
+```csharp
+return new Border { Width = 258, CornerRadius = 10, Child = row };
+```
+
+卡片内是「色块 + 中文名 + 色值输入 + 单项恢复」，改完立即生效。
+## [1.1.4-beta.30] - 2026-11-15
+
+### 更新内容
+
+- 全新自定义主题：明亮 / 暗色两套主题里不一致的颜色（共 57 项）都能单独改
+
+### 技术实现
+
+可改的键由两套色板直接比对得出，不再手写列表：
+
+```csharp
+public static IReadOnlyList<string> EditableKeys { get; } = ComputeEditableKeys();
+
+// 明亮/暗色里值不同的键，就是切主题时实际会变的部分
+if (!dark.TryGetValue(key, out var other) || other != color) keys.Add(key);
+```
+
+自定义主题以「起始配色（明亮 / 暗色）」为底，逐项覆盖：
+
+```csharp
+var colors = dark ? DarkPalette() : LightPalette();
+foreach (var (key, hex) in config.ThemeCustomColors) colors[key] = ParseColor(hex);
+```
+
+设置页每行一个色块 + 中文名 + 色值输入，改完立即生效，"恢复"按钮清掉单项覆盖。
+## [1.1.4-beta.29] - 2026-11-15
+
+### 更新内容
+
+- 主题模块回滚到 1.1.4-beta.20 的自有实现
+- 删除自定义主题，外观只剩「明亮 / 暗色」两档
+
+### 技术实现
+
+回滚 `ThemeService` / `AppConfig` / `SettingsPage` / `MainWindow` 到 5540585 的版本，
+删除后续引入的 `MaterialTheme`（种子色推导）、液态玻璃、字体、缩放等选项。
+
+自定义主题整块移除：单选按钮、底色/主色面板、色板与色值输入、`ApplyCustomTheme` 等一并删除，
+`ThemeMode` 只剩 `light` / `dark`，老配置里的 `custom` 会按明亮处理。
+## [1.1.4-beta.28] - 2026-11-15
+
+### 更新内容
+
+- 主题页补齐 FlClash 的全部条目：主题模式、纯黑、主题色、配色风格、导航栏样式、切换动画、液态玻璃、背景模糊、界面字体、文字缩放
+
+### 技术实现
+
+对应关系：
+
+| FlClash | 本项目 |
+| --- | --- |
+| `ThemeMode`（system/light/dark） | `ColorMode` |
+| `primaryColor` + `colorStyle` | `Seed` + `Style`，由 `MaterialTheme.Build` 展开 |
+| `pureBlack` | `ThemePureBlack`，深色表面 tone 置 0 |
+| `floatingNavigationBar` | `ThemeNavStyle`，悬浮时导航条加投影、圆角 22 |
+| `tabAnimation`（slide/fade） | `ThemeTransition`，页面切换走位移或纯淡入 |
+| `liquidGlass`（none/standard/ultra） | `ThemeLiquidGlass`，玻璃层与遮罩的 alpha 乘 0.68 / 0.42 |
+| `sidebarBlur` | `ThemeSidebarBlur`，背景图 `BlurEffect` 半径 48 |
+| `fontFamily` | `ThemeFont`，替换 `UiFont` 资源 |
+| `textScaleFactor` | `ThemeScale`，`ShellRoot.LayoutTransform` 85-130% |
+
+字体替换注意：页面里显式用 `{StaticResource UiFont}` 的元素在运行时不会重画，
+所以改成窗口级 `FontFamily` + 资源替换，新开的页面一定是新字体。
+## [1.1.4-beta.27] - 2026-11-14
+
+### 更新内容
+
+- 主题模块按 FlClash 完整重构：主题模式（跟随系统 / 浅色 / 深色）、纯黑背景、种子色、配色风格、实时预览
+
+### 技术实现
+
+`ThemeService` 改成 FlClash 的四元组模型：`ColorMode + Seed + Style + PureBlack`。
+
+```csharp
+var theme = MaterialTheme.Build(ParseColor(Seed), style, IsDark, LightPalette(), PureBlack && IsDark);
+```
+
+`MaterialTheme.Build` 新增深色分支（主色 tone 80、容器 tone 30、表面 tone 6 / 纯黑 0），
+浅色仍走 tone 40/90/98。`SystemIsDark()` 读 `AppsUseLightTheme` 决定跟随系统的实际明暗。
+
+设置页顶部加了实时预览卡：侧栏条、卡片、主/次按钮、文本条都绑 `DynamicResource`，
+换模式或种子色时立刻跟着变。
+## [1.1.4-beta.26] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题新增「跟随系统」：一键取 Windows 个性化里的主题色当种子
+- 新增配色预览条：主色 / 高亮 / 窗口 / 卡片 / 正文五个色块
+
+### 技术实现
+
+系统主题色读 `HKCU\Software\Microsoft\Windows\DWM` 的 `ColorizationColor`，
+取低 24 位作为种子色：
+
+```csharp
+return Color.FromRgb((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
+```
+
+预览条直接用 `DynamicResource` 绑定当前主题的五个画刷，换主题时自动跟着变。
+## [1.1.4-beta.25] - 2026-11-14
+
+### 更新内容
+
+- 主题参考 FlClash 改成「种子色 + 配色风格」：10 个预设色、任意色值、柔和/平衡/鲜艳/单色
+
+### 技术实现
+
+新增 `Services/MaterialTheme.cs`：把一个种子色展开成一组色调（tone 0-100），
+再映射到启动器的画刷，等价于 Material 3 的 `seededColorScheme`：
+
+```csharp
+var (hue, _, _) = ToHsl(seed);
+Color Tone(double chroma, int tone) => FromHsl(hue, chroma, tone / 100.0);
+colors["AccentDeep"]  = Tone(primaryChroma, 40);
+colors["AccentWash"]  = Tone(primaryChroma, 84);
+colors["WindowBase"]  = Tone(neutralChroma, 98);
+colors["Ink"]         = Tone(neutralChroma, 12);
+```
+
+四种风格只改彩度：柔和 0.30 / 平衡 0.45 / 鲜艳 0.62 / 单色 0.05，中性色同步收缩。
+这样同一颗种子色在不同风格下，主色深浅和界面冷暖都是成套的，不再出现「彩色按钮配灰底」。
+
+按 FlClash 的取向，只取颜色部分——液态玻璃、模糊、动画等一概不引入。
+## [1.1.4-beta.24] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题按 PCL-CE 的思路重做：色相 / 饱和度 / 明度三个滑块 + 六个配色预设
+- 窗口底色直接由「明度」决定，低明度自动转深色文字
+- 卡片、侧栏、描边、阴影全部由这一组 HSL 值推导，界面不再有灰色残留
+
+### 技术实现
+
+参考 PCL-CE 的 `Config.Preference.Theme`（ColorMode / ColorTheme / Hue / Sat / Light），
+把原来「主色 + 色调 + 浓度 + 背景色」四套手写参数，收敛成 `ThemeHue / ThemeSat / ThemeLight`：
+
+```csharp
+var bg = HslToRgb(h, s * 0.45, l);            // 窗口底色
+var accentLight = HslToRgb(h, s * 1.15, dark ? 0.70 : 0.46);
+var contrast = dark ? Colors.White : Colors.Black;
+colors["CardBorder"] = WithAlpha(contrast, 0x2A);
+```
+
+深色底（明度 < 52%）自动切浅色文字、白色低透明度描边；浅色底反之。
+预设直接给 (色相, 饱和度, 明度)，点一下三个滑块一起走。
+## [1.1.4-beta.23] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题支持改背景色（8 个预设 + 任意色值，可切回「跟随主色」）
+- 选深色背景时自动切换为浅色文字，不会出现黑底黑字
+
+### 技术实现
+
+`ThemeBackground` 存背景色；`BuildCustom` 里若指定了背景：
+
+```csharp
+colors["WindowBase"]   = bg;
+colors["SurfacePanel"] = Blend(bg, white, 0.10) 带 F2 透明度;
+colors["BackdropVeil"] = WithAlpha(bg, 0xE8);   // 压住背景图，只留一点质感
+```
+
+同时按背景亮度（`Luminance(bg) < 0.45`）把 Ink 系列换成浅色、
+描边/分隔线换成白色低透明度，保证深色背景下的可读性。
+## [1.1.4-beta.22] - 2026-11-14
+
+### 更新内容
+
+- 自定义主题面板重做：预设、主色、界面色调、着色浓度、恢复默认
+- 自定义主题从「只换主色」升级为「主色 + 色调 + 浓度」三维调节
+
+### 技术实现
+
+新增 `ThemeTone`（green / cool / warm / neutral）与 `ThemeStrength`（soft / normal / strong）两项配置，
+`BuildCustom` 据此推导整套色板：
+
+```csharp
+var tone = ToneColor(accent, toneName);      // 冷暖倾向
+var k = StrengthFactor(strength);            // 0.45 / 1.0 / 1.9
+colors["WindowBase"] = Tint(base, tone, 0.10 * k);
+colors["SidebarBg"]  = Tint(base, tone, 0.20 * k);
+```
+
+面板里的预设 / 色调 / 浓度都是代码生成的单选组（避免 XAML 重复），
+切换时直接落到 `ThemeService.SetTheme`，配置持久化后下次启动复原。
+## [1.1.4-beta.21] - 2026-11-14
+
+### 更新内容
+
+- 移除暗色主题：外观只剩「明亮 / 自定义」，旧配置里的 dark 自动回落明亮
+- 自定义主题重做：主色会驱动整套路色（窗口、卡片、侧栏、描边、阴影、高亮），不再只是按钮变色
+
+### 技术实现
+
+`AppTheme` 去掉 `Dark`，`DarkPalette()`、深色底图、`IsDark` 一并删除；
+`ApplyFromConfig` 里旧的 `"dark"` 直接按明亮处理。
+
+`BuildCustom` 现在从主色推导：
+
+```csharp
+colors["WindowBase"] = Blend(light.WindowBase, accent, 0.06);
+colors["SidebarBg"]  = Blend(accent 透明底, accent, 0.12);
+colors["RingStroke"] = Blend(accent, white, 0.35);
+colors["ShadowColor"] = Blend(accent, black, 0.72);
+```
+
+外加 `Accent / AccentDeep / AccentWash / *Tint / PrimaryFill / InkOnAccent` 全部跟随主色，
+所以换成粉色/橙色时整个界面都跟着变，而不是绿按钮配灰底。
+## [1.1.4-beta.20] - 2026-11-14
+
+### 更新内容
+
+- Mod 列表的筛选项（全部 / 启用 / 禁用 / 可更新）加入滑动高亮
+
+### 技术实现
+
+新增 `SegmentItemPillOverlay`（选中文字转白），高亮块用 `AccentDeep` 底色，
+随选中项滑动；计数文字变化会改变宽度，`Refresh` / `SyncUpdateFilter` 后都重新量一次。
+
+筛选项可能被数据隐藏（全部启用时不显示「启用」），此时高亮跟到仍可见的选中项，
+若选中项本身不可见则收起。
+## [1.1.4-beta.19] - 2026-11-14
+
+### 更新内容
+
+- 下载页「社区资源」分组：标题与子项的悬浮底色不再贴着分组边框
+
+### 技术实现
+
+撤回上一版对高亮块宽度的限制（判断错了对象，那次改动已 revert）。
+真正的问题是分组 `Border` 只有纵向内边距：
+
+```xml
+<Border … Padding="0,4">   →   Padding="6,4"
+```
+
+「社区资源」标题和子项自身的悬浮底色（白色 wash）会横向顶到分组边缘，
+看起来像框套框、没对齐。给 6px 横向内边距后，悬浮框和选中块都缩进到分组内部。
+## [1.1.4-beta.17] - 2026-11-14
+
+### 更新内容
+
+- 修高亮块的宽度/位置在首次显示时量错（胶囊比按钮窄、文字露出）
+- 高亮块颜色改为跟随主题（`AccentWash`），暗色下不再是一块亮绿
+- 重做暗色主题：中性灰底 + 薄荷点缀，去掉原来的墨绿浑浊感
+
+### 技术实现
+
+`SlidingHighlight` 首次摆放时控件可能还没完成布局，`ActualWidth` 量到的是旧值；
+现在布局结束后会再校一次（只补一次，避免循环）。
+
+暗色色板重排：背景 `#0E1113`、卡片 `#1E2427`、浮层 `#1B2227`，
+文字改为中性白 `#E8ECEA`，主色提亮到 `#7AD7A1`，描边统一 15%~33% 白。
+## [1.1.4-beta.16] - 2026-11-14
+
+### 更新内容
+
+- 设置页的两组分段按钮（内存模式、外观主题）加入滑动高亮
+- 下载页「正在搜索」的蒙层改成圆角，不再露出直角
+- 修复设置页首次打开时导航高亮不出现
+
+### 技术实现
+
+分段控件新增 `SegmentItemOverlay` 样式（不画选中底色），高亮由独立 `Border` 承担，
+复用 `SlidingHighlight`，位置与宽度按实际布局量。
+
+首次不出现的原因是 `Loaded` 时控件还没参与布局，`ActualWidth` 为 0——
+`SlidingHighlight` 现在对 `animate: false` 也允许重试一次。
+
+`LoadingOverlay` 原来直接把 `SidebarBg` 铺在 `UserControl` 上（矩形），
+改为内部 `Border CornerRadius="18"`。
+## [1.1.4-beta.15] - 2026-11-14
+
+### 更新内容
+
+- 修复下载页「社区资源」收起后，高亮块还留在空白处
+
+### 技术实现
+
+折叠只是把子项 `Visibility` 关掉，高亮块是同一层里的独立元素，不会跟着消失。
+于是记住当前选中的单选项，折叠时判断它是否还可见：
+
+```csharp
+if (_currentSource is null || !_currentSource.IsVisible) SourceIndicator.Opacity = 0;
+else { SourceIndicator.Opacity = 1; SlidingHighlight.Move(...); }
+```
+
+展开分组时再放回去，位置按实际布局重新量。
+## [1.1.4-beta.14] - 2026-11-14
+
+### 更新内容
+
+- 切换社区资源分类时先清空旧结果，不再「标题变了、列表还是上一个分类」
+
+### 技术实现
+
+`Configure` 里只重置了页码就发起新搜索，`ResultsList` 仍挂着上一个分类的卡片，
+加载指示器又盖在上面，于是出现「数据包」标题下显示 Mod 结果的画面。
+
+```csharp
+ClearResults();   // ItemsSource = null，页码/总数一并归零
+_ = RunSearchAsync(0);
+```
+## [1.1.4-beta.13] - 2026-11-14
+
+### 更新内容
+
+- 修复顶栏高亮块错位：现在和页签共用同一坐标系
+
+### 技术实现
+
+高亮块原来挂在 `NavInner` 下，而页签 `NavTabs` 自身带 `TranslateTransform Y=-6` 且居中，
+两者坐标系不同，算出来的偏移自然差了一截（截图里高亮块压在页签字上、上沿还越出导航条）。
+
+现在把页签和高亮包进同一个 `Grid x:Name="NavTabLayer"`，位移/淡入挂在整层上，
+高亮相对该层定位，与页签完全同源：
+
+```xml
+<Grid x:Name="NavTabLayer">
+  <TranslateTransform Y="-6" />
+  <Border x:Name="NavTabIndicator" … />
+  <StackPanel x:Name="NavTabs" …>…</StackPanel>
+</Grid>
+```
+
+`SetNavExpanded` 里的透明度动画也一并改到这一层。
+## [1.1.4-beta.12] - 2026-11-14
+
+### 更新内容
+
+- 设置页（主设置，不是版本设置）的侧栏也换成滑动高亮
+- 高亮颜色加深：`#E6C9EDD5` → `#F28FD8A8`
+- 修复顶栏高亮位置偏移、下载页/设置页首次进入时高亮不出现
+
+### 技术实现
+
+#### 1. 顶栏偏移
+
+指示器原来是 `VerticalAlignment=Center`，而位置又按 `TransformToAncestor` 算了一遍 Y，
+两者叠加导致高亮偏下且高度溢出。改成 `VerticalAlignment=Top`，只由位移决定位置。
+
+#### 2. 首次进入
+
+`Source_Checked` / `Nav_Checked` 在 XAML 解析阶段就会触发，此时控件还没有尺寸。
+现在 `Loaded` 时统一补一次（`animate: false` 直接就位），避免高亮块不出现。
+
+#### 3. 颜色
+
+四个导航（顶栏、版本设置、下载页、设置页）统一用 `#F28FD8A8`，比之前的浅绿明显一档。
+## [1.1.4-beta.11] - 2026-11-14
+
+### 更新内容
+
+- 只去掉「检查更新」这条提示结尾的句号，不再全局裁剪标点
+
+### 技术实现
+
+上一版在 `ShowToast` 里统一 `TrimEnd('。', '.', ' ')`，影响面太大。
+现已撤回，改为只调整检查更新的那条文案本身。
+## [1.1.4-beta.10] - 2026-11-14
+
+### 更新内容
+
+- 主界面顶栏（启动 / 下载 / 设置）加入同款滑动高亮
+- 下载页左侧来源导航加入同款滑动高亮
+- 气泡提示统一去掉结尾句号
+
+### 技术实现
+
+新增 `Controls/SlidingHighlight`：位置与尺寸都从目标控件的实际布局里量，
+所以不等宽的页签、52/38 混排的侧栏共用同一套实现。
+
+```csharp
+var offset = target.TransformToAncestor(container).Transform(new Point(0, 0));
+// 同时动画 Width / Height / TranslateX / TranslateY，230ms SineEase
+```
+
+`NavTab` 与 `SidebarSubItem` 的选中底色一并移除，改由高亮块表达；
+顶栏收起时高亮随页签一起淡出。
+## [1.1.4-beta.9] - 2026-11-14
+
+### 更新内容
+
+- 切换完成反馈重做：不再做几何回弹，改为高亮柔光轻亮一下
+- 侧栏切换加快：380ms → 230ms
+- 检查 Mod 更新后同样回到列表顶部（之前只有更新后才会）
+
+### 技术实现
+
+回弹改缩放会显得"弹一下"，改成动画柔光的透明度更安静：
+
+```csharp
+_indicatorShadow.BeginAnimation(DropShadowEffect.OpacityProperty, pulse); // 0.18 → 0.42 → 0.18
+```
+
+柔光由代码创建（XAML 里的 `DropShadowEffect` 可能被冻结，无法动画）。
+
+检查更新的收尾补上 `_scrollTopPending = true`，由 `ApplyFilter` 在换完数据后滚到第 1 行。
+## [1.1.4-beta.8] - 2026-11-14
+
+### 更新内容
+
+- 更新完成后回到第 1 行：改成在列表数据换上之后再滚，不再依赖时机
+
+### 技术实现
+
+之前的做法是更新完立刻 `Refresh(); ScrollToTop();`，滚动可能发生在列表重建之前。
+现在只置一个标记，由 `ApplyFilter` 在换完 `ItemsSource` 后执行：
+
+```csharp
+ModList.ItemsSource = list;
+…
+if (_scrollTopPending) { _scrollTopPending = false; ScrollToTop(); }
+```
+
+`ScrollToTop` 也简化成「让第一行进入视野」，容器未实例化时退回 `PART_Scroll` 滚到顶。
+## [1.1.4-beta.7] - 2026-11-14
+
+### 更新内容
+
+- 侧栏切换完成后加一个轻微回弹，作为「已切好」的反馈
+- 修复 Mod 更新完成后列表不回到顶部
+
+### 技术实现
+
+#### 1. 落定回弹
+
+滑动动画的 `Completed` 里给胶囊做一次 1 → 1.045 → 1 的缩放（220ms）。
+连点会叠加动画，所以用序号丢弃过期的回调：
+
+```csharp
+var sequence = ++_indicatorSequence;
+slide.Completed += (_, _) => { if (sequence == _indicatorSequence) PlayIndicatorSettle(); };
+```
+
+#### 2. 回顶失效
+
+原来靠遍历 `ModList` 的可视树找 `ScrollViewer`，列表刚换 `ItemsSource` 时可能还没建好，
+于是静默什么都不做。改成直接向模板要具名部件，并在布局完成后再补一次：
+
+```csharp
+ModList.ApplyTemplate();
+var viewer = ModList.Template?.FindName("PART_Scroll", ModList) as ScrollViewer;
+```
+
+同时记一行日志（`mods scroll top: 30 -> 0`），以后再失效可以直接从日志判断是没找到还是没生效。
+## [1.1.4-beta.6] - 2026-11-14
+
+### 更新内容
+
+- 侧栏切换更柔：去掉选中加粗，改为 380ms 正弦缓动 + 柔光边缘
+- 更新检查的遮罩改成圆角卡片，不再露出四个直角
+
+### 技术实现
+
+#### 1. 去掉字重跳变
+
+选中项原来会把 `FontWeight` 改成 SemiBold，切换完成的瞬间文字会「啪」地变粗。
+字重本身无法平滑过渡，直接去掉，选中状态只由胶囊表达。
+
+#### 2. 更柔的移动
+
+```csharp
+var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
+var duration = TimeSpan.FromMilliseconds(380);
+```
+
+胶囊加了一点 `DropShadowEffect`（BlurRadius 14 / Opacity 0.18），边缘不再是硬边；
+底色改成 `#E6C9EDD5`（90% 不透明），和侧栏底色过渡更自然。
+
+#### 3. 遮罩圆角
+
+原来蒙层是一个铺满的 `Border`，四角是直角。现在拆成两层：
+
+```xml
+<Border Background="#66FFFFFF" CornerRadius="18" />   <!-- 蒙层 -->
+<Border Background="{DynamicResource SurfaceSolid}" CornerRadius="16" />  <!-- 提示卡 -->
+```
+## [1.1.4-beta.5] - 2026-11-14
+
+### 更新内容
+
+- 侧栏高亮改为更小的胶囊，缓动换成对称 `CubicEase`，切换过程看得见「走」
+- 引用版本对话框的「开始引用」按钮不再被裁切
+- 检查更新的提示改为「其余 N 个未找到新版」
+- 检查更新的遮罩更淡，并加了淡入淡出
+- 没有版本时彻底卸下设置页（不再在空状态后面跑页面）
+
+### 技术实现
+
+- 指示器：高 44、圆角 12、1px 主色描边，垂直居中于 52 高的条目；240ms `CubicEase.EaseInOut`
+- 对话框按钮：去掉固定 `Width=88`，改 `MinWidth=88` + `Padding=18,0`，文案再长也不会截断
+- 遮罩：`#59FFFFFF` + 180ms 淡入 / 140ms 淡出，`Completed` 后再 `Collapsed`
+- 空状态：`RefreshEmptyState` 在无版本时 `PageHost.Content = null`、侧栏置灰、隐藏指示器
+## [1.1.4-beta.4] - 2026-11-14
+
+### 更新内容
+
+- 侧栏高亮改为「滑动 + 呼吸」：选中块在条目之间滑行，途中轻微收窄再回弹
+
+### 技术实现
+
+换成单块指示器 + `TransformGroup`（位移 + 缩放）：
+
+```csharp
+NavIndicatorSlide.BeginAnimation(TranslateTransform.YProperty,
+    new DoubleAnimation(y, 300ms) { EasingFunction = new QuinticEase { EasingMode = EaseOut } });
+```
+
+滑动途中用关键帧让缩放走 1 → 0.965 → 1，模拟「被拖动时略微收窄」的手感；
+因为始终是同一块元素，连续快速点击会从当前位置续着走，不会闪。
+
+上一版的「双块交叉淡化」看起来像直接跳变（高亮先消失再出现），已经去掉。
+## [1.1.4-beta.3] - 2026-11-14
+
+### 更新内容
+
+- 重新设计侧栏切换效果：高亮改为淡出 / 淡入，不再在条目之间滑行
+- 悬停底色改中性灰，不再和选中态撞色
+- 选中项文字保持深色，切换时不会出现「白字悬空」的一瞬
+- 没有可用版本时不再初始化任何页面（空状态后面不再跑扫盘 / 更新检查）
+
+### 技术实现
+
+侧栏放两块等大的 `NavIndicator` / `NavIndicatorAlt` 交替使用：
+
+```csharp
+var current = _activeIndicator;
+var next = ReferenceEquals(current, NavIndicator) ? NavIndicatorAlt : NavIndicator;
+```
+
+旧块 110ms 淡出，新块延迟 110ms 后用 150ms 淡入，中间不会出现两块同时高亮。
+位置仍按 `TransformToAncestor` 取实际布局，不写死行高。
+
+空状态：`Load` 在版本为空时直接 `return`，`PageHost.Content = null`、`NavPanel` 置灰；
+首次从空状态导入版本后会自动接上新版本，不用重开浮层。
+## [1.1.4-beta.2] - 2026-11-14
+
+### 更新内容
+
+- 版本设置侧栏的选中高亮改为滑动过渡：切换板块时色块在按钮之间移动
+
+### 技术实现
+
+侧栏项本身不再绘制选中底色（新增 `SidebarItemOverlay` 样式），选中块由一块独立的
+`NavIndicator` 负责，用 `TranslateTransform` 在项之间滑动：
+
+```csharp
+y = target.TransformToAncestor(NavPanel).Transform(new Point(0, 0)).Y;
+transform.BeginAnimation(TranslateTransform.YProperty,
+    new DoubleAnimation(y, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+```
+
+位置按实际布局量取，不写死行高；首次打开直接就位，之后切换才播放 220ms 过渡。
+
+## [1.1.4-beta.1] - 2026-11-14
+
+### 更新内容
+
+- 版本设置每次打开都回到「概览」，不再停在上次关闭时的板块
+- Mod 列表改为实时扫描，移除「刷新」按钮；外部增删文件会自动更新
+- 打开 Mod 板块时自动检查一次更新（同一会话内切换板块不重复检查）
+- 切换版本设置板块时回到顶部，并加入与主界面导航一致的淡入上浮动画
+- Mod 更新完成后自动回到列表顶端
+
+### 技术实现
+
+#### 1. 打开即回概览
+
+`Load()` 里重置选中项并显式调用 `ShowPage("overview")`：
+
+```csharp
+_modsAutoChecked = false;
+_loaded.Clear();
+NavOverview.IsChecked = true;
+ShowPage("overview");
+```
+
+#### 2. 实时扫描
+
+`ModManagePage` 用 `FileSystemWatcher` 监听 mods 目录，400ms 防抖后刷新：
+
+```csharp
+watcher.Created += (_, _) => ScheduleRefresh();
+watcher.Renamed += (_, _) => ScheduleRefresh();
+```
+
+更新进行中（`_updating`）跳过监听触发的刷新，避免打断选中状态。
+
+#### 3. 自动检查更新
+
+`VersionSettingsView.ShowPage` 在进入 `mods` 时调用 `AutoCheckUpdates()`，
+并用 `_modsAutoChecked` 保证每个设置会话只查一次；关闭浮层后 `Load()` 清零。
+
+#### 4. 回到顶部与切换动画
+
+`IInstancePage` 新增 `ScrollToTop()`，各页在 `ShowPage` 里以 `DispatcherPriority.Loaded` 调用
+（等模板建好再找 ScrollViewer）；动画与主窗口导航一致：190ms 淡入 + 10px 上浮，`CubicEase`。
 ## [1.1.3] - 2026-11-03
 
 ### 更新内容

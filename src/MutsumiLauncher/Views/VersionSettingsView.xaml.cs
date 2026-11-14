@@ -12,9 +12,29 @@ public partial class VersionSettingsView : UserControl
     private readonly HashSet<string> _loaded = new(StringComparer.Ordinal);
     private string _version = string.Empty;
 
+    // 一个「版本设置」会话里，Mod 板块只自动检查一次更新；
+    // 关掉浮层再打开会重置（Load 里清零）。
+    private bool _modsAutoChecked;
+
+    // 侧栏选中块是否已经摆好位置：首次直接就位，之后才做过渡
+    private bool _indicatorReady;
+
+
+
     public VersionSettingsView()
     {
         InitializeComponent();
+
+        _indicatorShadow = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            BlurRadius = 14,
+            ShadowDepth = 2,
+            Direction = 270,
+            Opacity = 0.18,
+            Color = (System.Windows.Media.Color)FindResource("ShadowColor"),
+        };
+
+        NavIndicator.Effect = _indicatorShadow;
 
         var overview = new OverviewPage();
         overview.Renamed += OnRenamed;
@@ -40,6 +60,13 @@ public partial class VersionSettingsView : UserControl
         var any = GameLauncher.InstalledVersions().Count > 0;
 
         EmptyState.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
+
+        // 没有版本时把页面整个卸掉：否则空状态遮罩后面还在跑扫盘 / 更新检查
+        if (any) return;
+
+        PageHost.Content = null;
+        NavPanel.IsEnabled = false;
+        NavIndicator.Visibility = Visibility.Collapsed;
     }
 
     private void GoDownload_Click(object sender, RoutedEventArgs e)
@@ -84,6 +111,13 @@ public partial class VersionSettingsView : UserControl
 
         RefreshEmptyState();
         (Window.GetWindow(this) as MainWindow)?.RefreshInstances();
+
+        // 空状态导入了第一个版本：直接把设置页接上，不用重开浮层
+        if (string.IsNullOrWhiteSpace(_version)
+            && GameLauncher.InstalledVersions().FirstOrDefault() is { } first)
+        {
+            Load(first);
+        }
     }
 
     /// <summary>引用其它启动器的 .minecraft（文件留在原处）。</summary>
@@ -160,11 +194,25 @@ public partial class VersionSettingsView : UserControl
             ? "版本设置"
             : $"版本设置 · {ExternalSourceService.DisplayName(version)}";
 
-        // 只初始化当前看得见的那一页：版本设置里每页都要扫盘（Mod 列表、存档、导出统计），
-        // 一次性全加载会让打开浮层卡上好几百毫秒
+        // 每次打开都回到「概览」，而不是停在上次关掉时的板块
+        _modsAutoChecked = false;
         _loaded.Clear();
 
-        if (CurrentPageKey() is { } key) InitializePage(key);
+        // 没有版本时不初始化任何页面：否则空状态遮罩后面还在跑扫盘 / 检查更新
+        var empty = string.IsNullOrWhiteSpace(version) || GameLauncher.InstalledVersions().Count == 0;
+
+        NavPanel.IsEnabled = !empty;
+        NavIndicator.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+
+        if (empty)
+        {
+            PageHost.Content = null;
+            NavOverview.IsChecked = false;
+            return;
+        }
+
+        NavOverview.IsChecked = true;
+        ShowPage("overview");
 
         // 调试用：MTL_VERSION_TAB=overview|launch|mods|saves|export 直接进某个标签页
         var tab = Environment.GetEnvironmentVariable("MTL_VERSION_TAB");
@@ -216,14 +264,161 @@ public partial class VersionSettingsView : UserControl
 
     private void ShowPage(string key)
     {
+        // 没有版本时任何页面都不跑（空状态遮罩后面不该有扫盘 / 网络请求）
+        if (string.IsNullOrWhiteSpace(_version)) return;
+
         if (!_pages.TryGetValue(key, out var page)) return;
 
         InitializePage(key);
 
         PageHost.Content = page;
-        page.Opacity = 0;
+
+        // 切板块回到顶部：否则从存档 / Mod 列表滚到一半再切回来会停在老位置。
+        // 放到 Loaded 优先级，等模板和可视树都建好再滚，Mod 列表的 ScrollViewer 才找得到。
+        if (page is IInstancePage instancePage)
+        {
+            Dispatcher.BeginInvoke(new Action(instancePage.ScrollToTop),
+                System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+
+        // 与主窗口导航栏同款：淡入 + 轻微上浮
+        var ease = new System.Windows.Media.Animation.CubicEase
+        {
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+        };
+
+        var slide = page.RenderTransform as System.Windows.Media.TranslateTransform;
+
+        if (slide is null)
+        {
+            slide = new System.Windows.Media.TranslateTransform();
+            page.RenderTransform = slide;
+        }
+
+        slide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = ease,
+            });
+
         page.BeginAnimation(OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = ease,
+            });
+
+        MoveNavIndicator(key);
+
+        // 打开 Mod 板块时自动检查一次更新（每个设置会话只做一次）
+        if (key == "mods" && page is ModManagePage mods && !_modsAutoChecked)
+        {
+            _modsAutoChecked = true;
+            mods.AutoCheckUpdates();
+        }
+    }
+
+    /// <summary>
+    /// 侧栏选中高亮：一块圆角块滑到当前板块，滑动途中轻微收窄再回弹。
+    /// 位置按实际布局量（控件相对 NavPanel 的偏移），不写死行高。
+    /// </summary>
+    // 连点时会叠加：用序号丢弃过期的 Completed 回调
+    private int _indicatorSequence;
+
+    // 高亮块的柔光（代码创建，才允许动画）
+    private System.Windows.Media.Effects.DropShadowEffect? _indicatorShadow;
+
+    private void MoveNavIndicator(string key)
+    {
+        if (NavIndicator is null || NavPanel is null) return;
+
+        RadioButton? target = null;
+
+        foreach (var child in NavPanel.Children)
+        {
+            if (child is RadioButton { Tag: string tag } radio && tag == key)
+            {
+                target = radio;
+                break;
+            }
+        }
+
+        if (target is null) return;
+
+        double y;
+
+        try
+        {
+            y = target.TransformToAncestor(NavPanel).Transform(new Point(0, 0)).Y;
+        }
+        catch
+        {
+            // 布局还没完成时退回按序号估算
+            y = NavPanel.Children.IndexOf(target) * 56 + 2;
+        }
+
+        // 指示器比条目矮 8px，垂直居中
+        y += 4;
+
+        // 正弦缓动 + 340ms：起步和收尾都很轻，中段匀速，观感最接近「滑」而不是「跳」
+        var ease = new System.Windows.Media.Animation.SineEase
+        {
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
+        };
+
+        var duration = TimeSpan.FromMilliseconds(230);
+
+        // 1) 滑动：从当前位置直接续到新位置，连点也不会跳
+        var sequence = ++_indicatorSequence;
+
+        var slide = new System.Windows.Media.Animation.DoubleAnimation(y, duration)
+        {
+            EasingFunction = ease,
+        };
+
+        // 落定后轻轻回弹一下，作为「切换完成」的反馈
+        slide.Completed += (_, _) =>
+        {
+            if (sequence == _indicatorSequence) PlayIndicatorSettle();
+        };
+
+        NavIndicatorSlide.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slide);
+
+        // 首次出现直接亮起，之后保持常亮
+        if (!_indicatorReady)
+        {
+            NavIndicator.Opacity = 1;
+            _indicatorReady = true;
+        }
+    }
+
+    /// <summary>切换完成的反馈：让高亮的柔光轻轻亮一下，不改几何形状。</summary>
+    private void PlayIndicatorSettle()
+    {
+        if (_indicatorShadow is null) return;
+
+        var pulse = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromMilliseconds(260),
+        };
+
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.18,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0)));
+
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.42,
+            System.Windows.Media.Animation.KeyTime.FromPercent(0.35),
+            new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+            }));
+
+        pulse.KeyFrames.Add(new System.Windows.Media.Animation.EasingDoubleKeyFrame(0.18,
+            System.Windows.Media.Animation.KeyTime.FromPercent(1),
+            new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
+            }));
+
+        _indicatorShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, pulse);
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
