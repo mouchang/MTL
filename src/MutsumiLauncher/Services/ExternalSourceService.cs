@@ -451,7 +451,7 @@ public static class ExternalSourceService
     }
 
     /// <summary>
-    /// 选联接目标：优先「有内容的目录」——PCL-CE 这类启动器即使不按版本隔离，
+    /// 选联接目标：优先「有内容的目录」——参考 PCL-CE，这类启动器即使不按版本隔离，
     /// 也会给每个版本建一个空的 mods/ 目录，直接链过去就是空壳。
     /// </summary>
     private static string? PickLinkTarget(string versionDir, string root, string name)

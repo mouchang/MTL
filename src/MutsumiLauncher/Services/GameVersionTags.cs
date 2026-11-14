@@ -101,7 +101,7 @@ public static class GameVersionTags
         return basis * 10 + stage;
     }
 
-    /// <summary>按新到旧排序并去重；整合包只保留最新的一个游戏版本（PCL-CE 同样处理）。</summary>
+    /// <summary>按新到旧排序并去重；整合包只保留最新的一个游戏版本（参考 PCL-CE）。</summary>
     public static IReadOnlyList<string> Arrange(IEnumerable<string> versions, string? projectType)
     {
         var sorted = versions

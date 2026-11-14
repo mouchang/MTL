@@ -120,7 +120,7 @@ public static class DownloadEngine
     private const long MinSplitSize = 256 * 1024;
 
     /// <summary>
-    /// 一次下载的调度参数。直连沿用 PCL-CE 那套激进换源（国内源质量差异大，换源确实有用）；
+    /// 一次下载的调度参数。直连参考 PCL-CE 的激进换源（国内源质量差异大，换源确实有用）；
     /// 走代理时改成保守模式：并发更少、分片更大、不掐断在途连接、只等「真的没数据」。
     /// 代理链路上所有分段共享一条隧道，激进换源等于自己把节点打爆。
     /// </summary>
@@ -197,7 +197,7 @@ public static class DownloadEngine
             catch (DownloadExhaustedException) when (pool.CanRetryAsOnce)
             {
                 // 所有源都失败过一次：把所有源重新启用，降级为「单线程 + 不续传」再试一轮。
-                // 一部分源在多线程下会返回坏数据、或者 Range 行为异常，单线程能救回来（PCL-CE 同款策略）。
+                // 一部分源在多线程下会返回坏数据、或者 Range 行为异常，单线程能救回来（参考 PCL-CE）。
                 // 镜像站（MCIM）是边下边缓存的，第一次经常只给半截文件，等一下再试往往就好了。
                 var round = pool.BeginFallbackRound();
                 AppLog.Info($"all sources failed, retry round {round}: {Path.GetFileName(targetPath)}");

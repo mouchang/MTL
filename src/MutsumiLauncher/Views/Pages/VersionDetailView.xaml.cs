@@ -473,7 +473,7 @@ public partial class VersionDetailView : UserControl
                         installAssets: false, cancellationToken: task.Token);
                 }
 
-                // 加载器先装到临时版本目录，再按 PCL-CE 的方式合并成一个完整实例
+                // 加载器先装到临时版本目录，再参考 PCL-CE 的合并顺序合成一个完整实例
                 var tempLoaderId = "mtl-merge-" + Guid.NewGuid().ToString("N")[..8];
                 string loaderId;
 

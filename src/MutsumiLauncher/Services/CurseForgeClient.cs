@@ -169,7 +169,7 @@ public sealed class CurseForgeClient
     /// <summary>批量取项目（一次最多 100 个）。</summary>
     /// <summary>
     /// 批量取文件详情（POST /mods/files）。检查更新时本地文件可能有上百个，
-    /// 逐个查太慢——PCL-CE 也是批量拿再比对。
+    /// 逐个查太慢——参考 PCL-CE：批量拿回来再比对。
     /// </summary>
     public async Task<Dictionary<int, CurseForgeFile>> GetFilesBatchAsync(
         IReadOnlyCollection<int> fileIds, CancellationToken cancellationToken = default)
@@ -295,7 +295,7 @@ public sealed class CurseForgeClient
     /// <summary>
     /// 拉取某个项目的文件列表。
     /// 之前只请求第一页（50 个），像 JEI 这种 3900+ 文件的项目拿到的版本是残缺的；
-    /// 这里按页翻到够用为止，并像 PCL-CE 那样对「空页 / 少返回」重试。
+    /// 这里按页翻到够用为止，并参考 PCL-CE 对「空页 / 少返回」重试。
     /// </summary>
     public async Task<IReadOnlyList<CurseForgeFile>> GetFilesAsync(int modId, string? gameVersion,
         int? loaderType, CancellationToken cancellationToken = default)
@@ -372,7 +372,7 @@ public sealed class CurseForgeClient
                     ? (int)Long(pagination, "totalCount")
                     : -1;
 
-                // 总量还有却返回空页：接口抽风了，重试（PCL-CE 的「分页缺失」处理）
+                // 总量还有却返回空页：接口抽风了，重试（参考 PCL-CE 的「分页缺失」处理）
                 if (rawCount == 0 && total > index && retry < 2)
                 {
                     AppLog.Info($"curseforge files 返回空页（index {index} / total {total}），重试");
