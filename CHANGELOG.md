@@ -3,6 +3,26 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.10] - 2026-11-14
+
+### 更新内容
+
+- 主界面顶栏（启动 / 下载 / 设置）加入同款滑动高亮
+- 下载页左侧来源导航加入同款滑动高亮
+- 气泡提示统一去掉结尾句号
+
+### 技术实现
+
+新增 `Controls/SlidingHighlight`：位置与尺寸都从目标控件的实际布局里量，
+所以不等宽的页签、52/38 混排的侧栏共用同一套实现。
+
+```csharp
+var offset = target.TransformToAncestor(container).Transform(new Point(0, 0));
+// 同时动画 Width / Height / TranslateX / TranslateY，230ms SineEase
+```
+
+`NavTab` 与 `SidebarSubItem` 的选中底色一并移除，改由高亮块表达；
+顶栏收起时高亮随页签一起淡出。
 ## [1.1.4-beta.9] - 2026-11-14
 
 ### 更新内容

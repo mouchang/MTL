@@ -101,6 +101,8 @@ public partial class MainWindow : Window
         NavSettings.IsChecked = key == "settings";
         _suppressNav = false;
 
+        MoveNavIndicator(key);
+
         // 进子页时导航层自动展开，回启动页时收起
         SetNavExpanded(key != "launch", animate);
 
@@ -229,6 +231,25 @@ public partial class MainWindow : Window
         DownloadPanelHost.Visibility = Visibility.Visible;
     }
 
+    /// <summary>把顶栏的选中高亮移到对应页签（按实际宽度，页签宽度不等）。</summary>
+    private void MoveNavIndicator(string key)
+    {
+        if (NavTabIndicator is null) return;
+
+        var target = key switch
+        {
+            "launch" => NavLaunch,
+            "download" => NavDownload,
+            "settings" => NavSettings,
+            _ => null,
+        };
+
+        if (target is null) return;
+
+        Controls.SlidingHighlight.Move(NavTabIndicator, target, NavInner, animate: true);
+        NavTabIndicator.Visibility = Visibility.Visible;
+    }
+
     private void SetNavExpanded(bool expanded, bool animate = true)
     {
         _navExpanded = expanded;
@@ -243,6 +264,7 @@ public partial class MainWindow : Window
             NavBarSurface.Height = expanded ? 68 : 40;
             NavTabs.Opacity = expanded ? 1 : 0;
             NavTabs.IsHitTestVisible = expanded;
+            NavTabIndicator.Opacity = expanded ? 1 : 0;
             translate.Y = expanded ? 0 : -6;
             CloseChrome.Opacity = expanded ? 0 : 1;
             return;
@@ -270,6 +292,13 @@ public partial class MainWindow : Window
                 EasingFunction = ease,
             });
         NavTabs.IsHitTestVisible = expanded;
+
+        NavTabIndicator.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(expanded ? 1 : 0, TimeSpan.FromMilliseconds(200))
+            {
+                BeginTime = expanded ? TimeSpan.FromMilliseconds(170) : TimeSpan.Zero,
+                EasingFunction = ease,
+            });
 
         translate.BeginAnimation(TranslateTransform.YProperty,
             new DoubleAnimation(expanded ? 0 : -6, TimeSpan.FromMilliseconds(240))
@@ -504,7 +533,8 @@ public partial class MainWindow : Window
 
     public void ShowToast(string message)
     {
-        ToastText.Text = message;
+        // 气泡里不需要句号：所有提示统一去掉结尾的「。」
+        ToastText.Text = message.TrimEnd('。', '.', ' ');
         Toast.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
         _toastTimer.Stop();

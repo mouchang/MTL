@@ -43,6 +43,16 @@
                                     Background="{DynamicResource WindowBar}" BorderBrush="{DynamicResource WindowBorder}" BorderThickness="1"
                                     IsHitTestVisible="False" />
 
+                            <!-- 选中高亮：和版本设置侧栏同款，按页签实际宽度滑动 -->
+                            <Border x:Name="NavTabIndicator" Height="40" Width="72"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    CornerRadius="12" Background="#E6C9EDD5"
+                                    IsHitTestVisible="False" Opacity="0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform X="0" Y="0" />
+                                </Border.RenderTransform>
+                            </Border>
+
                             <StackPanel x:Name="NavTabs" Orientation="Horizontal"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Opacity="0" IsHitTestVisible="False">

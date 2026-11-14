@@ -75,10 +75,21 @@ public partial class DownloadPage : UserControl
             : Visibility.Collapsed;
     }
 
+    /// <summary>把左侧导航的高亮块移到当前来源（顶层项 52 高、子项 38 高）。</summary>
+    private void MoveSourceIndicator(RadioButton? target)
+    {
+        if (target is null || SourceIndicator is null || SourcePanel is null) return;
+
+        var inset = Math.Abs(target.ActualHeight - 52) < 0.5 ? 0 : 0;
+        Controls.SlidingHighlight.Move(SourceIndicator, target, SourcePanel, animate: true, inset);
+    }
+
     private void Source_Checked(object sender, RoutedEventArgs e)
     {
         if (OriginalPanel is null || CommunityHost is null) return;
         if (sender is not RadioButton { Tag: string kind }) return;
+
+        MoveSourceIndicator(sender as RadioButton);
 
         CloseDetail(animated: false);
 
