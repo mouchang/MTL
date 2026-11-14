@@ -8,7 +8,7 @@
 | --- | --- |
 | .NET SDK | 10.0（`net10.0-windows`） |
 | 系统 | Windows 10/11 x64 |
-| NSIS（可选） | 只在打安装包时需要，便携版 NSIS 3.11 即可 |
+| Inno Setup 6.7+（可选） | 只在打安装包时需要 |
 
 > 项目坚持**零第三方 NuGet 依赖**；确需引入时请先在 Issue 里讨论。
 
@@ -28,7 +28,7 @@ dotnet run --project src/MutsumiLauncher
 
 ```text
 src/MutsumiLauncher/          启动器主程序（WPF）
-installer/                    NSIS 安装脚本
+installer/                    Inno Setup 安装脚本
 worker/                       Cloudflare Worker（更新 / NeoForge 反代）
 docs/                         文档与截图
 ```
