@@ -20,11 +20,14 @@ AppName={#APP_NAME}
 AppVersion={#APP_VERSION}
 AppVerName={#APP_DISPLAY} {#APP_VERSION}
 AppPublisher={#APP_PUBLISHER}
-DefaultDirName={autopf}\Mutsumi Launcher
+DefaultDirName={localappdata}\Programs\Mutsumi Launcher
 DefaultGroupName={#APP_DISPLAY}
 DisableProgramGroupPage=yes
+; 启动器本身以普通权限运行（asInvoker），安装器同样按用户安装，全程不弹 UAC
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=commandline
+; 不继承旧安装目录：之前手工装到 Program Files 的记录会把新装也带过去
+UsePreviousAppDir=no
 OutputDir=..\dist
 OutputBaseFilename=MutsumiLauncher-{#APP_VERSION}-Setup
 SetupIconFile=..\src\MutsumiLauncher\Assets\app.ico
@@ -57,7 +60,7 @@ Name: "{autoprograms}\{#APP_DISPLAY}"; Filename: "{app}\{#APP_EXE}"
 Name: "{autodesktop}\{#APP_DISPLAY}"; Filename: "{app}\{#APP_EXE}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#APP_EXE}"; Description: "{cm:LaunchProgram,{#APP_DISPLAY}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#APP_EXE}"; Description: "{cm:LaunchProgram,{#APP_DISPLAY}}"; Flags: nowait postinstall skipifsilent shellexec
 
 [UninstallRun]
 ; 先断开所有引用实例：只删影子目录和联接，外部 .minecraft 一个字节都不碰。
