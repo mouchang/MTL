@@ -46,8 +46,18 @@
                     </Grid.ColumnDefinitions>
 
                     <Border Background="{DynamicResource SidebarBg}" CornerRadius="18" Padding="10">
-                        <StackPanel x:Name="NavPanel">
-                            <RadioButton x:Name="NavOverview" Style="{StaticResource SidebarItem}"
+                        <Grid>
+                            <!-- 选中高亮：一块独立的圆角块，切换时在项之间滑动 -->
+                            <Border x:Name="NavIndicator" Height="52" Margin="0" VerticalAlignment="Top"
+                                    CornerRadius="14" Background="{DynamicResource Accent}"
+                                    IsHitTestVisible="False" Opacity="0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="0" />
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <StackPanel x:Name="NavPanel">
+                            <RadioButton x:Name="NavOverview" Style="{StaticResource SidebarItemOverlay}"
                                          GroupName="SettingsNav" Tag="overview" IsChecked="True"
                                          Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
@@ -55,28 +65,28 @@
                                     <TextBlock Text="概览" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
+                            <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav"
                                          Tag="launch" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
                                     <TextBlock Text="设置" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
+                            <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav"
                                          Tag="mods" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE7B8;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
                                     <TextBlock Text="Mod 管理" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
+                            <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav"
                                          Tag="saves" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE774;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
                                     <TextBlock Text="存档" VerticalAlignment="Center" />
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource SidebarItem}" GroupName="SettingsNav"
+                            <RadioButton Style="{StaticResource SidebarItemOverlay}" GroupName="SettingsNav"
                                          Tag="export" Checked="Nav_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Margin="0,0,10,0" />
@@ -84,6 +94,7 @@
                                 </StackPanel>
                             </RadioButton>
                         </StackPanel>
+                        </Grid>
                     </Border>
 
                     <Grid Grid.Column="1" Margin="16,0,0,0">

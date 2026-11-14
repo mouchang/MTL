@@ -3,6 +3,25 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.2] - 2026-11-14
+
+### 更新内容
+
+- 版本设置侧栏的选中高亮改为滑动过渡：切换板块时色块在按钮之间移动
+
+### 技术实现
+
+侧栏项本身不再绘制选中底色（新增 `SidebarItemOverlay` 样式），选中块由一块独立的
+`NavIndicator` 负责，用 `TranslateTransform` 在项之间滑动：
+
+```csharp
+y = target.TransformToAncestor(NavPanel).Transform(new Point(0, 0)).Y;
+transform.BeginAnimation(TranslateTransform.YProperty,
+    new DoubleAnimation(y, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+```
+
+位置按实际布局量取，不写死行高；首次打开直接就位，之后切换才播放 220ms 过渡。
+
 ## [1.1.4-beta.1] - 2026-11-14
 
 ### 更新内容

@@ -16,6 +16,9 @@ public partial class VersionSettingsView : UserControl
     // 关掉浮层再打开会重置（Load 里清零）。
     private bool _modsAutoChecked;
 
+    // 侧栏选中块是否已经摆好位置：首次直接就位，之后才做滑动动画
+    private bool _indicatorReady;
+
     public VersionSettingsView()
     {
         InitializeComponent();
@@ -260,11 +263,79 @@ public partial class VersionSettingsView : UserControl
                 EasingFunction = ease,
             });
 
+        MoveNavIndicator(key);
+
         // 打开 Mod 板块时自动检查一次更新（每个设置会话只做一次）
         if (key == "mods" && page is ModManagePage mods && !_modsAutoChecked)
         {
             _modsAutoChecked = true;
             mods.AutoCheckUpdates();
+        }
+    }
+
+    /// <summary>
+    /// 把侧栏的选中高亮滑到当前板块。
+    /// 位置按实际布局量（第 n 项的高度 + 间距），比硬编码 56 稳。
+    /// </summary>
+    private void MoveNavIndicator(string key)
+    {
+        if (NavIndicator is null || NavPanel is null) return;
+
+        RadioButton? target = null;
+
+        foreach (var child in NavPanel.Children)
+        {
+            if (child is RadioButton { Tag: string tag } radio && tag == key)
+            {
+                target = radio;
+                break;
+            }
+        }
+
+        if (target is null) return;
+
+        // 指示器不带外边距，直接用控件相对 NavPanel 的偏移（已含控件自身 margin）
+        double y;
+
+        try
+        {
+            y = target.TransformToAncestor(NavPanel).Transform(new Point(0, 0)).Y;
+        }
+        catch
+        {
+            // 布局还没完成时退回按序号估算
+            var index = NavPanel.Children.IndexOf(target);
+            y = index * 56 + 2;
+        }
+
+        var transform = (System.Windows.Media.TranslateTransform)NavIndicator.RenderTransform;
+        var ease = new System.Windows.Media.Animation.CubicEase
+        {
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+        };
+
+        if (!_indicatorReady)
+        {
+            transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+            transform.Y = y;
+            _indicatorReady = true;
+        }
+        else
+        {
+            transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(y, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = ease,
+                });
+        }
+
+        if (NavIndicator.Opacity < 0.99)
+        {
+            NavIndicator.BeginAnimation(OpacityProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160))
+                {
+                    EasingFunction = ease,
+                });
         }
     }
 

@@ -166,6 +166,34 @@
         </Setter>
     </Style>
 
+    <!-- 带滑动高亮的侧栏项：自身不画选中底色，选中块由外层指示器负责 -->
+    <Style x:Key="SidebarItemOverlay" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Height" Value="52" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="14" Padding="14,0">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverWash}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <!-- 底色交给外层指示器，这里只把文字改成白色 -->
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SidebarSubItem" TargetType="RadioButton">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
