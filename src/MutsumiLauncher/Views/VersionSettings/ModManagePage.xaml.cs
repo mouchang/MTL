@@ -30,6 +30,8 @@ public partial class ModManagePage : UserControl, IInstancePage
     public ModManagePage()
     {
         InitializeComponent();
+
+        Loaded += (_, _) => PlaceFilterIndicator(animate: false);
     }
 
     public void SetInstance(string version)
@@ -185,6 +187,9 @@ public partial class ModManagePage : UserControl, IInstancePage
             : Visibility.Collapsed;
 
         ApplyFilter();
+
+        // 计数文字变了宽度就变，高亮块要跟着重新量一次
+        PlaceFilterIndicator(animate: false);
 
         // 界面已经出来了，大小和元数据在后台补
         _ = FillSizesAsync(_items);
@@ -497,6 +502,7 @@ public partial class ModManagePage : UserControl, IInstancePage
         UpdatesFilter.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         ApplyFilter();
+        PlaceFilterIndicator(animate: false);
     }
 
     private void SaveUpdateCache()
@@ -1145,6 +1151,34 @@ public partial class ModManagePage : UserControl, IInstancePage
         if (sender is not RadioButton { Tag: string filter }) return;
         _filter = filter;
         ApplyFilter();
+
+        PlaceFilterIndicator(animate: true);
+    }
+
+    /// <summary>筛选项的高亮：跟到当前选中的那一项；选中项被数据隐藏时收起来。</summary>
+    private void PlaceFilterIndicator(bool animate)
+    {
+        if (FilterIndicator is null || FilterHost is null) return;
+
+        RadioButton? target = null;
+
+        foreach (var chip in new[] { AllFilter, EnabledFilter, DisabledFilter, UpdatesFilter })
+        {
+            if (chip is { IsChecked: true } && chip.IsVisible)
+            {
+                target = chip;
+                break;
+            }
+        }
+
+        if (target is null)
+        {
+            FilterIndicator.Opacity = 0;
+            return;
+        }
+
+        FilterIndicator.Opacity = 1;
+        Controls.SlidingHighlight.Move(FilterIndicator, target, FilterHost, animate);
     }
 
     /// <summary>「[中文名] 原文件名」，没有中文名就用原名。</summary>

@@ -3,6 +3,19 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4-beta.20] - 2026-11-14
+
+### 更新内容
+
+- Mod 列表的筛选项（全部 / 启用 / 禁用 / 可更新）加入滑动高亮
+
+### 技术实现
+
+新增 `SegmentItemPillOverlay`（选中文字转白），高亮块用 `AccentDeep` 底色，
+随选中项滑动；计数文字变化会改变宽度，`Refresh` / `SyncUpdateFilter` 后都重新量一次。
+
+筛选项可能被数据隐藏（全部启用时不显示「启用」），此时高亮跟到仍可见的选中项，
+若选中项本身不可见则收起。
 ## [1.1.4-beta.19] - 2026-11-14
 
 ### 更新内容

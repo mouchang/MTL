@@ -44,25 +44,37 @@
                                TextWrapping="Wrap" />
                 </Border>
 
-                <StackPanel Orientation="Horizontal" Margin="2,0,0,6">
-                    <RadioButton x:Name="AllFilter" Style="{StaticResource SegmentItem}" GroupName="ModFilter"
-                                 Tag="all" IsChecked="True" Checked="Filter_Checked" Margin="0,0,4,0">
-                        <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="EnabledFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="enabled" Checked="Filter_Checked" Margin="4,0,0,0">
-                        <TextBlock x:Name="EnabledFilterText" Text="启用 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="DisabledFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="disabled" Checked="Filter_Checked" Margin="4,0,0,0">
-                        <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
-                    </RadioButton>
-                    <RadioButton x:Name="UpdatesFilter" Style="{StaticResource SegmentItem}"
-                                 GroupName="ModFilter" Tag="updates" Checked="Filter_Checked"
-                                 Margin="4,0,0,0" Visibility="Collapsed">
-                        <TextBlock x:Name="UpdatesFilterText" Text="可更新 (0)" />
-                    </RadioButton>
-                </StackPanel>
+                <Grid x:Name="FilterHost" HorizontalAlignment="Left" Margin="2,0,0,6">
+                    <Border x:Name="FilterIndicator" Height="32" Width="96"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            CornerRadius="16" Background="{DynamicResource AccentDeep}"
+                            IsHitTestVisible="False" Opacity="0">
+                        <Border.RenderTransform>
+                            <TranslateTransform X="0" Y="0" />
+                        </Border.RenderTransform>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="AllFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="all" IsChecked="True" Checked="Filter_Checked"
+                                     Margin="0,0,4,0">
+                            <TextBlock x:Name="AllFilterText" Text="全部 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="EnabledFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="enabled" Checked="Filter_Checked" Margin="4,0,0,0">
+                            <TextBlock x:Name="EnabledFilterText" Text="启用 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="DisabledFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="disabled" Checked="Filter_Checked" Margin="4,0,0,0">
+                            <TextBlock x:Name="DisabledFilterText" Text="禁用 (0)" />
+                        </RadioButton>
+                        <RadioButton x:Name="UpdatesFilter" Style="{StaticResource SegmentItemPillOverlay}"
+                                     GroupName="ModFilter" Tag="updates" Checked="Filter_Checked"
+                                     Margin="4,0,0,0" Visibility="Collapsed">
+                            <TextBlock x:Name="UpdatesFilterText" Text="可更新 (0)" />
+                        </RadioButton>
+                    </StackPanel>
+                </Grid>
 
 
                 <!-- 虚拟化：Mod 多的时候只创建可见行 -->
