@@ -293,10 +293,10 @@ public partial class ModManagePage : UserControl, IInstancePage
         var unknown = Math.Max(0, total - matchedFiles);
 
         var message = found == 0
-            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（其余 {unknown} 个未找到新版）。" : "所有 Mod 都是最新的。")
+            ? (unknown > 0 ? $"所有能识别的 Mod 都是最新的（其余 {unknown} 个未找到新版）" : "所有 Mod 都是最新的")
             : unknown > 0
-                ? $"发现 {found} 个可更新的 Mod（其余 {unknown} 个未找到新版）。"
-                : $"发现 {found} 个可更新的 Mod。";
+                ? $"发现 {found} 个可更新的 Mod（其余 {unknown} 个未找到新版）"
+                : $"发现 {found} 个可更新的 Mod";
 
         owner?.ShowToast(message);
     }

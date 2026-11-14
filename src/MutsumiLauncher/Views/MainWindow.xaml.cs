@@ -533,8 +533,7 @@ public partial class MainWindow : Window
 
     public void ShowToast(string message)
     {
-        // 气泡里不需要句号：所有提示统一去掉结尾的「。」
-        ToastText.Text = message.TrimEnd('。', '.', ' ');
+        ToastText.Text = message;
         Toast.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
         _toastTimer.Stop();
