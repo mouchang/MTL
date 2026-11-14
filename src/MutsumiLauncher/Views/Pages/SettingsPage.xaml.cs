@@ -276,7 +276,7 @@ public partial class SettingsPage : UserControl
         if (mode == AppTheme.Custom) BuildCustomColorRows();
 
         // 切到自定义时要带上当前的起始配色，别被 SetTheme 的默认值重置成明亮
-        ThemeService.SetTheme(mode, null, mode == AppTheme.Custom && CustomBaseDarkRadio.IsChecked == true);
+        ThemeService.SetTheme(mode, mode == AppTheme.Custom && CustomBaseDarkRadio.IsChecked == true);
     }
 
     /// <summary>自定义主题：按分组把「明亮 / 暗色」里不同的颜色铺成小卡片，逐项可改。</summary>
@@ -438,7 +438,7 @@ public partial class SettingsPage : UserControl
         ThemeCustomRadio.IsChecked = true;
         ThemeCustomPanel.Visibility = Visibility.Visible;
 
-        ThemeService.SetTheme(AppTheme.Custom, null, darkBase);
+        ThemeService.SetTheme(AppTheme.Custom, darkBase);
         BuildCustomColorRows();
     }
 

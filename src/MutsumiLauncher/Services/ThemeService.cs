@@ -22,16 +22,10 @@ public static class ThemeService
 
     private static ResourceDictionary? _installed;
 
-    /// <summary>主题变了（用于让图表、用代码画的笔刷跟着刷新）。</summary>
-    public static event Action? Changed;
-
     public static AppTheme Mode { get; private set; } = AppTheme.Light;
 
     /// <summary>当前是不是深色底（自定义主题也会落在这两个之一）。</summary>
     public static bool IsDark { get; private set; }
-
-    /// <summary>自定义主题用的主色。</summary>
-    public static string Accent { get; private set; } = DefaultAccent;
 
     public static void ApplyFromConfig()
     {
@@ -42,10 +36,10 @@ public static class ThemeService
             "dark" => AppTheme.Dark,
             "custom" => AppTheme.Custom,
             _ => AppTheme.Light,
-        }, config.ThemeAccent, config.ThemeBase == "dark");
+        }, config.ThemeBase == "dark");
     }
 
-    public static void SetTheme(AppTheme mode, string? accent = null, bool darkBase = false)
+    public static void SetTheme(AppTheme mode, bool darkBase = false)
     {
         var config = AppConfig.Current;
 
@@ -56,17 +50,15 @@ public static class ThemeService
             _ => "light",
         };
 
-        if (!string.IsNullOrWhiteSpace(accent)) config.ThemeAccent = accent;
         config.ThemeBase = darkBase ? "dark" : "light";
         config.Save();
 
-        Apply(mode, config.ThemeAccent, darkBase);
+        Apply(mode, darkBase);
     }
 
-    public static void Apply(AppTheme mode, string? accentHex, bool darkBase)
+    public static void Apply(AppTheme mode, bool darkBase)
     {
         Mode = mode;
-        Accent = NormalizeHex(accentHex);
 
         IsDark = mode switch
         {
@@ -83,7 +75,6 @@ public static class ThemeService
         };
 
         Install(BuildDictionary(colors, IsDark));
-        Changed?.Invoke();
     }
 
     /// <summary>把颜色换算成笔刷字典插到 Application.Resources，替换掉 Palette.xaml。</summary>
@@ -447,7 +438,7 @@ public static class ThemeService
             config.ThemeCustomColors[key] = NormalizeHex(hex);
 
         config.Save();
-        Apply(AppTheme.Custom, config.ThemeAccent, config.ThemeBase == "dark");
+        Apply(AppTheme.Custom, config.ThemeBase == "dark");
     }
 
     public static void ResetCustomColors()
@@ -456,12 +447,12 @@ public static class ThemeService
         config.ThemeCustomColors = [];
         config.Save();
 
-        Apply(AppTheme.Custom, config.ThemeAccent, config.ThemeBase == "dark");
+        Apply(AppTheme.Custom, config.ThemeBase == "dark");
     }
 
-    public static string ToHex(Color color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
-
     /// <summary>设置页里的中文名。</summary>
+    private static string ToHex(Color color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+
     public static string KeyLabel(string key) => key switch
     {
         // 文字
@@ -547,17 +538,4 @@ public static class ThemeService
             or "DialogHairline" or "WindowBorder" => "描边与分隔",
         _ => "表面与背景",
     };
-
-    /// <summary>给设置页用的推荐主色。</summary>
-    public static readonly (string Name, string Hex)[] AccentPresets =
-    [
-        ("薄荷", "#FF4E9E72"),
-        ("松林", "#FF3F8E8A"),
-        ("湖蓝", "#FF3F7FBF"),
-        ("靛蓝", "#FF5A5FCB"),
-        ("紫藤", "#FF8A63C9"),
-        ("玫瑰", "#FFC95F86"),
-        ("落日", "#FFD07A3C"),
-        ("琥珀", "#FFC9A227"),
-    ];
 }

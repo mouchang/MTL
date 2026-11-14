@@ -18,7 +18,7 @@
 
 | 形式 | 说明 |
 | --- | --- |
-| **安装版** `MutsumiLauncher-*-Setup.exe` | NSIS 单文件安装器，自带 VC++ 运行库，创建开始菜单快捷方式与卸载项 |
+| **安装版** `MutsumiLauncher-*-Setup.exe` | Inno Setup 单文件安装器，按用户安装、创建开始菜单快捷方式与卸载项 |
 | **便携版** `MutsumiLauncher-*-portable.zip` | 解压即用，所有数据都留在程序目录里 |
 
 两者都是**自包含发布**，目标机器无需安装 .NET 运行时。启动器与安装器都需要管理员权限。
@@ -103,15 +103,15 @@
 dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj -c Release -r win-x64 \
   --self-contained true -o dist/publish
 
-# 可选：打安装包（需要 NSIS 3.x）
-makensis installer/MutsumiLauncher.nsi
+# 可选：打安装包（需要 Inno Setup 6.7+）
+ISCC.exe /DAPP_VERSION=1.0.0 installer/MutsumiLauncher.iss
 ```
 
 仓库结构：
 
 ```
 src/MutsumiLauncher/   启动器主体（WPF）
-installer/             NSIS 安装脚本
+installer/             Inno Setup 安装脚本
 tools/                 辅助工具（MC百科数据抓取等）
 worker/                反向代理 Worker 的源码
 docs/                  截图与文档

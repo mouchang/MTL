@@ -78,7 +78,6 @@ public sealed class AppConfig
     public string ThemeMode { get; set; } = "light";
 
     /// <summary>自定义主题的主色（#AARRGGBB）。</summary>
-    public string ThemeAccent { get; set; } = ThemeService.DefaultAccent;
 
     /// <summary>自定义主题的底色：light / dark。</summary>
     public string ThemeBase { get; set; } = "light";

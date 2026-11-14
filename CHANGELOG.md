@@ -3,6 +3,22 @@
 本项目从 0.1.0 开始记录。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.4] - 2026-11-15
+
+### 更新内容
+
+- 安装器从 NSIS 换成 Inno Setup：按用户安装、系统主题化向导、任务选择与就绪页，兼容旧版提示
+- 自定义主题：明亮 / 暗色两套里不同的 57 项颜色都能单独改，全中文、分组卡片
+- 主题保持「明亮 / 暗色 / 自定义」，移除了实验性的种子色、液态玻璃等方案
+
+### 技术实现
+
+安装器：`installer/MutsumiLauncher.iss`，`PrivilegesRequired=lowest` + `{autopf}`，
+卸载前先跑 `--cleanup-references` 断开实例联接，避免误删玩家的游戏目录；
+`InitializeSetup` 检测旧 NSIS 安装并提示。
+
+自定义主题：`EditableKeys` 由两套色板逐键比对得到，
+覆盖值存在 `ThemeCustomColors`，`BuildCustomPalette` 以选定底色为底再套覆盖。
 ## [1.1.4-beta.31] - 2026-11-15
 
 ### 更新内容

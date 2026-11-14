@@ -5,7 +5,7 @@
 推送 `v*` tag 会自动完成：
 
 1. `dotnet publish` 自包含发布（含 VC++ 运行库，见下）；
-2. 安装 NSIS 并编译 `installer/MutsumiLauncher.nsi`；
+2. 安装 Inno Setup 6.7+ 并编译 `installer/MutsumiLauncher.iss`；
 3. 创建 GitHub Release，上传 `MutsumiLauncher-<版本>-Setup.exe`。
 
 ```bash
@@ -18,9 +18,9 @@ git push origin v1.0.0
 
 > 自动更新读取 `releases/latest`，发布资产的文件名必须包含 `Setup`。
 
-## 手动打包（NSIS）
+## 手动打包（Inno Setup）
 
-需要 .NET 10 SDK 与便携版 NSIS 3.11（`makensis.exe`）。
+需要 .NET 10 SDK 与 Inno Setup 6.7+（`ISCC.exe`）。
 
 ```powershell
 # 1. 自包含发布
@@ -29,7 +29,7 @@ dotnet publish src/MutsumiLauncher/MutsumiLauncher.csproj `
   -p:Version=1.0.0 -p:DebugType=None -o dist\publish
 
 # 2. 编译安装器（输出 dist\MutsumiLauncher-1.0.0-setup.exe）
-"\path\to\nsis-3.11\makensis.exe" /DAPP_VERSION=1.0.0 installer\MutsumiLauncher.nsi
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPP_VERSION=1.0.0 installer\MutsumiLauncher.iss
 ```
 
 安装器行为：
